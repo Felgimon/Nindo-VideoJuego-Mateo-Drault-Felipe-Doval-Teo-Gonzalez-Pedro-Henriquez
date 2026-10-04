@@ -9,7 +9,7 @@ Felipe Doval, Teo González, Mateo Drault y Pedro Henríquez.
 > —Goro en la Montaña Kodoyama, Mizuchi en el Lago Kohan y Ozeki en el Bosque de Bambú—,
 > recuperar sus tres sellos y enfrentar a Kage.
 
-![Mapa](Docs/img/mundo_map.jpg)
+![Mapa de Nindō](Docs/img/mapa.jpg)
 
 <p>
 <img src="Docs/img/mundo_cinematica_dojo.jpg" width="49%"> <img src="Docs/img/mundo_lago_jefe.jpg" width="49%">

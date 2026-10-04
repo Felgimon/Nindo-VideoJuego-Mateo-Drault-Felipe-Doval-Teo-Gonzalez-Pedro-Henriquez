@@ -151,7 +151,7 @@ def in_rect(x, z, r, pad=0.0):
 
 def region(x, z):
     """Región artística (para colores/vegetación)."""
-    if x < -80: return "montana"
+    if x < -80 and z > -40: return "montana"   # la montaña está al noroeste (no nevar la colina del hogar)
     if in_lake(x, z) or (x > 86 and z < 60): return "lago"
     if x > 50 and z > 90: return "bambu"
     if z > 95: return "dojo"
