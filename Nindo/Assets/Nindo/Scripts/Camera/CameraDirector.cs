@@ -338,7 +338,7 @@ namespace Nindo
         }
 
         // ================================================================== oclusión
-        readonly RaycastHit[] hits = new RaycastHit[16];
+        readonly RaycastHit[] hits = new RaycastHit[32];
         readonly HashSet<Occluder> hidden = new HashSet<Occluder>();
         readonly List<Occluder> toShow = new List<Occluder>();
         float occluderTimer;
@@ -366,12 +366,33 @@ namespace Nindo
         }
     }
 
-    /// <summary>Objeto que se vuelve "solo sombra" cuando tapa a Kaito.</summary>
+    /// <summary>
+    /// Objeto que se vuelve "solo sombra" cuando tapa a Kaito. Crea un volumen trigger del tamaño
+    /// de todo el modelo (la copa de un árbol no tiene collider) en la capa "Ignore Raycast", así
+    /// solo lo detecta el sphere-cast de la cámara y no molesta a la jugabilidad ni al NavMesh.
+    /// </summary>
     public class Occluder : MonoBehaviour
     {
         Renderer[] rs;
         bool isHidden;
-        void Awake() { rs = GetComponentsInChildren<Renderer>(); }
+
+        void Awake()
+        {
+            rs = GetComponentsInChildren<Renderer>();
+            if (rs.Length == 0) return;
+            Bounds b = rs[0].bounds;
+            for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
+            var vol = new GameObject("OccluderVolume");
+            vol.layer = 2; // Ignore Raycast
+            vol.transform.SetParent(transform, false);
+            vol.transform.SetPositionAndRotation(b.center, Quaternion.identity);
+            var box = vol.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            Vector3 s = vol.transform.lossyScale;
+            // un poco más chico que el AABB: que no se oculte por rozarlo
+            box.size = new Vector3(b.size.x / Mathf.Max(0.01f, s.x), b.size.y / Mathf.Max(0.01f, s.y), b.size.z / Mathf.Max(0.01f, s.z)) * 0.85f;
+        }
+
         public void SetHidden(bool h)
         {
             if (h == isHidden) return;

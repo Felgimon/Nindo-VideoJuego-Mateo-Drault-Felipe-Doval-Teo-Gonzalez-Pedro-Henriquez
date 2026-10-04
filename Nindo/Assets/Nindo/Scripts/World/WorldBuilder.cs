@@ -101,6 +101,7 @@ namespace Nindo
                     if (++n % 400 == 0) yield return null;
                 }
             }
+            ApplyFoliageWind(content);
             // static batching de todo lo estático (terreno + props)
             StaticBatchingUtility.Combine(staticRoot.gameObject);
             yield return null;
@@ -122,6 +123,23 @@ namespace Nindo
                 if (m?.props != null) foreach (var p in m.props) specs[p.id] = p;
             }
             catch (Exception e) { Debug.LogWarning("[Nindo] Manifest de props inválido: " + e.Message); }
+        }
+
+        /// <summary>Cambia el material de follaje por la versión con viento (si su shader compiló).</summary>
+        void ApplyFoliageWind(NindoContent c)
+        {
+            var from = c.foliageMaterial;
+            var to = c.foliageWindMaterial;
+            if (!c.useFoliageWind || from == null || to == null || to.shader == null || !to.shader.isSupported) return;
+            int swapped = 0;
+            foreach (var r in WorldRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                bool any = false;
+                for (int i = 0; i < mats.Length; i++) if (mats[i] == from) { mats[i] = to; any = true; }
+                if (any) { r.sharedMaterials = mats; swapped++; }
+            }
+            Debug.Log($"[Nindo] Follaje con viento en {swapped} objetos.");
         }
 
         static int Phase(string n)

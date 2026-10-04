@@ -54,6 +54,9 @@ namespace Nindo
         public Material paletteMaterial;
         public Material emissiveMaterial;
         public Material foliageMaterial;
+        [Tooltip("Follaje con viento (shader Nindo/Foliage Wind). Si el shader no compila se usa foliageMaterial.")]
+        public Material foliageWindMaterial;
+        public bool useFoliageWind = true;
         public Material waterMaterial;
         public Material trailMaterial;
         public Material ghostMaterial;

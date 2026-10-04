@@ -464,7 +464,8 @@ namespace Nindo
 
         IEnumerator SealGateRoutine(SealGate gate)
         {
-            int shot = Game.Camera.PlayStaticShot(gate.transform.position + gate.transform.forward * -14f + Vector3.up * 6f, gate.transform.position + Vector3.up * 5f, 36f, 7f, 1f, 1f);
+            // cámara frente al portón (forward del marcador = hacia afuera), mirando los huecos
+            int shot = Game.Camera.PlayStaticShot(gate.transform.position + gate.transform.forward * 13f + Vector3.up * 4f, gate.SocketPosition(1), 34f, 7f, 1f, 1f);
             yield return new WaitForSecondsRealtime(1f);
             for (int i = 0; i < 3; i++) { gate.LightSocket(i); yield return new WaitForSecondsRealtime(0.8f); }
             Game.Camera.Shake(0.5f);
@@ -564,39 +565,69 @@ namespace Nindo
     }
 
     /// <summary>Puerta del dojo con los tres huecos para los sellos.</summary>
+    /// <summary>
+    /// Portón del dojo con los tres huecos para los sellos (modelados en dojo_gate). El marcador
+    /// está en el centro del portón y su forward mira hacia afuera (hacia el jugador que llega).
+    /// </summary>
     public class SealGate : Interactable
     {
         readonly GameObject[] sockets = new GameObject[3];
-        static readonly Vector3[] offsets = { new Vector3(-1.5f, 6.1f, -0.75f), new Vector3(0f, 6.5f, -0.75f), new Vector3(1.5f, 6.1f, -0.75f) };
+        // centro de cada hueco en coordenadas locales del portón (ver build_dojo_gate: x ±1.15,
+        // altura 4.5+0.57, cara frontal en z 1.59); el medallón tiene el origen en su base (-0.25)
+        static readonly Vector3[] offsets = { new Vector3(-1.15f, 4.82f, 1.64f), new Vector3(0f, 4.82f, 1.64f), new Vector3(1.15f, 4.82f, 1.64f) };
+        static readonly string[] sealProps = { "key_seal_mountain", "key_seal_lake", "key_seal_bamboo" };
 
         void Awake()
         {
             prompt = "Colocar los sellos";
-            radius = 4f;
+            radius = 4.5f;
             promptHeight = 2.2f;
-            for (int i = 0; i < 3; i++)
-            {
-                var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                Destroy(s.GetComponent<Collider>());
-                s.transform.SetParent(transform, false);
-                s.transform.localPosition = offsets[i];
-                s.transform.localScale = Vector3.one * 0.55f;
-                var r = s.GetComponent<MeshRenderer>();
-                r.sharedMaterial = Game.Content != null && Game.Content.emissiveMaterial != null ? Game.Content.emissiveMaterial : FXMaterials.Flash;
-                sockets[i] = s;
-                s.SetActive(Game.Save.HasFlag(Flags.DojoOpen));
-            }
+        }
+
+        void Start()
+        {
+            if (Game.Save.HasFlag(Flags.DojoOpen))
+                for (int i = 0; i < 3; i++) Place(i);
         }
 
         public override bool CanInteract => !Game.Save.HasFlag(Flags.DojoOpen);
 
         public override void Interact(PlayerController p) => Game.Story?.OpenSealGate(this);
 
+        /// <summary>Punto donde va el sello i (en el mundo).</summary>
+        public Vector3 SocketPosition(int i) => transform.TransformPoint(offsets[i] + Vector3.up * 0.25f);
+
+        GameObject Place(int i)
+        {
+            if (sockets[i] != null) return sockets[i];
+            GameObject go;
+            var model = Game.Content != null ? Game.Content.Prop(sealProps[i]) : null;
+            if (model != null) go = Instantiate(model, transform);
+            else
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                Destroy(go.GetComponent<Collider>());
+                go.transform.SetParent(transform, false);
+                go.transform.localScale = new Vector3(0.5f, 0.05f, 0.5f);
+                go.GetComponent<MeshRenderer>().sharedMaterial = FXMaterials.Flash;
+            }
+            go.name = sealProps[i];
+            go.transform.localPosition = offsets[i];
+            go.transform.localRotation = model != null ? Quaternion.identity : Quaternion.Euler(90f, 0f, 0f);
+            var lg = new GameObject("Glow");
+            lg.transform.SetParent(go.transform, false);
+            lg.transform.localPosition = new Vector3(0f, 0.25f, 0.6f);
+            var l = lg.AddComponent<Light>();
+            l.type = LightType.Point; l.range = 3.5f; l.intensity = 1.6f; l.color = new Color(1f, 0.82f, 0.4f); l.shadows = LightShadows.None;
+            sockets[i] = go;
+            return go;
+        }
+
         public void LightSocket(int i)
         {
-            sockets[i].SetActive(true);
-            Game.FX?.SealGlow(sockets[i].transform.position);
-            Game.Audio?.Play("seal", sockets[i].transform.position, 1f);
+            var go = Place(i);
+            Game.FX?.SealGlow(go.transform.position + go.transform.up * 0.25f);
+            Game.Audio?.Play("seal", go.transform.position, 1f);
         }
     }
 }

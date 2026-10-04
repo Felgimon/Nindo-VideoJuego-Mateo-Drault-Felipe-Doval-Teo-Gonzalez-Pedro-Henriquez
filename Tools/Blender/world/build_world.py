@@ -576,7 +576,7 @@ def build_markers():
         marker(f"M__NPC__{npc}__{variant}", x, z, yaw)
     for x, z, sx_, sz_ in W.FIREFLIES:
         marker(f"M__Fireflies__{sx_}__{sz_}", x, z)
-    marker("M__SealGate", 0, 112.2, 180, y=8.0)
+    marker("M__SealGate", 0, 113, 180, y=8.0)   # centro del portón (dojo_gate@8, 0, 113, 180)
 
 
 # =========================================================================== exportación

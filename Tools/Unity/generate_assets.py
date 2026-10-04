@@ -236,6 +236,10 @@ def materials(tex):
     m["flash"] = material(os.path.join(P_MAT, "Nindo_HitFlash.mat"), "Nindo_HitFlash", URP_UNLIT, {"_BaseMap": None, "_MainTex": None},
                           {"_Surface": 0, "_Cull": 2, "_ZWrite": 1, "_SrcBlend": 1, "_DstBlend": 0, "_QueueOffset": 0, "_AlphaClip": 0},
                           {"_BaseColor": (1, 0.97, 0.9, 1), "_Color": (1, 0.97, 0.9, 1)})
+    wind_shader = ensure_guid(os.path.join(N, "Shaders", "NindoFoliage.shader"))
+    m["foliage_wind"] = material(os.path.join(P_MAT, "Nindo_FoliageWind.mat"), "Nindo_FoliageWind", wind_shader, {"_BaseMap": palg},
+                                 {"_WindStrength": 0.14, "_WindSpeed": 1.4, "_WindScale": 0.08, "_Flutter": 0.03, "_Wrap": 0.35},
+                                 {"_BaseColor": (1, 1, 1, 1)}, version_block=False)
     sky_shader = ensure_guid(os.path.join(N, "Shaders", "NindoSky.shader"))
     m["sky"] = material(os.path.join(P_MAT, "Nindo_NightSky.mat"), "Nindo_NightSky", sky_shader, {},
                         {"_MoonSize": 0.045, "_MoonGlow": 0.6, "_StarDensity": 0.9965, "_StarBrightness": 1.6, "_CloudAmount": 0.35, "_Exposure": 1},
@@ -656,6 +660,8 @@ MonoBehaviour:
   paletteMaterial: {ref(mats['palette'], 2100000, 2)}
   emissiveMaterial: {ref(mats['emissive'], 2100000, 2)}
   foliageMaterial: {ref(mats['foliage'], 2100000, 2)}
+  foliageWindMaterial: {ref(mats['foliage_wind'], 2100000, 2)}
+  useFoliageWind: 1
   waterMaterial: {ref(mats['water'], 2100000, 2)}
   trailMaterial: {ref(mats['trail'], 2100000, 2)}
   ghostMaterial: {ref(mats['ghost'], 2100000, 2)}
