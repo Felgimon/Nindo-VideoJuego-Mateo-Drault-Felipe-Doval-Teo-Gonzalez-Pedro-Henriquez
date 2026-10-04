@@ -1,0 +1,93 @@
+"""Chequeos del plan del mundo (sin Blender): python3 Tools/Blender/world/validate_plan.py
+Cada marcador de gameplay tiene que quedar sobre suelo transitable, fuera del agua (salvo sobre
+props flotantes) y lejos de los bordes; los edificios no pueden tapar caminos ni marcadores."""
+import math, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import world_plan as W
+import world_terrain as T
+
+problems = []
+WATER_OK = []   # (x, z, r): zonas sobre agua con piso (plataforma de la arena)
+for pid, x, z, yaw, sc in W.LANDMARKS:
+    if pid.startswith("lake_arena_platform"):
+        WATER_OK.append((x, z, 9.2))
+
+
+def on_platform(x, z):
+    if any(math.hypot(x - a, z - b) < r for a, b, r in WATER_OK):
+        return True
+    # sobre la pasarela de tablones
+    return any(name == "pasarela_lago" for name in [T.path_info(x, z)[3]]) and T.path_info(x, z)[0] < -0.3
+
+
+def check(kind, name, x, z, margin=0.8):
+    wd = T.walk_dist(x, z)
+    if wd > -margin:
+        problems.append(f"{kind} {name} ({x},{z}) está a {-wd:.1f} m del borde transitable (wd={wd:.2f})")
+    if T.in_lake(x, z) and not on_platform(x, z):
+        problems.append(f"{kind} {name} ({x},{z}) cae en el agua")
+    # pendiente
+    h = T.height(x, z)
+    sl = max(abs(T.height(x + 1, z) - h), abs(T.height(x, z + 1) - h))
+    if sl > 0.6 and not on_platform(x, z):
+        problems.append(f"{kind} {name} ({x},{z}) en pendiente fuerte ({sl:.2f} m/m)")
+
+
+check("Start", "", W.START[0], W.START[1])
+for k, (x, z) in W.POINTS.items():
+    check("Point", k, x, z, 0.3)
+for cid, x, z, yaw in W.CHECKPOINTS:
+    check("Checkpoint", cid, x, z)
+for eid, x, z, r, lock, enemies in W.ENCOUNTERS:
+    for arch, ex, ez, yaw in enemies:
+        check("Enemy", f"{eid}/{arch}", ex, ez)
+for arch, ax, az, r, bx, bz, yaw in W.BOSSES:
+    check("BossArena", arch, ax, az)
+    check("Boss", arch, bx, bz)
+    # el borde de la arena tiene que ser transitable casi entero
+    bad = sum(1 for i in range(24) if T.walk_dist(ax + math.cos(i / 24 * math.tau) * (r - 1.5), az + math.sin(i / 24 * math.tau) * (r - 1.5)) > 0)
+    if bad > 4:
+        problems.append(f"Arena {arch}: {bad}/24 puntos del borde (r-1.5) fuera de lo transitable")
+for pid, x, z, yaw, flag in W.PORTALS:
+    check("Portal", pid, x, z)
+for tid, x, z, r in W.TRIGGERS:
+    check("Trigger", tid, x, z, 0.0)
+for npc, variant, x, z, yaw in W.NPCS:
+    check("NPC", npc, x, z)
+
+# edificios encima de caminos o de marcadores
+BIG = ("house", "storehouse", "pagoda", "pavilion", "shrine", "mountain_cabin", "temple_bell", "well", "dojo_main")
+marks = [(f"cp {c[0]}", c[1], c[2]) for c in W.CHECKPOINTS] + [(f"enemy {e[0]}", a[1], a[2]) for e in W.ENCOUNTERS for a in e[5]] \
+    + [(f"portal {p[0]}", p[1], p[2]) for p in W.PORTALS] + [("start", W.START[0], W.START[1])]
+for pid, x, z, yaw, sc in W.LANDMARKS:
+    base = pid.split("@")[0]
+    if not base.startswith(BIG):
+        continue
+    r = 2.6 * sc if not base.startswith("dojo_main") else 9.0
+    pd = T.path_info(x, z)[0]
+    if pd < r * 0.5 and not base.startswith(("well", "shrine_small", "dojo_main")):
+        problems.append(f"{base} ({x},{z}) pisa un camino (dist borde {pd:.1f})")
+    for name, mx, mz in marks:
+        if math.hypot(mx - x, mz - z) < r + 1.0:
+            problems.append(f"{base} ({x},{z}) tapa a {name} ({mx},{mz})")
+
+# pendiente a lo largo de los caminos (CharacterController: slopeLimit 45°, NavMesh 42°)
+for name, pts, width, ph in W.PATHS:
+    if name in ("pasarela_lago", "dojo_subida"):
+        continue   # tablones y escaleras: los pisa la malla del prop, no el terreno
+    worst = (0, None)
+    for i in range(len(pts) - 1):
+        (ax, az), (bx, bz) = pts[i], pts[i + 1]
+        L = math.hypot(bx - ax, bz - az)
+        n = max(1, int(L))
+        for k in range(n):
+            x0, z0 = ax + (bx - ax) * k / n, az + (bz - az) * k / n
+            x1, z1 = ax + (bx - ax) * (k + 1) / n, az + (bz - az) * (k + 1) / n
+            sl = abs(T.height(x1, z1) - T.height(x0, z0)) / math.hypot(x1 - x0, z1 - z0)
+            if sl > worst[0]:
+                worst = (sl, (round(x0, 1), round(z0, 1)))
+    if worst[0] > 0.75:
+        problems.append(f"Camino {name}: pendiente {math.degrees(math.atan(worst[0])):.0f}° en {worst[1]}")
+
+print("\n".join(problems) if problems else "OK: sin problemas")
+print(f"{len(problems)} problemas")

@@ -52,8 +52,7 @@ AREAS = [
     # Lago (este)
     ("lago_entrada", 88, 24, 11, 0.0, 6),
     ("lago_orilla", 112, 4, 16, 0.25, 8),
-    ("lago_muelles", 140, 26, 9, None, 4),
-    ("lago_jefe", 182, 70, 11, None, 4),
+    ("lago_jefe", 184, 72, 9, None, 4),            # = plataforma de la arena (radio interior ~9.2)
     # Bambú (noreste)
     ("bambu_entrada", 66, 104, 9, 1.0, 6),
     ("bambu_claro", 96, 126, 13, 1.5, 6),
@@ -68,7 +67,8 @@ PATHS = [
     ("subida_monte", [(-100, 52), (-112, 58), (-126, 64), (-140, 70)], 6, None),
     ("paso_monte", [(-140, 70), (-156, 82), (-168, 92), (-182, 106), (-196, 118)], 4.5, None),
     ("camino_este", [(30, 22), (52, 26), (70, 26), (88, 24), (104, 10), (112, 4)], 6, None),
-    ("pasarela_lago", [(112, 4), (126, 14), (140, 26), (156, 40), (170, 56), (182, 70)], 3.2, None),
+    # ancho = tablones de boardwalk_segment (1.8 m): los límites invisibles quedan en el borde
+    ("pasarela_lago", [(112, 4), (126, 14), (140, 26), (156, 40), (170, 56), (184, 72)], 1.9, None),
     ("camino_ne", [(30, 60), (46, 82), (58, 96), (66, 104), (80, 114), (96, 126), (108, 140), (118, 152), (124, 162)], 5.5, None),
     ("rodeo_jardin_o", [(-30, 15), (-36, 40), (-34, 56)], 5, None),
     ("rodeo_jardin_e", [(32, 22), (36, 44), (34, 62)], 5, None),
@@ -134,7 +134,7 @@ LANDMARKS = [
     ("bridge_arch", -4, 6, 0, 1.0),
     ("bridge_arch", 40, 2, 0, 0.9),
     ("bridge_plank", -46, 4, 0, 1.0),
-    ("house_village_a", -44, 26, 110, 1.0), ("house_village_b", -50, 0, 70, 1.0),
+    ("house_village_a", -47, 21, 110, 1.0), ("house_village_b", -50, 0, 70, 1.0),
     ("house_village_a", 46, 32, 250, 1.0), ("house_village_b", 50, 8, 290, 1.0),
     ("house_village_a", -28, 70, 140, 1.0), ("house_village_b", 30, 76, 210, 1.0),
     ("storehouse_kura", -52, 48, 90, 1.0),
@@ -172,13 +172,13 @@ LANDMARKS = [
     ("campfire", -200, 130, 0, 1.0),
     # ---------------- Lago
     ("house_fisher", 134, 6, 200, 1.0), ("house_fisher", 152, 14, 230, 1.0), ("house_fisher", 128, 40, 160, 1.0),
-    ("house_fisher", 160, 44, 250, 0.95),
+    ("house_fisher", 165, 40, 250, 0.95),
     ("house_farmer_b", 96, 8, 160, 1.0),
     ("net_rack", 104, -8, 180, 1.0), ("net_rack", 118, -6, 200, 1.0),
     ("boat_small", 124, -6, 70, 1.0), ("boat_small", 144, 0, 120, 1.0), ("boat_small", 170, 30, 30, 1.0),
     ("barrel", 108, 14, 0, 1.0), ("crate_stack", 102, 16, 30, 1.0),
     ("lake_arena_platform", 184, 72, 225, 1.0),
-    ("shrine_small", 190, 80, 225, 0.9),
+    ("shrine_small", 189.1, 77.1, 225, 0.75),        # al fondo de la plataforma de la arena
     ("lantern_post", 110, 20, 180, 1.0), ("lantern_post", 98, -2, 180, 1.0),
     ("reeds_patch", 102, -18, 0, 1.2), ("reeds_patch", 118, 30, 40, 1.0),
     # ---------------- Bambú
@@ -211,9 +211,9 @@ CHECKPOINTS = [
     ("cp_forest", 10, -60, 200),
     ("cp_wall", 8, -16, 180),
     ("cp_garden", 10, 28, 200),
-    ("cp_dojo_gate", 10, 96, 180),
+    ("cp_dojo_gate", 5, 93, 180),
     ("cp_mountain", -98, 56, 120),
-    ("cp_mountain_top", -186, 112, 120),
+    ("cp_mountain_top", -189, 112, 120),
     ("cp_lake", 90, 28, 200),
     ("cp_lake_docks", 112, 16, 220),
     ("cp_bamboo", 72, 108, 200),
@@ -240,7 +240,7 @@ ENCOUNTERS = [
     ("mountain1", -140, 70, 16, 1, [("ninja_elite", -136, 74, 220), ("ninja_elite", -146, 66, 220), ("sumo_mountain", -142, 78, 220)]),
     ("mountain2", -168, 92, 7, 0, [("ninja_elite", -172, 96, 220)]),
     ("lake1", 112, 4, 14, 1, [("ninja", 108, 8, 250), ("ninja", 116, 0, 250), ("ninja_elite", 118, 10, 250), ("ninja", 110, -4, 250)]),
-    ("lake2", 156, 40, 6, 0, [("ninja_elite", 158, 44, 220)]),
+    ("lake2", 156, 40, 6, 0, [("ninja_elite", 159.5, 44, 220)]),   # emboscada sobre la pasarela,
     ("bamboo1", 96, 126, 12, 1, [("ninja", 92, 130, 220), ("ninja_elite", 100, 122, 220), ("ninja", 102, 132, 220)]),
 ]
 
@@ -255,7 +255,7 @@ BOSSES = [
 # portales de vuelta al dojo (aparecen al vencer al jefe): (id, x, z, yaw, flag)
 PORTALS = [
     ("p_mountain", -190, 128, 120, "boss_goro"),
-    ("p_lake", 176, 64, 225, "boss_mizuchi"),
+    ("p_lake", 179, 67, 225, "boss_mizuchi"),       # sobre la plataforma, junto a la entrada
     ("p_bamboo", 114, 158, 215, "boss_ozeki"),
 ]
 

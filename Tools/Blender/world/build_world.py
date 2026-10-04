@@ -305,18 +305,44 @@ def place_landmarks():
         x += 8
     for wx in (-6.0, 6.0, W.WALL_X_RANGE[0] - 4, W.WALL_X_RANGE[1] + 4):
         place("wall_post", wx, W.WALL_Z, 0, 1.0)
-    # pasarela del lago: tablones a lo largo del camino
+    # pasarela del lago: tablones desde 2 m antes de que empiece el agua hasta el borde de la arena
     for name, pts, width, ph in W.PATHS:
         if name != "pasarela_lago":
             continue
+        arena = [(lm[1], lm[2]) for lm in W.LANDMARKS if lm[0] == "lake_arena_platform"]
+        segs, acc = [], 0.0
         for i in range(len(pts) - 1):
-            (ax, az), (bx, bz) = pts[i], pts[i + 1]
-            Ln = math.hypot(bx - ax, bz - az)
+            L_ = math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+            segs.append((acc, acc + L_, pts[i], pts[i + 1]))
+            acc += L_
+
+        def at(sv):
+            for s0, s1, (ax, az), (bx, bz) in segs:
+                if sv <= s1 or s1 == acc:
+                    t = (sv - s0) / max(1e-6, s1 - s0)
+                    return ax + (bx - ax) * t, az + (bz - az) * t
+            return pts[-1]
+        sv, s_start, s_end = 0.0, None, acc
+        while sv <= acc:
+            x_, z_ = at(sv)
+            if s_start is None and (T.in_lake(x_, z_) or H(x_, z_) < W.WATER_LAKE + 0.05):
+                s_start = max(0.0, sv - 2.0)
+            if arena and math.hypot(x_ - arena[0][0], z_ - arena[0][1]) < 10.2:
+                s_end = sv
+                break
+            sv += 0.25
+        if s_start is None:
+            continue
+        for s0, s1, (ax, az), (bx, bz) in segs:
+            c0, c1 = max(s0, s_start), min(s1, s_end)
+            if c1 - c0 < 0.5:
+                continue
+            n = max(1, round((c1 - c0) / 5.8))
             yaw = math.degrees(math.atan2(bx - ax, bz - az))
-            n = max(1, int(Ln / 5.6))
             for k in range(n):
-                t = (k + 0.5) / n
-                place("boardwalk_segment", ax + (bx - ax) * t, az + (bz - az) * t, yaw, Ln / n / 6.0 if Ln / n < 6 else 1.0)
+                sm = c0 + (k + 0.5) * (c1 - c0) / n
+                cx, cz = at(sm)
+                place("boardwalk_segment", cx, cz, yaw, (c1 - c0) / n / 6.0)
     # faroles a lo largo de los caminos principales
     for name, pts, width, ph in W.PATHS:
         if name in ("pasarela_lago", "dojo_subida"):
@@ -540,7 +566,14 @@ MARKERS = []   # (name, x, z, y, yaw)
 
 
 def marker(name, x, z, yaw=0.0, y=None):
-    MARKERS.append((name, x, z, H(x, z) if y is None else y, yaw))
+    if y is None:
+        if T.in_lake(x, z):
+            # sobre el agua: piso de la plataforma de la arena o tablones de la pasarela
+            on_arena = any(lm[0] == "lake_arena_platform" and math.hypot(x - lm[1], z - lm[2]) < 9.5 for lm in W.LANDMARKS)
+            y = W.WATER_LAKE + (1.0 if on_arena else 0.8)
+        else:
+            y = H(x, z)
+    MARKERS.append((name, x, z, y, yaw))
 
 
 def build_markers():

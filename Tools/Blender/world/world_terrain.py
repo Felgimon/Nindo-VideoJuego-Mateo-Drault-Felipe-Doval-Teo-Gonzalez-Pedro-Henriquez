@@ -121,8 +121,17 @@ def path_info(x, z):
     return best
 
 
+# áreas de tierra firme que caen dentro del polígono del lago (la orilla): se recortan del lago
+_LAND_IN_LAKE = [(ax, az, r) for name, ax, az, r, h, soft in W.AREAS if h is not None and point_in_poly(ax, az, W.LAKE)]
+
+
 def in_lake(x, z):
-    return point_in_poly(x, z, W.LAKE)
+    if not point_in_poly(x, z, W.LAKE):
+        return False
+    for ax, az, r in _LAND_IN_LAKE:
+        if (x - ax) ** 2 + (z - az) ** 2 < r * r:
+            return False
+    return True
 
 
 def stream_dist(x, z):
