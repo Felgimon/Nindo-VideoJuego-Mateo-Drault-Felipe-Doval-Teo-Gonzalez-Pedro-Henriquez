@@ -74,8 +74,16 @@ namespace Nindo
         void OnCombat(bool inCombat)
         {
             if (Game.Combat != null && Game.Combat.ActiveBoss != null) return;
+            // con Kaito muerto (o mientras suena un remate sin loop como "gameover") no se cambia la
+            // música: al morir el combate "termina" y cortaba el jingle; StoryDirector.DeathRoutine
+            // llama a ResumeExplore al reaparecer
+            if (Game.Player != null && !Game.Player.IsAlive) return;
+            if (StingerPlaying) return;
             PlayMusic(inCombat ? "combat" : exploreMusic, inCombat ? 1.2f : 3f);
         }
+
+        /// <summary>¿Está sonando un tema sin loop (p. ej. "gameover")?</summary>
+        bool StingerPlaying => !music[musicActive].loop && music[musicActive].isPlaying;
 
         /// <summary>La zona define qué música de exploración suena.</summary>
         public void SetExploreMusic(string key, string ambienceKey)

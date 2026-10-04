@@ -511,6 +511,7 @@ namespace Nindo
         public void RespawnAt(Vector3 pos, Quaternion rot)
         {
             StopAllCoroutines();
+            AbortFinisherAndAbility(); // p. ej. caer del mundo en pleno Corte del Viento
             if (model != null) { model.localRotation = modelBaseRot; model.localPosition = modelBasePos; }
             Teleport(pos, rot);
             Health = config.maxHealth;
@@ -547,13 +548,18 @@ namespace Nindo
 
         public void EnterScripted()
         {
-            CancelAbilityCamera();
+            // la cinemática puede arrancar en plena ejecución/habilidad (p. ej. dentro de e.Execute()
+            // al completar el encuentro): apagar sus efectos de pantalla, planos y cámara lenta
+            var pendingExecution = AbortFinisherAndAbility();
             trail?.Stop();
             SetLock(null);
             SetState(PlayerState.Scripted);
             velocity = Vector3.zero;
             scriptedMoving = false;
             anim.Play("Locomotion", 0.15f);
+            // si el tajo no había llegado, el enemigo quedó congelado en "Executed" (ni vivo ni muerto):
+            // ya estaba entregado, así que se completa la ejecución sin el tajo
+            if (pendingExecution != null && pendingExecution.State == EnemyState.Executed) pendingExecution.Execute(this);
         }
 
         public void ExitScripted()

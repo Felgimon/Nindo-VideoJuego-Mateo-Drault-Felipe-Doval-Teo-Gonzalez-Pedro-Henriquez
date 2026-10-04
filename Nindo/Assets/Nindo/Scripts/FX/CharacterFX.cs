@@ -242,6 +242,12 @@ namespace Nindo
     {
         public float leanAngle = 9f;
         public float turnRoll = 10f;
+        /// <summary>
+        /// Pose guionada del pivote (p. ej. Kaito tirado en el piso en el prólogo). El pivote es de
+        /// este componente y se reescribe en cada LateUpdate, así que las cinemáticas no lo rotan
+        /// directo: ponen la pose acá y se compone con la inclinación. identity = sin pose.
+        /// </summary>
+        public Quaternion scriptedPose = Quaternion.identity;
         PlayerController pc;
         Transform pivot;
         Vector3 lastFwd;
@@ -274,7 +280,7 @@ namespace Nindo
             if (pc.State == PlayerState.Dash) targetLean = 16f;
             lean = CombatMath.Damp(lean, targetLean, 10f, dt);
             roll = CombatMath.Damp(roll, targetRoll, 8f, dt);
-            pivot.localRotation = Quaternion.Euler(lean, 0f, roll);
+            pivot.localRotation = scriptedPose * Quaternion.Euler(lean, 0f, roll);
             float sq = pc.State == PlayerState.Dash ? 0.06f : 0f;
             pivot.localScale = CombatMath.Damp(pivot.localScale, new Vector3(1f - sq * 0.5f, 1f - sq, 1f + sq), 14f, dt);
         }

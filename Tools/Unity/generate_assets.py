@@ -6,7 +6,7 @@ texturas de paleta y .meta con GUIDs estables.
 Uso: python3 Tools/Unity/generate_assets.py
 Es idempotente: se puede correr de nuevo después de exportar props/zonas desde Blender.
 """
-import os, sys, json, glob, re, shutil
+import os, sys, json, glob, re, shutil, struct
 from unity_yaml import *
 
 sys.path.insert(0, os.path.join(REPO, "Tools", "Blender"))
@@ -241,11 +241,13 @@ def materials(tex):
                                  {"_WindStrength": 0.14, "_WindSpeed": 1.4, "_WindScale": 0.08, "_Flutter": 0.03, "_Wrap": 0.35},
                                  {"_BaseColor": (1, 1, 1, 1)}, version_block=False)
     water_shader = ensure_guid(os.path.join(N, "Shaders", "NindoWater.shader"))
+    # _WaveHeight = WAVE_HEIGHT de Tools/Blender/world/build_world.py (FloatingBob lo lee del material)
     m["water_anim"] = material(os.path.join(P_MAT, "Nindo_WaterLowpoly.mat"), "Nindo_WaterLowpoly", water_shader, {},
-                               {"_AlphaShallow": 0.55, "_AlphaDeep": 0.92, "_WaveHeight": 0.18, "_WaveSpeed": 1.0, "_Gloss": 48,
-                                "_SpecStrength": 1.4, "_FoamThreshold": 0.72, "_SparkleAmount": 0.06},
+                               {"_AlphaShallow": 0.55, "_AlphaDeep": 0.92, "_WaveHeight": 0.26, "_WaveSpeed": 1.0, "_Gloss": 128,
+                                "_FacetBoost": 4.5, "_SpecStrength": 1.4, "_FoamThreshold": 0.64, "_SparkleAmount": 0.06,
+                                "_CrestContrast": 0.35, "_RippleScale": 0.9, "_RippleStrength": 0.3, "_RippleSpeed": 1.0},
                                {"_ShallowColor": (0.13, 0.42, 0.47, 1), "_DeepColor": (0.02, 0.08, 0.17, 1), "_FoamColor": (0.78, 0.9, 0.95, 1),
-                                "_SkyColor": (0.2, 0.3, 0.48, 1), "_SparkleColor": (1.0, 0.97, 0.85, 1)},
+                                "_SkyColor": (0.2, 0.3, 0.48, 1), "_SparkleColor": (1.0, 0.97, 0.85, 1), "_CrestColor": (0.36, 0.66, 0.68, 1)},
                                queue=2990, tags={"RenderType": "Transparent"}, version_block=False)
     sky_shader = ensure_guid(os.path.join(N, "Shaders", "NindoSky.shader"))
     m["sky"] = material(os.path.join(P_MAT, "Nindo_NightSky.mat"), "Nindo_NightSky", sky_shader, {},
@@ -267,13 +269,79 @@ def clip_ref(p):
     return ref(anim_guid(p), 7400000, 2)
 
 
+def anim_length(p):
+    """Duración (s) de un .anim suelto: m_StopTime - m_StartTime de m_AnimationClipSettings."""
+    txt = open(A(p), encoding="utf-8", errors="ignore").read()
+    m = re.search(r"m_AnimationClipSettings:.*?m_StartTime: ([-\d.eE]+)\s+m_StopTime: ([-\d.eE]+)", txt, re.S)
+    assert m, f"{p}: no tiene m_AnimationClipSettings"
+    return round(float(m.group(2)) - float(m.group(1)), 4)
+
+
+def clip(p):
+    """(referencia, duración) de un .anim suelto."""
+    return clip_ref(p), anim_length(p)
+
+
+FBX_TIME_MODES = {1: 120, 2: 100, 3: 60, 4: 50, 5: 48, 6: 30, 7: 30, 8: 29.97, 9: 29.97, 10: 25, 11: 24,
+                  12: 1000, 13: 23.976, 15: 96, 16: 72, 17: 59.94, 18: 119.88}
+
+
+def fbx_fps(path):
+    """Frame rate del FBX (GlobalSettings: TimeMode / CustomFrameRate): Unity mide firstFrame/lastFrame con él."""
+    data = open(path, "rb").read(1 << 20)
+
+    def prop(name):
+        if data.startswith(b"Kaydara FBX Binary"):
+            key = b"S" + struct.pack("<I", len(name)) + name.encode()
+            i = data.find(key)
+            if i < 0:
+                return None
+            i += len(key)
+            for _ in range(3):  # tipo, etiqueta, flags
+                if data[i:i + 1] != b"S":
+                    return None
+                i += 5 + struct.unpack_from("<I", data, i + 1)[0]
+            t = data[i:i + 1]
+            return struct.unpack_from("<i", data, i + 1)[0] if t == b"I" else struct.unpack_from("<d", data, i + 1)[0] if t == b"D" else None
+        m = re.search(rb'"' + name.encode() + rb'",\s*"[^"]*",\s*"[^"]*",\s*"[^"]*",\s*([-\d.eE]+)', data)
+        return float(m.group(1)) if m else None
+
+    mode = prop("TimeMode")
+    if mode is not None and int(mode) in FBX_TIME_MODES:
+        return FBX_TIME_MODES[int(mode)]
+    custom = prop("CustomFrameRate")
+    return custom if custom and custom > 0 else 30.0
+
+
+def fbx_clip_lengths(path):
+    """{clip: duración (s)} de los clips definidos en el .fbx.meta (clipAnimations: firstFrame/lastFrame)."""
+    meta = open(path + ".meta", encoding="utf-8", errors="ignore").read()
+    sec = re.search(r"^    clipAnimations:\n((?:    - .*\n|      .*\n)*)", meta, re.M)
+    out = {}
+    if sec:
+        fps = fbx_fps(path)
+        for m in re.finditer(r"^    - serializedVersion: \d+\n      name: (.*)\n(?:      .*\n)*?      firstFrame: ([-\d.eE]+)\n      lastFrame: ([-\d.eE]+)$",
+                             sec.group(1), re.M):
+            out.setdefault(m.group(1).strip(), round((float(m.group(3)) - float(m.group(2))) / fps, 4))
+    return out
+
+
 def controller(path, name, states, locomotion):
-    """states: {stateName: motionRef(str)}; locomotion: (idleRef, runRef) or None."""
+    """states: {stateName: motionRef(str) | (motionRef, duración)}; locomotion: (idle, run) or None.
+    Devuelve (guid, {stateName: duración del clip}) para la tabla de NindoContent."""
     sm_id = stable_id(name, "sm")
     objs = []
     child_states = []
     state_ids = {}
+    lengths = {}
+    states = dict(states)
+    for sname, motion in list(states.items()):
+        if isinstance(motion, tuple):
+            states[sname], ln = motion
+            if ln:
+                lengths[sname] = ln
     if locomotion:
+        locomotion = [m[0] if isinstance(m, tuple) else m for m in locomotion]
         bt_id = stable_id(name, "bt")
         objs.append(f"""--- !u!206 &{bt_id}
 BlendTree:
@@ -396,7 +464,7 @@ AnimatorStateMachine:
 """
     write(path, head + "".join(objs))
     write_meta(path, NATIVE_META.format(main=9100000))
-    return ensure_guid(path)
+    return ensure_guid(path), lengths
 
 
 MINIJEFE_CLIPS = [
@@ -468,33 +536,35 @@ def controllers():
     c = {}
     K = "Animations teo/"
     c["kaito"] = controller(os.path.join(P_ANIM, "Kaito.controller"), "Kaito", {
-        "Attack1": clip_ref(K + "Attackk1.anim"), "Attack2": clip_ref(K + "Attackk2.anim"), "Attack3": clip_ref(K + "Attackk3.anim"),
-        "ParryStance": clip_ref(K + "TrueBlock.anim"), "ParrySuccess": clip_ref(K + "Parried.anim"), "Blocked": clip_ref(K + "Blockk.anim"),
-        "Hit": clip_ref("Preiliminar Kaito/Stunned.anim"), "Dash": clip_ref(K + "Dash.anim"), "Finisher": clip_ref(K + "Finishing.anim"),
-        "Idle": clip_ref(K + "Idle.anim"),
-    }, (clip_ref(K + "Idle.anim"), clip_ref(K + "AuraRun.anim")))
+        "Attack1": clip(K + "Attackk1.anim"), "Attack2": clip(K + "Attackk2.anim"), "Attack3": clip(K + "Attackk3.anim"),
+        "ParryStance": clip(K + "TrueBlock.anim"), "ParrySuccess": clip(K + "Parried.anim"), "Blocked": clip(K + "Blockk.anim"),
+        "Hit": clip("Preiliminar Kaito/Stunned.anim"), "Dash": clip(K + "Dash.anim"), "Finisher": clip(K + "Finishing.anim"),
+        "Idle": clip(K + "Idle.anim"),
+    }, (clip(K + "Idle.anim"), clip(K + "AuraRun.anim")))
     NB = "Characters/Ninja/body/"
     c["ninja"] = controller(os.path.join(P_ANIM, "Ninja.controller"), "Ninja", {
-        "Attack1": clip_ref(NB + "Attack 1.anim"), "Attack2": clip_ref(NB + "animation/Attack 2.anim"), "Attack3": clip_ref(NB + "animation/Attack 3.anim"),
-        "Hit": clip_ref(NB + "animation/Damaged.anim"), "Exhausted": clip_ref(NB + "animation/Exausto.anim"), "Guard": clip_ref(NB + "animation/Block.anim"),
-        "Counter": clip_ref(NB + "animation/ParryUltimate.anim"), "Spotted": clip_ref(NB + "EnemySpotted.anim"), "Death": clip_ref(NB + "animation/Stuned.anim"),
-        "Idle": clip_ref(NB + "animation/Idle.anim"),
-    }, (clip_ref(NB + "animation/Idle.anim"), clip_ref(NB + "animation/RUN.anim")))
+        "Attack1": clip(NB + "Attack 1.anim"), "Attack2": clip(NB + "animation/Attack 2.anim"), "Attack3": clip(NB + "animation/Attack 3.anim"),
+        "Hit": clip(NB + "animation/Damaged.anim"), "Exhausted": clip(NB + "animation/Exausto.anim"), "Guard": clip(NB + "animation/Block.anim"),
+        "Counter": clip(NB + "animation/ParryUltimate.anim"), "Spotted": clip(NB + "EnemySpotted.anim"), "Death": clip(NB + "animation/Stuned.anim"),
+        "Idle": clip(NB + "animation/Idle.anim"),
+    }, (clip(NB + "animation/Idle.anim"), clip(NB + "animation/RUN.anim")))
     S = "Characters/Sumo/"
     c["sumo"] = controller(os.path.join(P_ANIM, "Sumo.controller"), "Sumo", {
-        "Attack1": clip_ref(S + "Attack1.anim"), "Attack2": clip_ref(S + "Attack2.anim"), "Attack3": clip_ref(S + "Attack3.anim"),
-        "Special": clip_ref(S + "SpecialAttack.anim"), "Hit": clip_ref(S + "Blocked.anim"), "Exhausted": clip_ref(S + "Cansado.anim"),
-        "Spotted": clip_ref(S + "EnemySpotted.anim"), "Idle": clip_ref(S + "Idle.anim"),
-    }, (clip_ref(S + "Idle.anim"), clip_ref(S + "Walk.anim")))
+        "Attack1": clip(S + "Attack1.anim"), "Attack2": clip(S + "Attack2.anim"), "Attack3": clip(S + "Attack3.anim"),
+        "Special": clip(S + "SpecialAttack.anim"), "Hit": clip(S + "Blocked.anim"), "Exhausted": clip(S + "Cansado.anim"),
+        "Spotted": clip(S + "EnemySpotted.anim"), "Idle": clip(S + "Idle.anim"),
+    }, (clip(S + "Idle.anim"), clip(S + "Walk.anim")))
     patch_minijefe_meta()
+    mj = fbx_clip_lengths(A("Models/Minijefe.fbx"))
     c["goro"] = controller(os.path.join(P_ANIM, "Goro.controller"), "Goro",
-                           {n: minijefe_clip(n) for n, *_ in MINIJEFE_CLIPS if n not in ("Run",)},
+                           {n: (minijefe_clip(n), mj.get(n)) for n, *_ in MINIJEFE_CLIPS if n not in ("Run",)},
                            (minijefe_clip("Idle"), minijefe_clip("Run")))
     gp = os.path.join(P_CHARS, "Grandpa.fbx")
     if os.path.exists(gp):
         g = ensure_guid(gp)
-        idle = ref(g, stable_id("grandpa", "Idle"), 3)
-        kid = ref(g, stable_id("grandpa", "Kidnap"), 3)
+        gl = fbx_clip_lengths(gp)
+        idle = (ref(g, stable_id("grandpa", "Idle"), 3), gl.get("Idle"))
+        kid = (ref(g, stable_id("grandpa", "Kidnap"), 3), gl.get("Kidnap"))
         c["grandpa"] = controller(os.path.join(P_ANIM, "Grandpa.controller"), "Grandpa", {"Idle": idle, "Kidnap": kid}, (idle, idle))
     return c
 
@@ -617,12 +687,17 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
         if "grandpa" in ctrls:
             defs.append(("grandpa", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45))
             defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45))
-        for cid, mg, cg, h in defs:
+        for cid, mg, (cg, lens), h in defs:
+            # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
+            names = "".join(f"\n    - {n}" for n in lens) or " []"
+            secs = "".join(f"\n    - {lens[n]}" for n in lens) or " []"
             rows.append(f"""  - id: {cid}
     model: {ref(mg, MODEL, 3)}
     controller: {ref(cg, 9100000, 2)}
     height: {h}
-    materialOverrides: []""")
+    materialOverrides: []
+    stateNames:{names}
+    stateLengths:{secs}""")
         return "\n".join(rows)
 
     prop_rows = ("\n" + "\n".join(f"  - id: {pid}\n    model: {ref(g, MODEL, 3)}" for pid, g in sorted(props.items()))) if props else " []"

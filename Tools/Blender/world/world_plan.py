@@ -175,7 +175,7 @@ LANDMARKS = [
     ("house_fisher", 165, 40, 250, 0.95),
     ("house_farmer_b", 96, 8, 160, 1.0),
     ("net_rack", 104, -8, 180, 1.0), ("net_rack", 118, -6, 200, 1.0),
-    ("boat_small", 124, -6, 70, 1.0), ("boat_small", 144, 0, 120, 1.0), ("boat_small", 170, 30, 30, 1.0),
+    ("boat_small", 128, -6, 70, 1.0), ("boat_small", 144, 0, 120, 1.0), ("boat_small", 170, 30, 30, 1.0),
     ("barrel", 108, 14, 0, 1.0), ("crate_stack", 102, 16, 30, 1.0),
     ("lake_arena_platform", 184, 72, 225, 1.0),
     ("shrine_small", 189.1, 77.1, 225, 0.75),        # al fondo de la plataforma de la arena

@@ -162,8 +162,10 @@ namespace Nindo
             // ¡la bandana se ata sola y la guadaña se vuelve katana!
             yield return Cutscene(BandanaAwakening(grandpa, kidnapper));
 
-            // pelea del prólogo con tutorial de parry
-            if (introEnc != null)
+            // pelea del prólogo con tutorial de parry. Si el guardado ya tiene el encuentro ganado
+            // pero no "intro_done" (se salió durante el diálogo final), Activate() no haría nada y
+            // FinishIntro no se llamaría nunca: el prólogo se repetiría en cada "Continuar".
+            if (introEnc != null && !introEnc.Completed)
             {
                 foreach (var m in introEnc.Members) if (m != null) m.ExitScripted(true);
                 introEnc.Activate();
@@ -175,18 +177,20 @@ namespace Nindo
 
         IEnumerator LieDown(bool down)
         {
-            var pivot = P.model != null ? P.model.parent : null;
-            if (pivot == null) yield break;
+            // el pivote del modelo (LeanPivot) lo reescribe ProceduralMotion en cada LateUpdate:
+            // la pose se le pasa a él en vez de rotar el pivote directo (si no, Kaito nunca se acuesta)
+            var motion = P.GetComponent<ProceduralMotion>();
+            if (motion == null) yield break;
             Quaternion lying = Quaternion.Euler(-82f, 0f, 0f);
-            if (down) { pivot.localRotation = lying; yield break; }
+            if (down) { motion.scriptedPose = lying; yield break; }
             float t = 0f;
             while (t < 1f)
             {
                 t += Time.unscaledDeltaTime * 1.4f;
-                pivot.localRotation = Quaternion.Slerp(lying, Quaternion.identity, Mathf.SmoothStep(0f, 1f, t));
+                motion.scriptedPose = Quaternion.Slerp(lying, Quaternion.identity, Mathf.SmoothStep(0f, 1f, t));
                 yield return null;
             }
-            pivot.localRotation = Quaternion.identity;
+            motion.scriptedPose = Quaternion.identity;
         }
 
         IEnumerator BandanaAwakening(NPC grandpa, Enemy kidnapper)

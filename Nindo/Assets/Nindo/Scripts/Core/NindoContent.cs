@@ -21,6 +21,9 @@ namespace Nindo
             public RuntimeAnimatorController controller;
             [Tooltip("Altura final en metros (el modelo se escala solo)")] public float height = 1.6f;
             public Material[] materialOverrides;
+            [Tooltip("Estados del controller y la duración (s, a velocidad 1) de su clip. Los calcula Tools/Unity/generate_assets.py")]
+            public string[] stateNames = new string[0];
+            public float[] stateLengths = new float[0];
         }
 
         [Serializable]
@@ -116,6 +119,15 @@ namespace Nindo
         {
             charMap ??= Map(characters, c => c.id, c => c);
             return id != null && charMap.TryGetValue(id, out var c) ? c : null;
+        }
+
+        /// <summary>Primera entrada que usa ese controller y trae tabla de duraciones por estado.</summary>
+        public CharacterEntry CharacterByController(RuntimeAnimatorController controller)
+        {
+            if (controller == null || characters == null) return null;
+            foreach (var c in characters)
+                if (c != null && c.controller == controller && c.stateNames != null && c.stateNames.Length > 0) return c;
+            return null;
         }
 
         public GameObject Prop(string id)

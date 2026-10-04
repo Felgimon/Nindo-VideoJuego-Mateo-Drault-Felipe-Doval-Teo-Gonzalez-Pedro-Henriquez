@@ -116,6 +116,8 @@ namespace Nindo
             if (list == null) return;
             for (int i = 0; i < list.Count; i++)
             {
+                // una muerte pudo arrancar una cinemática: no seguir pegando (un "Guarded" sacaría a Kaito del modo guionado)
+                if (State == PlayerState.Scripted) return;
                 var e = list[i];
                 if (e == null || !e.IsAlive || hitThisSwing.Contains(e)) continue;
                 if (!CombatMath.InArc(transform, e.transform.position, a.range, a.arc, e.Radius)) continue;
@@ -406,6 +408,9 @@ namespace Nindo
         void TickFinisher(float dt)
         {
             velocity = Vector3.zero;
+            // la línea de tiempo asume el clip a 1.7 (Play de TryFinisher): la furia no lo acelera
+            // (SetState pone su multiplicador y puede activarse en plena ejecución con la muerte)
+            anim.SetSpeed(1f);
             float len = anim.Length("Finisher", 2.6f) / 1.7f;
             float n = stateTime / len;
             if (!finisherStruck && n >= 0.68f)
@@ -435,11 +440,16 @@ namespace Nindo
                     OnKilledEnemy(e, true);
                     GameEvents.RaiseEnemyFinished(e, true);
                 }
+                // la muerte pudo completar un encuentro y arrancar una cinemática: EnterScripted ya
+                // limpió todo y Kaito no debe volver a Locomotion en medio de ella
+                if (State != PlayerState.Finisher) return;
             }
             if (n >= 1f)
             {
                 Game.FX?.Screen?.Finisher(false);
                 Game.Camera?.CancelShot(finisherShot);
+                finisherShot = -1;
+                finisherSlowMo = -1;
                 SetState(PlayerState.Locomotion);
                 anim.Play("Locomotion", 0.2f);
                 finisherTarget = null;
@@ -537,10 +547,15 @@ namespace Nindo
                 // los cortes aparecen después de pasar (iaido)
                 Game.FX?.SlashLine(abilityStart + Vector3.up, abilityEnd + Vector3.up);
                 foreach (var e in abilityVictims)
+                {
+                    // una muerte pudo arrancar una cinemática (EnterScripted ya cortó la habilidad)
+                    if (State != PlayerState.Ability) break;
                     if (e != null && e.IsAlive)
                         ResolveHitOnEnemy(e, config.windSlashDamage, 2f, AttackKind.Ability, 1.8f, 0.12f, 0.5f, "Corte del Viento");
+                }
                 abilityVictims.Clear();
                 Game.Time?.HitStop(0.08f);
+                if (State != PlayerState.Ability) return;
                 anim.Play("Attack3", 0.05f, 0.55f, 1f);
             }
             if (stateTime > prep + travel + 0.55f) EndAbility();
@@ -592,6 +607,7 @@ namespace Nindo
             if (list == null) return;
             for (int i = 0; i < list.Count; i++)
             {
+                if (State != PlayerState.Ability) return; // una muerte arrancó una cinemática
                 var e = list[i];
                 if (e == null || !e.IsAlive) continue;
                 if (CombatMath.FlatDistance(e.transform.position, transform.position) <= config.whirlwindRadius + e.Radius)
@@ -616,6 +632,29 @@ namespace Nindo
             if (abilityShot >= 0) { Game.Camera?.CancelShot(abilityShot); abilityShot = -1; }
             abilityInvulnerable = false;
             if (model != null && State == PlayerState.Ability) model.localRotation = modelBaseRot;
+        }
+
+        /// <summary>
+        /// Otro sistema le quita el control a Kaito en plena ejecución o habilidad (la muerte del
+        /// último enemigo de un encuentro arranca una cinemática dentro de e.Execute(), un respawn...).
+        /// TickFinisher / EndAbility ya no van a llegar a su final, así que acá se deshace lo que
+        /// pidieron esos estados: pantalla desaturada/foco, planos de cámara, cámara lenta,
+        /// invulnerabilidad y giro del modelo. Llamar ANTES de cambiar de estado.
+        /// Devuelve el enemigo que quedó entregado ("Executed") si el tajo todavía no había llegado.
+        /// </summary>
+        Enemy AbortFinisherAndAbility()
+        {
+            Enemy pending = State == PlayerState.Finisher && !finisherStruck ? finisherTarget : null;
+            if (finisherShot >= 0) { Game.Camera?.CancelShot(finisherShot); finisherShot = -1; }
+            if (finisherSlowMo >= 0) { Game.Time?.CancelSlowMotion(finisherSlowMo); finisherSlowMo = -1; }
+            finisherTarget = null;
+            finisherStruck = true;
+            CancelAbilityCamera();
+            Game.FX?.Screen?.Finisher(false);
+            Game.FX?.Screen?.AbilityFocus(0f);
+            // abilityVictims NO se limpia acá: TickWindSlash puede estar recorriéndola (la muerte
+            // que arrancó la cinemática ocurre dentro de ese foreach); TryAbility la limpia al empezar.
+            return pending;
         }
 
         static int worldMask = -1;

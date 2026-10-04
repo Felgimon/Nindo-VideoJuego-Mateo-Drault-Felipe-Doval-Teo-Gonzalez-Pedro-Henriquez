@@ -28,17 +28,23 @@ Material:
     m_Floats:
     - _AlphaShallow: 0.55
     - _AlphaDeep: 0.92
-    - _WaveHeight: 0.18
+    - _WaveHeight: 0.26
     - _WaveSpeed: 1.0
-    - _Gloss: 48
+    - _Gloss: 128
+    - _FacetBoost: 4.5
     - _SpecStrength: 1.4
-    - _FoamThreshold: 0.72
+    - _FoamThreshold: 0.64
     - _SparkleAmount: 0.06
+    - _CrestContrast: 0.35
+    - _RippleScale: 0.9
+    - _RippleStrength: 0.3
+    - _RippleSpeed: 1.0
     m_Colors:
     - _ShallowColor: {r: 0.13, g: 0.42, b: 0.47, a: 1}
     - _DeepColor: {r: 0.02, g: 0.08, b: 0.17, a: 1}
     - _FoamColor: {r: 0.78, g: 0.9, b: 0.95, a: 1}
     - _SkyColor: {r: 0.2, g: 0.3, b: 0.48, a: 1}
     - _SparkleColor: {r: 1.0, g: 0.97, b: 0.85, a: 1}
+    - _CrestColor: {r: 0.36, g: 0.66, b: 0.68, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -35,9 +35,12 @@ namespace Nindo
         float spinTick;
         bool specialFired;
         bool hiddenForTeleport;
+        // config original: los cambios de fase la modifican y al reintentar se restaura
+        EnemyConfig pristineConfig;
 
         protected override void Start()
         {
+            pristineConfig = config.Clone();
             base.Start();
             if (arenaCenter == Vector3.zero) arenaCenter = transform.position;
             if (Game.Save.HasFlag(Flags.Boss(bossId)))
@@ -68,6 +71,8 @@ namespace Nindo
 
         public override void ResetEnemy()
         {
+            // deshace la aceleración de las fases (si no, cada reintento lo hace más rápido)
+            if (pristineConfig != null) config = pristineConfig.Clone();
             base.ResetEnemy();
             Fighting = false;
             phase = 0;
@@ -111,7 +116,7 @@ namespace Nindo
             if (target != null && CombatMath.FlatDistance(target.transform.position, transform.position) < 5f)
                 target.Push((target.transform.position - transform.position), 3f);
             config.attackCooldown *= 0.75f;
-            foreach (var p in config.patterns) foreach (var s in p.steps) s.speed *= 1f + phaseSpeedBonus;
+            config.ScaleSteps(1f, 1f + phaseSpeedBonus); // cada golpe una vez, aunque lo compartan varios patrones
             yield return new WaitForSeconds(1.1f);
             if (IsAlive) { SetState(EnemyState.Chase); nextAttackTime = Time.time + 0.3f; }
         }
@@ -148,7 +153,7 @@ namespace Nindo
                     if (active)
                     {
                         if (target != null) MoveTo(target.transform.position, a.specialParam > 0 ? a.specialParam : 3.5f);
-                        model.localRotation = Quaternion.Euler(0f, stateTime * 900f, 0f);
+                        model.localRotation = modelBaseRot * Quaternion.Euler(0f, stateTime * 900f, 0f);
                         spinTick -= dt;
                         if (spinTick <= 0f && target != null && CombatMath.FlatDistance(target.transform.position, transform.position) <= a.range + target.Radius)
                         {
@@ -156,7 +161,7 @@ namespace Nindo
                             HitPlayer(a, transform.position);
                         }
                     }
-                    else if (stepNorm > a.activeEnd) { model.localRotation = Quaternion.identity; Stop(); }
+                    else if (stepNorm > a.activeEnd) { RestoreModelRotation(); Stop(); }
                     break;
 
                 case "wave":

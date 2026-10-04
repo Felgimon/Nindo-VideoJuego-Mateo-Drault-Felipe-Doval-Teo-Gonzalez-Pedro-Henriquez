@@ -20,9 +20,11 @@ namespace Nindo
             {
                 if (templatesRoot == null)
                 {
+                    // NO es DontDestroyOnLoad: cada FXManager arma sus plantillas en Awake, así que
+                    // se destruyen con la escena de juego (si no, cada Menú → Juego sumaba otro juego
+                    // de plantillas que nunca se liberaba). El Pool tampoco sobrevive al cambio de escena.
                     var go = new GameObject("[FX Templates]");
                     go.SetActive(false);
-                    Object.DontDestroyOnLoad(go);
                     templatesRoot = go.transform;
                 }
                 return templatesRoot;

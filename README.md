@@ -54,7 +54,7 @@ La partida se guarda en un JSON en `Application.persistentDataPath` y las opcion
 |---|---|---|
 | Moverse | WASD / flechas | Stick izq. |
 | Atacar (combo de 3) | J / clic izq. | □ / X · R1 / RB |
-| Parry (mantener = guardia) | K / clic der. | L1 / LB |
+| Parry (un toque justo antes del golpe; no hay guardia sostenida) | K / clic der. | L1 / LB |
 | Esquiva (dash) | Espacio / Shift / L | ○ / B  ·  ✕ / A |
 | Fijar objetivo (cambiar: stick der.) | Q / Tab / rueda | R3 |
 | Remate / interactuar | F (E interactúa) | △ / Y |
@@ -64,9 +64,13 @@ La partida se guarda en un JSON en `Application.persistentDataPath` y las opcion
 
 ## Sistema de combate (se mantuvo el formato original, pulido)
 
-* **Parry**: bloquear justo cuando llega el golpe desequilibra al enemigo. En la ventana
-  perfecta hay cámara lenta y un destello. Si termina su combo desequilibrado queda
-  **Exhausto** (vulnerable, se lo puede **rematar**).
+* **Parry**: cada toque abre una ventana corta (~0,24 s; los primeros ~0,11 s son
+  *perfectos*); mantener el botón no hace nada extra. Si el golpe llega dentro de la ventana
+  se desvía y desequilibra al enemigo, y el contraataque inmediato pega más fuerte. En la
+  ventana perfecta hay cámara lenta y un destello. Si no llega nada, Kaito queda un instante
+  en recuperación, y apretarlo seguido después de fallar achica la ventana (anti‑spam). Si el
+  enemigo termina su combo desequilibrado queda **Exhausto** (vulnerable, se lo puede
+  **rematar**).
 * Pegarle a un enemigo exhausto le consume el desequilibrio; cuando se recupera vuelve a la
   **guardia** y puede contraatacar.
 * **Ataques 危 (imparables)**: se marcan en rojo; no se bloquean, se esquivan con el dash.
@@ -161,6 +165,11 @@ modelos se revisaron con renders de Blender y el audio con análisis de nivel/es
 1. Que `NindoContent` tenga todo asignado (Consola: avisos `[Nindo] Falta…`).
 2. Escala/orientación de props y del mundo (los FBX usan `bake_space_transform`).
 3. Materiales URP (paleta, emisivo, follaje con viento, agua) y el skybox `Nindo/Night Sky`.
+   El agua (`Nindo_WaterLowpoly`, shader `Nindo/Water Lowpoly`) mueve la malla con olas,
+   aclara las crestas y suma facetas finas animadas que titilan; se ajusta con
+   `_WaveHeight` (los botes lo leen del material), `_CrestContrast`, `_FacetBoost` y
+   `_RippleScale` / `_RippleStrength` / `_RippleSpeed`. Los valores salen de
+   `Tools/Unity/generate_assets.py`.
 4. Tiempos de los ataques y de las ventanas de parry (`PlayerConfig`, `EnemyArchetypes`).
 5. Que el NavMesh en runtime cubra bien los caminos (agentes de radio 0.45).
 6. Volúmenes de audio (`NindoContent` → sfx/music/ambience → volume).

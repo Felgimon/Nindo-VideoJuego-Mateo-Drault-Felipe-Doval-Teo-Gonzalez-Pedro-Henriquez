@@ -179,7 +179,20 @@ namespace Nindo
 
         public void SpawnBoss(Vector3 pos, Quaternion rot)
         {
-            if (Game.Save.HasFlag(Flags.Boss(archetype))) return;
+            if (Game.Save.HasFlag(Flags.Boss(archetype)))
+            {
+                // El jefe marca su flag al morir, pero el sello recién aparece segundos después
+                // (Boss.OnDeathFinished). Si se salió al menú o se cerró el juego antes de tomarlo,
+                // el guardado queda con el jefe vencido y sin sello: lo volvemos a dejar en la arena
+                // (si no, la puerta del dojo, que pide los tres sellos, no se abriría nunca).
+                if (EnemyFactory.BossSeal(archetype, out var seal) && !Game.Save.HasSeal(seal))
+                {
+                    Vector3 p = UnityEngine.AI.NavMesh.SamplePosition(pos, out var hit, 4f, UnityEngine.AI.NavMesh.AllAreas) ? hit.position : pos;
+                    var key = KeyPickup.Spawn(seal, p + Vector3.up * 0.2f);
+                    key.transform.SetParent(transform, true);
+                }
+                return;
+            }
             Boss = EnemyFactory.Spawn(archetype, pos, rot, null) as Boss;
             if (Boss != null)
             {

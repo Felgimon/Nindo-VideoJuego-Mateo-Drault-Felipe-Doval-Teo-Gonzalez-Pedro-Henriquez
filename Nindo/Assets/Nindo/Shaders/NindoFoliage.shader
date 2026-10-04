@@ -1,6 +1,7 @@
 // Follaje de Nindō: color de paleta + iluminación simple (luna con sombras, faroles, ambiente,
 // niebla) + balanceo por viento en el vertex shader. El peso del viento viene en el canal R del
-// color de vértice (0 = tronco/base fija, 1 = punta de la hoja), lo escriben los scripts de Blender.
+// color de vértice (0 = tronco/base fija, 1 = punta de la hoja), lo escriben los scripts de Blender
+// (llega a Unity en lineal: WindWeight() lo devuelve a 0..1).
 // Si este shader no compilara en alguna versión de URP, WorldBuilder vuelve al material Lit.
 Shader "Nindo/Foliage Wind"
 {
@@ -37,6 +38,14 @@ Shader "Nindo/Foliage Wind"
         TEXTURE2D(_BaseMap);
         SAMPLER(sampler_BaseMap);
 
+        // el peso se escribe con bmesh (byte sRGB 'crudo') y el FBX se exporta con colors_type LINEAR:
+        // Unity recibe srgb_to_linear(peso) (0.5 -> 0.22). Se deshace aquí para recuperar el peso real.
+        float WindWeight(float r)
+        {
+            r = saturate(r);
+            return saturate(r <= 0.0031308 ? r * 12.92 : 1.055 * pow(r, 1.0 / 2.4) - 0.055);
+        }
+
         // desplazamiento en espacio mundo (ráfaga lenta + aleteo rápido), ponderado por el peso
         float3 WindOffset(float3 positionWS, float weight)
         {
@@ -57,7 +66,7 @@ Shader "Nindo/Foliage Wind"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
@@ -82,6 +91,9 @@ Shader "Nindo/Foliage Wind"
                 float3 positionWS : TEXCOORD1;
                 float3 normalWS : TEXCOORD2;
                 float fogFactor : TEXCOORD3;
+                #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+                half3 vertexLight : TEXCOORD4;   // faroles por vértice (calidad Baja / Muy baja)
+                #endif
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -93,12 +105,15 @@ Shader "Nindo/Foliage Wind"
                 UNITY_TRANSFER_INSTANCE_ID(input, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS += WindOffset(positionWS, saturate(input.color.r));
+                positionWS += WindOffset(positionWS, WindWeight(input.color.r));
                 o.positionWS = positionWS;
                 o.positionCS = TransformWorldToHClip(positionWS);
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 o.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
+                #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+                o.vertexLight = VertexLighting(positionWS, o.normalWS);
+                #endif
                 return o;
             }
 
@@ -122,15 +137,24 @@ Shader "Nindo/Foliage Wind"
                 inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
                 inputData.shadowCoord = TransformWorldToShadowCoord(input.positionWS);
 
-                Light mainLight = GetMainLight(inputData.shadowCoord);
+                // misma atenuación por distancia de sombra que URP/Lit
+                Light mainLight = GetMainLight(inputData.shadowCoord, input.positionWS, half4(1, 1, 1, 1));
                 half3 lighting = Diffuse(mainLight, normalWS) + SampleSH(normalWS);
 
                 #if defined(_ADDITIONAL_LIGHTS)
                 uint lightCount = GetAdditionalLightsCount();
+                #if USE_CLUSTER_LIGHT_LOOP
+                // Forward+: las direccionales extra no están en los clusters
+                [loop] for (uint dirIndex = 0u; dirIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); dirIndex++)
+                    lighting += Diffuse(GetAdditionalLight(dirIndex, input.positionWS, half4(1, 1, 1, 1)), normalWS);
+                #endif
                 LIGHT_LOOP_BEGIN(lightCount)
                     Light light = GetAdditionalLight(lightIndex, input.positionWS, half4(1, 1, 1, 1));
                     lighting += Diffuse(light, normalWS);
                 LIGHT_LOOP_END
+                #endif
+                #if defined(_ADDITIONAL_LIGHTS_VERTEX)
+                lighting += input.vertexLight;
                 #endif
 
                 half3 color = albedo.rgb * lighting;
@@ -174,7 +198,7 @@ Shader "Nindo/Foliage Wind"
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(input);
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS += WindOffset(positionWS, saturate(input.color.r));
+                positionWS += WindOffset(positionWS, WindWeight(input.color.r));
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
                     float3 lightDirectionWS = normalize(_LightPosition - positionWS);
@@ -221,12 +245,61 @@ Shader "Nindo/Foliage Wind"
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(input);
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS += WindOffset(positionWS, saturate(input.color.r));
+                positionWS += WindOffset(positionWS, WindWeight(input.color.r));
                 o.positionCS = TransformWorldToHClip(positionWS);
                 return o;
             }
 
             half4 fragDepth(Varyings input) : SV_Target { return input.positionCS.z; }
+            ENDHLSL
+        }
+
+        // sin este pass URP usaría el DepthNormals de Lit (por el FallBack), sin viento:
+        // con SSAO o decals quedarían halos fijos alrededor de las hojas que se mueven
+        Pass
+        {
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" }
+            ZWrite On
+
+            HLSLPROGRAM
+            #pragma vertex vertDepthNormals
+            #pragma fragment fragDepthNormals
+            #pragma multi_compile_instancing
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                float4 color : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
+            };
+
+            // mismo viento que ForwardLit/DepthOnly
+            Varyings vertDepthNormals(Attributes input)
+            {
+                Varyings o;
+                UNITY_SETUP_INSTANCE_ID(input);
+                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                positionWS += WindOffset(positionWS, WindWeight(input.color.r));
+                o.positionCS = TransformWorldToHClip(positionWS);
+                o.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                return o;
+            }
+
+            half4 fragDepthNormals(Varyings input, FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC) : SV_Target
+            {
+                // doble cara como en ForwardLit: la cara de atrás usa la normal invertida
+                float3 n = normalize(input.normalWS);
+                n = IS_FRONT_VFACE(facing, true, false) ? n : -n;
+                return half4(n, 0.0);
+            }
             ENDHLSL
         }
     }

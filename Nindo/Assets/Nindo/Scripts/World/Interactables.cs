@@ -48,11 +48,11 @@ namespace Nindo
         static readonly Dictionary<string, Checkpoint> byId = new Dictionary<string, Checkpoint>();
         Light glow;
         bool activated;
+        string registeredId;   // id con el que quedó en byId (puede diferir de "id" si se cambió después)
 
         void Awake()
         {
             prompt = "Rezar en el santuario";
-            byId[id] = this;
             if (spawnPoint == null)
             {
                 spawnPoint = new GameObject("Spawn").transform;
@@ -60,10 +60,33 @@ namespace Nindo
                 spawnPoint.localPosition = new Vector3(0f, 0.1f, 1.8f);
                 spawnPoint.localRotation = Quaternion.Euler(0, 180, 0);
             }
-            glow = GetComponentInChildren<Light>();
         }
 
-        void OnDestroy() { if (byId.TryGetValue(id, out var c) && c == this) byId.Remove(id); }
+        // por si alguien lo crea sin llamar a Register (idempotente)
+        void Start() => Register();
+
+        /// <summary>
+        /// Registra el santuario con su id actual y busca su luz. Awake corre dentro de AddComponent,
+        /// antes de que WorldBuilder asigne el id y agregue la "ShrineLight": por eso se llama
+        /// explícitamente después de configurarlo (y Checkpoint.Get funciona ya durante la construcción).
+        /// </summary>
+        public void Register()
+        {
+            if (registeredId != id)
+            {
+                Unregister();
+                if (!string.IsNullOrEmpty(id)) { byId[id] = this; registeredId = id; }
+            }
+            if (glow == null) glow = GetComponentInChildren<Light>();
+        }
+
+        void Unregister()
+        {
+            if (registeredId != null && byId.TryGetValue(registeredId, out var c) && c == this) byId.Remove(registeredId);
+            registeredId = null;
+        }
+
+        void OnDestroy() => Unregister();
 
         public static Checkpoint Get(string id) => id != null && byId.TryGetValue(id, out var c) ? c : null;
 
@@ -219,11 +242,32 @@ namespace Nindo
     {
         public string removeFlag;
         public bool invert;   // visible SOLO si el flag está puesto
+        bool shown;
+
+        bool ShouldShow
+        {
+            get
+            {
+                bool has = !string.IsNullOrEmpty(removeFlag) && Game.Save.HasFlag(removeFlag);
+                return invert ? has : !has;
+            }
+        }
+
+        // estado inicial según la partida, sin humo (al cargar no tiene que "desaparecer" de nuevo)
+        void Start() => Apply(ShouldShow);
+
         void Update()
         {
-            bool has = !string.IsNullOrEmpty(removeFlag) && Game.Save.HasFlag(removeFlag);
-            bool visible = invert ? has : !has;
-            if (gameObject.activeSelf && !visible) { Game.FX?.SmokePuff(transform.position + Vector3.up, 1.5f); }
+            bool visible = ShouldShow;
+            if (visible == shown) return;
+            // solo en la transición visible -> oculta (el GameObject propio sigue activo: se ocultan los hijos)
+            if (!visible) Game.FX?.SmokePuff(transform.position + Vector3.up, 1.5f);
+            Apply(visible);
+        }
+
+        void Apply(bool visible)
+        {
+            shown = visible;
             foreach (Transform c in transform) c.gameObject.SetActive(visible);
             foreach (var col in GetComponents<Collider>()) col.enabled = visible;
         }

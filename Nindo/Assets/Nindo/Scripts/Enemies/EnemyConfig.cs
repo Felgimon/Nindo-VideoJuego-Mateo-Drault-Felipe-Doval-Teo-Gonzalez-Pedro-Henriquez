@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Nindo
@@ -16,6 +17,14 @@ namespace Nindo
         [Tooltip("Fase mínima del jefe para usar este patrón (0 = siempre)")] public int minPhase = 0;
         [Tooltip("Al terminar queda agotado/mareado (p. ej. después del giro de Gorō)")] public bool exhaustAfter = false;
         [NonSerialized] public float lastUsed = -99f;
+
+        /// <summary>Copia superficial del patrón (los pasos los copia EnemyConfig.Clone). El cooldown arranca de cero.</summary>
+        public AttackPattern Clone()
+        {
+            var p = (AttackPattern)MemberwiseClone();
+            p.lastUsed = -99f;
+            return p;
+        }
     }
 
     /// <summary>
@@ -71,22 +80,53 @@ namespace Nindo
         [Header("Recompensa")]
         public float spiritReward = 0f;
 
+        /// <summary>
+        /// Copia profunda (patrones y golpes incluidos). Un AttackDef compartido por varios patrones
+        /// sigue compartido en la copia, así se comporta igual que el original.
+        /// </summary>
         public EnemyConfig Clone()
         {
             var c = (EnemyConfig)MemberwiseClone();
             if (patterns != null)
             {
+                var copies = new Dictionary<AttackDef, AttackDef>();
                 c.patterns = new AttackPattern[patterns.Length];
                 for (int i = 0; i < patterns.Length; i++)
                 {
                     var p = patterns[i];
-                    var np = new AttackPattern { name = p.name, weight = p.weight, minRange = p.minRange, maxRange = p.maxRange, cooldown = p.cooldown, minPhase = p.minPhase, exhaustAfter = p.exhaustAfter };
-                    np.steps = new AttackDef[p.steps.Length];
-                    for (int s = 0; s < p.steps.Length; s++) np.steps[s] = p.steps[s].Clone();
+                    if (p == null) continue;
+                    var np = p.Clone();
+                    if (p.steps != null)
+                    {
+                        np.steps = new AttackDef[p.steps.Length];
+                        for (int s = 0; s < p.steps.Length; s++)
+                        {
+                            var a = p.steps[s];
+                            if (a == null) continue;
+                            if (!copies.TryGetValue(a, out var na)) { na = a.Clone(); copies[a] = na; }
+                            np.steps[s] = na;
+                        }
+                    }
                     c.patterns[i] = np;
                 }
             }
             return c;
+        }
+
+        /// <summary>
+        /// Multiplica daño y velocidad de cada golpe UNA sola vez: varios patrones (y pasos de un mismo
+        /// combo) comparten el mismo AttackDef, así que recorrer patrón por patrón lo escalaría de más.
+        /// </summary>
+        public void ScaleSteps(float damageMul, float speedMul)
+        {
+            if (patterns == null) return;
+            var seen = new HashSet<AttackDef>();
+            foreach (var p in patterns)
+            {
+                if (p == null || p.steps == null) continue;
+                foreach (var s in p.steps)
+                    if (s != null && seen.Add(s)) { s.damage *= damageMul; s.speed *= speedMul; }
+            }
         }
     }
 }

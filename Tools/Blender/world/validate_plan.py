@@ -71,6 +71,15 @@ for pid, x, z, yaw, sc in W.LANDMARKS:
         if math.hypot(mx - x, mz - z) < r + 1.0:
             problems.append(f"{base} ({x},{z}) tapa a {name} ({mx},{mz})")
 
+# props flotantes / sobre pilotes: tienen que estar en el agua y con fondo suficiente
+for pid, x, z, yaw, sc in W.LANDMARKS:
+    base = pid.split("@")[0]
+    if base in ("boat_small", "house_fisher", "lake_arena_platform"):
+        if not T.in_lake(x, z):
+            problems.append(f"{base} ({x},{z}) es un prop de agua pero no está en el lago")
+        elif W.WATER_LAKE - T.height(x, z) < (1.0 if base == "boat_small" else 0.5):
+            problems.append(f"{base} ({x},{z}) tiene poca profundidad ({W.WATER_LAKE - T.height(x, z):.2f} m)")
+
 # pendiente a lo largo de los caminos (CharacterController: slopeLimit 45°, NavMesh 42°)
 for name, pts, width, ph in W.PATHS:
     if name in ("pasarela_lago", "dojo_subida"):

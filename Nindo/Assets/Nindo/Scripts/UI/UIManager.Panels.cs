@@ -239,7 +239,13 @@ namespace Nindo
             pausePanel.SetActive(p);
             optionsPanel.SetActive(false);
             Game.Time?.SetPaused(p);
-            if (Game.Input != null) Game.Input.GameplayBlocked = p || Game.InCutscene;
+            if (Game.Input != null)
+            {
+                Game.Input.GameplayBlocked = p || Game.InCutscene;
+                // al reanudar se descarta el buffer: el clic en "Continuar" registra un ataque al bajar
+                // el botón y la A del mando es Submit y Dash a la vez; no tienen que llegar al gameplay
+                if (!p) Game.Input.ClearBuffer();
+            }
             if (p) EventSystem.current?.SetSelectedGameObject(pauseFirst.gameObject);
             Cursor.visible = p; Cursor.lockState = CursorLockMode.None;
             Game.Audio?.Play(p ? "ui_open" : "ui_close", null, 0.5f);

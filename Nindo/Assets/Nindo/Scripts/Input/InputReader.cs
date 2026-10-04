@@ -153,12 +153,16 @@ namespace Nindo
             int i = (int)a;
             pressedNow[i] = true;
             pressedAt[i] = Time.unscaledTime;
-            consumed[i] = false;
+            // si el buffer se limpió en este mismo frame (p. ej. la UI procesó el botón que cerró la
+            // pausa antes que este Update) la pulsación no llega al gameplay
+            consumed[i] = Time.frameCount == clearedFrame;
             if (gamepad) UsingGamepad = true;
         }
 
-        /// <summary>¿Se apretó este frame? (ignora el bloqueo de gameplay para UI)</summary>
-        public bool Pressed(Act a) => pressedNow[(int)a];
+        /// <summary>¿Se apretó este frame? (ignora el bloqueo de gameplay para UI). Si en este frame
+        /// ya se llamó a ClearBuffer (p. ej. la A del mando cerró la pausa) la pulsación se descarta
+        /// también acá, para que los que leen después (tutoriales de StoryDirector) no la tomen.</summary>
+        public bool Pressed(Act a) => pressedNow[(int)a] && Time.frameCount != clearedFrame;
 
         /// <summary>¿Se apretó dentro de los últimos 'window' segundos y nadie lo consumió?</summary>
         public bool Buffered(Act a, float window = 0.18f)
@@ -170,10 +174,14 @@ namespace Nindo
 
         public void Consume(Act a) => consumed[(int)a] = true;
 
+        /// <summary>Descarta las acciones en buffer (también las que se registren en este mismo frame).</summary>
         public void ClearBuffer()
         {
             for (int i = 0; i < ActCount; i++) consumed[i] = true;
+            clearedFrame = Time.frameCount;
         }
+
+        int clearedFrame = -1;
 
         public Vector2 GameplayMove => GameplayBlocked ? Vector2.zero : Move;
 

@@ -64,6 +64,12 @@ namespace Nindo
         Vector3 knock;
         float baseAgentSpeed;
         bool useAgent;
+        // pose local del modelo tal como la dejó CharacterFactory (NormalizeHeight: escala y pies en y=0)
+        Vector3 modelBasePos, modelBaseScale = Vector3.one;
+        protected Quaternion modelBaseRot = Quaternion.identity;
+        // tiene token y patrón elegido: se acerca hasta tenerlo en rango y ataca
+        bool committed;
+        float commitUntil;
 
         // =============================================================== setup
         protected virtual void Awake()
@@ -73,6 +79,10 @@ namespace Nindo
             anim.Init(a);
             agent = GetComponent<NavMeshAgent>();
             flash = HitFlash.Attach(model.gameObject);
+            // el modelo ya está armado y normalizado (EnemyFactory lo crea antes de agregar este componente)
+            modelBasePos = model.localPosition;
+            modelBaseRot = model.localRotation;
+            modelBaseScale = model.localScale;
         }
 
         protected virtual void Start()
@@ -117,11 +127,13 @@ namespace Nindo
         {
             StopAllCoroutines();
             gameObject.SetActive(true);
-            if (model != null) { model.localScale = Vector3.one * config.scale; model.localPosition = Vector3.zero; }
+            // la muerte o un giro pueden haber quedado a medias: vuelve a la pose original del modelo
+            if (model != null && model != transform) { model.localPosition = modelBasePos; model.localRotation = modelBaseRot; model.localScale = modelBaseScale; }
             Health = config.maxHealth;
             Imbalance = 0f;
             IsAggro = false;
             neutralHits = 0;
+            pattern = null;
             ReleaseToken();
             Warp(spawnPos, spawnRot);
             SetState(EnemyState.Idle);
@@ -198,7 +210,14 @@ namespace Nindo
 
         protected void SetState(EnemyState s)
         {
-            if (State == EnemyState.Attack && s != EnemyState.Attack) { trail?.Stop(); IsTelegraphingUnblockable = false; }
+            // al salir del ataque (fin, stagger, cambio de fase...) el modelo vuelve a su rotación (p. ej. el giro de Gorō)
+            if (State == EnemyState.Attack && s != EnemyState.Attack) { trail?.Stop(); IsTelegraphingUnblockable = false; RestoreModelRotation(); }
+            // si deja de acercarse para atacar por otra cosa que el ataque, suelta el token
+            if (committed && s != EnemyState.Chase)
+            {
+                committed = false;
+                if (s != EnemyState.Attack) ReleaseToken();
+            }
             State = s;
             stateTime = 0f;
             anim.SetSpeed(1f);
@@ -208,6 +227,11 @@ namespace Nindo
         void TickTimed(float dt, System.Action onDone)
         {
             if (stateTime >= stateDuration) onDone();
+        }
+
+        protected void RestoreModelRotation()
+        {
+            if (model != null && model != transform) model.localRotation = modelBaseRot;
         }
 
         // ---------------------------------------------------------------- movimiento
@@ -273,6 +297,17 @@ namespace Nindo
             float d = DistToTarget;
             Face(target.transform.position, 1f, dt);
             if (d > config.loseRadius) { LoseAggro(); return; }
+            // ya tiene token y patrón (lo tomó rondando): se acerca hasta tenerlo en rango y ataca
+            if (committed)
+            {
+                if (pattern != null && Time.time < commitUntil && Game.Combat != null && Game.Combat.HasToken(this))
+                {
+                    if (d <= pattern.maxRange) { committed = false; StartAttack(false); return; }
+                    MoveTo(target.transform.position, config.runSpeed);
+                    return;
+                }
+                CancelCommit();
+            }
             if (Time.time >= nextAttackTime && PickPattern(d, out var p))
             {
                 if (d <= p.maxRange && Game.Combat != null && Game.Combat.RequestAttackToken(this))
@@ -300,8 +335,19 @@ namespace Nindo
             if (Time.time >= nextAttackTime && PickPattern(d + 0.6f, out var p) && Game.Combat != null && Game.Combat.RequestAttackToken(this))
             {
                 pattern = p;
-                SetState(EnemyState.Chase); // se acerca y ataca en el próximo frame en rango
+                SetState(EnemyState.Chase); // se compromete: se acerca con este patrón y ataca al tenerlo en rango
+                committed = true;
+                commitUntil = Time.time + 2.5f;
             }
+        }
+
+        /// <summary>No llegó a tiempo (Kaito se alejó, camino bloqueado...): suelta el token para que ataque otro.</summary>
+        void CancelCommit()
+        {
+            committed = false;
+            pattern = null;
+            ReleaseToken();
+            nextAttackTime = Time.time + Random.Range(0.4f, 0.9f);
         }
 
         bool TargetValid()
@@ -633,6 +679,8 @@ namespace Nindo
             ReleaseToken();
             Stop();
             trail?.Stop();
+            RestoreModelRotation(); // si murió en pleno giro, cae desde la pose normal
+            committed = false;
             State = EnemyState.Dead;
             stateTime = 0f;
             IsAggro = false;

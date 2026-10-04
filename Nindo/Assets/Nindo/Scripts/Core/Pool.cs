@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Nindo
 {
@@ -11,6 +12,7 @@ namespace Nindo
     {
         class Entry
         {
+            public GameObject prefab;
             public readonly Stack<GameObject> free = new Stack<GameObject>();
         }
 
@@ -22,6 +24,26 @@ namespace Nindo
         static void Reset()
         {
             pools.Clear(); instanceToPrefab.Clear(); root = null;
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
+            SceneManager.sceneUnloaded += OnSceneUnloaded;
+        }
+
+        /// <summary>
+        /// Las plantillas de FX se destruyen con la escena (y el [Pool] también): se olvidan sus pools
+        /// y las instancias que apuntaban a ellos, si no cada Menú → Juego deja entradas muertas.
+        /// Solo se borran las de plantillas ya destruidas, así no importa el orden con la escena nueva.
+        /// </summary>
+        static void OnSceneUnloaded(Scene s)
+        {
+            List<int> dead = null;
+            foreach (var kv in pools)
+                if (kv.Value.prefab == null) (dead ??= new List<int>()).Add(kv.Key);
+            if (dead == null) return;
+            foreach (int k in dead) pools.Remove(k);
+            var orphans = new List<int>();
+            foreach (var kv in instanceToPrefab)
+                if (!pools.ContainsKey(kv.Value)) orphans.Add(kv.Key);
+            foreach (int k in orphans) instanceToPrefab.Remove(k);
         }
 
         static Transform Root
@@ -41,7 +63,7 @@ namespace Nindo
         {
             if (prefab == null) return null;
             int key = prefab.GetInstanceID();
-            if (!pools.TryGetValue(key, out var e)) { e = new Entry(); pools[key] = e; }
+            if (!pools.TryGetValue(key, out var e)) { e = new Entry { prefab = prefab }; pools[key] = e; }
             GameObject go = null;
             while (e.free.Count > 0 && go == null) go = e.free.Pop();
             if (go == null)

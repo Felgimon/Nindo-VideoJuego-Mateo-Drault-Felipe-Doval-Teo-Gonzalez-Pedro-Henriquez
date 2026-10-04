@@ -218,23 +218,36 @@ namespace Nindo
             switch (archetype)
             {
                 case "goro":
-                    b.bossId = "goro"; b.title = "Gorō"; b.subtitle = "El Martillo de Kodoyama"; b.seal = SealId.Montana;
+                    b.bossId = "goro"; b.title = "Gorō"; b.subtitle = "El Martillo de Kodoyama";
                     b.introAnim = "Intro"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.5f };
                     break;
                 case "mizuchi":
-                    b.bossId = "mizuchi"; b.title = "Mizuchi"; b.subtitle = "La Marea del Lago Kohan"; b.seal = SealId.Lago;
+                    b.bossId = "mizuchi"; b.title = "Mizuchi"; b.subtitle = "La Marea del Lago Kohan";
                     b.introAnim = "Spotted"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.55f };
                     b.minionArchetype = "ninja";
                     break;
                 case "ozeki":
-                    b.bossId = "ozeki"; b.title = "Ōzeki"; b.subtitle = "El Gran Campeón del Bambú"; b.seal = SealId.Bambu;
+                    b.bossId = "ozeki"; b.title = "Ōzeki"; b.subtitle = "El Gran Campeón del Bambú";
                     b.introAnim = "Spotted"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.5f };
                     break;
                 case "kage":
-                    b.bossId = "kage"; b.title = "Kage"; b.subtitle = "La Sombra del Clan"; b.hasSeal = false;
+                    b.bossId = "kage"; b.title = "Kage"; b.subtitle = "La Sombra del Clan";
                     b.introAnim = "ParryStance"; b.phaseAnim = "Blocked"; b.musicKey = "boss_final"; b.phaseThresholds = new[] { 0.6f, 0.25f };
                     b.phaseSpeedBonus = 0.1f;
                     break;
+            }
+            b.hasSeal = BossSeal(archetype, out b.seal);
+        }
+
+        /// <summary>Sello que entrega cada jefe al morir (Kage no da sello). Lo usa también BossArena.</summary>
+        public static bool BossSeal(string archetype, out SealId seal)
+        {
+            switch (archetype)
+            {
+                case "goro": seal = SealId.Montana; return true;
+                case "mizuchi": seal = SealId.Lago; return true;
+                case "ozeki": seal = SealId.Bambu; return true;
+                default: seal = SealId.Montana; return false;
             }
         }
 

@@ -18,36 +18,154 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.5
     materialOverrides: []
+    stateNames:
+    - Attack1
+    - Attack2
+    - Attack3
+    - ParryStance
+    - ParrySuccess
+    - Blocked
+    - Hit
+    - Dash
+    - Finisher
+    - Idle
+    stateLengths:
+    - 0.4333
+    - 0.3
+    - 0.6333
+    - 0.1
+    - 0.2333
+    - 0.4667
+    - 0.4667
+    - 0.7667
+    - 2.6667
+    - 1.9667
   - id: kage
     model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.6
     materialOverrides: []
+    stateNames:
+    - Attack1
+    - Attack2
+    - Attack3
+    - ParryStance
+    - ParrySuccess
+    - Blocked
+    - Hit
+    - Dash
+    - Finisher
+    - Idle
+    stateLengths:
+    - 0.4333
+    - 0.3
+    - 0.6333
+    - 0.1
+    - 0.2333
+    - 0.4667
+    - 0.4667
+    - 0.7667
+    - 2.6667
+    - 1.9667
   - id: ninja
     model: {fileID: 919132149155446097, guid: 642c39cca7e4c9040ae0e8ba3072ec24, type: 3}
     controller: {fileID: 9100000, guid: af122ddaa0ad524ad3c947730fe1632a, type: 2}
     height: 1.7
     materialOverrides: []
+    stateNames:
+    - Attack1
+    - Attack2
+    - Attack3
+    - Hit
+    - Exhausted
+    - Guard
+    - Counter
+    - Spotted
+    - Death
+    - Idle
+    stateLengths:
+    - 0.8
+    - 0.6333
+    - 0.8
+    - 0.2333
+    - 2.4667
+    - 2.9333
+    - 0.2
+    - 0.8333
+    - 2.6333
+    - 2.9667
   - id: sumo
     model: {fileID: 919132149155446097, guid: 6e6d595635ec9544d83855ca6d060fbb, type: 3}
     controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
     height: 2.5
     materialOverrides: []
+    stateNames:
+    - Attack1
+    - Attack2
+    - Attack3
+    - Special
+    - Hit
+    - Exhausted
+    - Spotted
+    - Idle
+    stateLengths:
+    - 0.6333
+    - 0.9667
+    - 1.4
+    - 0.7667
+    - 1.6333
+    - 2.6333
+    - 0.6333
+    - 2.9667
   - id: goro
     model: {fileID: 919132149155446097, guid: dbac39bfe9be5fd41a31f29a324081f6, type: 3}
     controller: {fileID: 9100000, guid: 9670f8c607c12d6033d22ad74703b944, type: 2}
     height: 3.2
     materialOverrides: []
+    stateNames:
+    - Idle
+    - Combo1
+    - Combo2
+    - Combo3
+    - Heavy
+    - Spin
+    - StunSpin
+    - Parried
+    - Spotted
+    - Intro
+    stateLengths:
+    - 2.6333
+    - 1.2
+    - 1.3
+    - 0.8667
+    - 2.9667
+    - 2.0667
+    - 2.6333
+    - 1.8667
+    - 2.5667
+    - 2.5667
   - id: grandpa
     model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
     materialOverrides: []
+    stateNames:
+    - Idle
+    - Kidnap
+    stateLengths:
+    - 0.0333
+    - 2.4667
   - id: kidnap
     model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
     materialOverrides: []
+    stateNames:
+    - Idle
+    - Kidnap
+    stateLengths:
+    - 0.0333
+    - 2.4667
   zones:
   - {fileID: 919132149155446097, guid: 48325740ec032fec89b449ccce6bc26f, type: 3}
   - {fileID: 919132149155446097, guid: 6425a65ff005d48864f10290b6d60d9c, type: 3}

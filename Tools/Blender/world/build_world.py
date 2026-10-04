@@ -176,7 +176,7 @@ def finish_mesh(mb):
 #   B = profundidad (0 bajo, 1 hondo) -> color y transparencia
 # La malla es una grilla con vértices compartidos para que las olas la deformen sin abrirse.
 WAVES = [((0.958, 0.287), 0.35, 1.1, 0.55), ((-0.371, 0.928), 0.55, 1.5, 0.30), ((0.659, -0.753), 0.90, 2.1, 0.15)]
-WAVE_HEIGHT = 0.18   # = _WaveHeight del material
+WAVE_HEIGHT = 0.26   # = _WaveHeight del material (Tools/Unity/generate_assets.py)
 
 
 def wave_height(x, z, t, amp):
@@ -199,9 +199,14 @@ def water_object(name, verts, faces, cols):
     me.update()
     attr = me.color_attributes.new("Col", 'BYTE_COLOR', 'CORNER')
     for poly in me.polygons:
+        # G (orilla) y B (profundidad) se promedian por cara: el shader los lee con nointerpolation y así
+        # no depende de cuál es el vértice provocador (D3D/Vulkan/Metal = primero, GL = último).
+        # R (amplitud de ola) queda por vértice para que las olas no abran grietas entre caras.
+        vs = [cols[me.loops[li].vertex_index] for li in poly.loop_indices]
+        g = sum(c[1] for c in vs) / len(vs)
+        bb = sum(c[2] for c in vs) / len(vs)
         for li in poly.loop_indices:
-            r, g, b_ = cols[me.loops[li].vertex_index]
-            attr.data[li].color = (r, g, b_, 1.0)    # lineal: el FBX se exporta con colors_type LINEAR
+            attr.data[li].color = (cols[me.loops[li].vertex_index][0], g, bb, 1.0)   # lineal (FBX colors_type LINEAR)
     uv = me.uv_layers.new(name="UVMap")
     u, v = PAL.uv_of("water_deep")
     for l in uv.data:
@@ -273,7 +278,7 @@ def build_water():
                     x = ax + ux * s - uz * half * side
                     z = az + uz * s + ux * half * side
                     verts.append((x, z, W.WATER_STREAM))
-                    cols.append((0.3, 0.85 if side else 0.15, 0.25 if side else 0.45))
+                    cols.append((0.3, 0.7 if side else 0.0, 0.25 if side else 0.45))   # orilla 0.7: espuma ocasional, no fija
             for k in range(n):
                 for c in range(2):
                     v0 = base + k * 3 + c
@@ -771,7 +776,7 @@ def preview_water(t=0.7):
     ramp.color_ramp.elements[0].color = (0.10, 0.36, 0.42, 1)
     ramp.color_ramp.elements[1].color = (0.02, 0.09, 0.18, 1)
     nt.links.new(sep.outputs["Blue"], ramp.inputs["Fac"])
-    foam = nt.nodes.new("ShaderNodeMath"); foam.operation = 'GREATER_THAN'; foam.inputs[1].default_value = 0.72
+    foam = nt.nodes.new("ShaderNodeMath"); foam.operation = 'GREATER_THAN'; foam.inputs[1].default_value = 0.64   # = _FoamThreshold
     nt.links.new(sep.outputs["Green"], foam.inputs[0])
     mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = 'RGBA'
     mix.inputs["B"].default_value = (0.75, 0.88, 0.92, 1)

@@ -68,7 +68,7 @@ namespace Nindo
             c.id = "ninja_elite"; c.displayName = "Ninja de Élite";
             c.maxHealth = 90; c.runSpeed = 5.6f; c.maxImbalance = 4; c.guardTime = 1.8f; c.poiseHits = 1;
             c.tint = new Color(0.75f, 0.18f, 0.15f); c.tintStrength = 0.55f;
-            foreach (var p in c.patterns) foreach (var s in p.steps) { s.damage *= 1.25f; s.speed *= 1.12f; }
+            c.ScaleSteps(1.25f, 1.12f); // a1/a2 del ninja están en dos patrones: se escalan una sola vez
             var a1 = Hit("Attack1", 14, 0.6f, 0.78f, telegraph: 0.1f, speed: 1.12f);
             var a2 = Hit("Attack2", 14, 0.42f, 0.62f, speed: 1.12f);
             var a3 = Hit("Attack3", 18, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.4f, speed: 1.1f);
@@ -108,7 +108,7 @@ namespace Nindo
             var c = Sumo();
             c.id = "sumo_mountain"; c.displayName = "Sumo de la Montaña";
             c.maxHealth = 200; c.tint = new Color(0.35f, 0.45f, 0.75f); c.tintStrength = 0.45f;
-            foreach (var p in c.patterns) foreach (var s in p.steps) s.damage *= 1.2f;
+            c.ScaleSteps(1.2f, 1f);
             return c;
         }
 
@@ -208,9 +208,10 @@ namespace Nindo
                 animGuard = "ParryStance", animCounter = "ParrySuccess", animExhausted = "Blocked", animHit = "Hit",
                 animSpotted = "Blocked", animDeath = "Hit", animParried = "Blocked",
             };
-            var a1 = Hit("Attack1", 14, 0.3f, 0.6f, range: 2.4f, telegraph: 0.14f, speed: 0.9f);
-            var a2 = Hit("Attack2", 14, 0.25f, 0.6f, range: 2.4f, telegraph: 0.1f, speed: 0.9f);
-            var a3 = Hit("Attack3", 20, 0.22f, 0.45f, range: 2.7f, kind: AttackKind.Heavy, lunge: 1.8f, telegraph: 0.16f, speed: 0.9f, kb: 1.6f);
+            // usa los clips de Kaito (0.3-0.6 s): rápidos, así que el aviso es más largo para que el parry sea legible
+            var a1 = Hit("Attack1", 14, 0.3f, 0.6f, range: 2.4f, telegraph: 0.24f, speed: 0.8f);
+            var a2 = Hit("Attack2", 14, 0.25f, 0.6f, range: 2.4f, telegraph: 0.2f, speed: 0.8f);
+            var a3 = Hit("Attack3", 20, 0.22f, 0.45f, range: 2.7f, kind: AttackKind.Heavy, lunge: 1.8f, telegraph: 0.26f, speed: 0.85f, kb: 1.6f);
             var tp = Hit("Dash", 0, 0.2f, 0.25f, lunge: 0f); tp.special = "teleport"; tp.specialParam = 2.2f;
             var ws = Hit("Attack3", 30, 0.3f, 0.35f, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.5f, kb: 2f);
             ws.special = "windslash"; ws.specialParam = 10f;
@@ -232,8 +233,8 @@ namespace Nindo
             var c = Kage();
             c.id = "kage_clone"; c.displayName = "Sombra"; c.maxHealth = 1; c.poiseHits = 99; c.guardTime = 0.1f;
             c.tint = new Color(0.25f, 0.1f, 0.4f); c.tintStrength = 0.9f; c.scale = 1f; c.detectRadius = 40f;
-            var a1 = Hit("Attack1", 10, 0.3f, 0.6f, range: 2.4f, telegraph: 0.2f, speed: 0.85f);
-            var a3 = Hit("Attack3", 12, 0.22f, 0.45f, range: 2.7f, lunge: 1.6f, telegraph: 0.2f, speed: 0.85f);
+            var a1 = Hit("Attack1", 10, 0.3f, 0.6f, range: 2.4f, telegraph: 0.28f, speed: 0.8f);
+            var a3 = Hit("Attack3", 12, 0.22f, 0.45f, range: 2.7f, lunge: 1.6f, telegraph: 0.28f, speed: 0.8f);
             c.patterns = new[] { new AttackPattern { name = "Eco", steps = new[] { a1, a3 }, weight = 1f, maxRange = 3f } };
             return c;
         }
