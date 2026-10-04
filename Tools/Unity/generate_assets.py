@@ -240,6 +240,13 @@ def materials(tex):
     m["foliage_wind"] = material(os.path.join(P_MAT, "Nindo_FoliageWind.mat"), "Nindo_FoliageWind", wind_shader, {"_BaseMap": palg},
                                  {"_WindStrength": 0.14, "_WindSpeed": 1.4, "_WindScale": 0.08, "_Flutter": 0.03, "_Wrap": 0.35},
                                  {"_BaseColor": (1, 1, 1, 1)}, version_block=False)
+    water_shader = ensure_guid(os.path.join(N, "Shaders", "NindoWater.shader"))
+    m["water_anim"] = material(os.path.join(P_MAT, "Nindo_WaterLowpoly.mat"), "Nindo_WaterLowpoly", water_shader, {},
+                               {"_AlphaShallow": 0.55, "_AlphaDeep": 0.92, "_WaveHeight": 0.18, "_WaveSpeed": 1.0, "_Gloss": 48,
+                                "_SpecStrength": 1.4, "_FoamThreshold": 0.72, "_SparkleAmount": 0.06},
+                               {"_ShallowColor": (0.13, 0.42, 0.47, 1), "_DeepColor": (0.02, 0.08, 0.17, 1), "_FoamColor": (0.78, 0.9, 0.95, 1),
+                                "_SkyColor": (0.2, 0.3, 0.48, 1), "_SparkleColor": (1.0, 0.97, 0.85, 1)},
+                               queue=2990, tags={"RenderType": "Transparent"}, version_block=False)
     sky_shader = ensure_guid(os.path.join(N, "Shaders", "NindoSky.shader"))
     m["sky"] = material(os.path.join(P_MAT, "Nindo_NightSky.mat"), "Nindo_NightSky", sky_shader, {},
                         {"_MoonSize": 0.045, "_MoonGlow": 0.6, "_StarDensity": 0.9965, "_StarBrightness": 1.6, "_CloudAmount": 0.35, "_Exposure": 1},
@@ -661,6 +668,8 @@ MonoBehaviour:
   emissiveMaterial: {ref(mats['emissive'], 2100000, 2)}
   foliageMaterial: {ref(mats['foliage'], 2100000, 2)}
   foliageWindMaterial: {ref(mats['foliage_wind'], 2100000, 2)}
+  waterAnimatedMaterial: {ref(mats['water_anim'], 2100000, 2)}
+  useAnimatedWater: 1
   useFoliageWind: 1
   waterMaterial: {ref(mats['water'], 2100000, 2)}
   trailMaterial: {ref(mats['trail'], 2100000, 2)}

@@ -58,6 +58,9 @@ namespace Nindo
         public Material foliageWindMaterial;
         public bool useFoliageWind = true;
         public Material waterMaterial;
+        [Tooltip("Agua low-poly animada (shader Nindo/Water Lowpoly). Si el shader no compila se usa waterMaterial.")]
+        public Material waterAnimatedMaterial;
+        public bool useAnimatedWater = true;
         public Material trailMaterial;
         public Material ghostMaterial;
         public Material flashMaterial;

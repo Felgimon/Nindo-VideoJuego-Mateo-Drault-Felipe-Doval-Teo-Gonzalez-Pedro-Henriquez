@@ -170,43 +170,154 @@ def finish_mesh(mb):
 
 
 # =========================================================================== agua
+# Agua low-poly animada (shader "Nindo/Water Lowpoly"). Cada vértice guarda en su color:
+#   R = amplitud de las olas (lago 1, arroyos 0.3, arrozales 0.1)
+#   G = cercanía a la orilla (1 = toca tierra) -> espuma
+#   B = profundidad (0 bajo, 1 hondo) -> color y transparencia
+# La malla es una grilla con vértices compartidos para que las olas la deformen sin abrirse.
+WAVES = [((0.958, 0.287), 0.35, 1.1, 0.55), ((-0.371, 0.928), 0.55, 1.5, 0.30), ((0.659, -0.753), 0.90, 2.1, 0.15)]
+WAVE_HEIGHT = 0.18   # = _WaveHeight del material
+
+
+def wave_height(x, z, t, amp):
+    """Misma fórmula que el vertex shader (para la vista previa)."""
+    h = 0.0
+    for (dx, dz), k, w, a in WAVES:
+        h += a * math.sin((dx * x + dz * z) * k + t * w)
+    return h * WAVE_HEIGHT * amp
+
+
+def water_object(name, verts, faces, cols):
+    """verts: [(x, z, y)] en coordenadas de juego; cols: [(r, g, b)] por vértice."""
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([B(x, z, y) for x, z, y in verts], [], faces)
+    me.update()
+    # caras hacia arriba
+    for poly in me.polygons:
+        if poly.normal.z < 0:
+            poly.flip()
+    me.update()
+    attr = me.color_attributes.new("Col", 'BYTE_COLOR', 'CORNER')
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            r, g, b_ = cols[me.loops[li].vertex_index]
+            attr.data[li].color = (r, g, b_, 1.0)    # lineal: el FBX se exporta con colors_type LINEAR
+    uv = me.uv_layers.new(name="UVMap")
+    u, v = PAL.uv_of("water_deep")
+    for l in uv.data:
+        l.uv = (u, v)
+    for n in L.SLOT_NAMES:
+        me.materials.append(L.get_material(n))
+    for poly in me.polygons:
+        poly.material_index = L.SLOT_WATER
+        poly.use_smooth = False
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    return o
+
+
+def grid_water(name, x0, z0, x1, z1, step, y, keep, color_fn):
+    """Grilla regular (triángulos alternados) con las celdas para las que keep(cx, cz) es True."""
+    nx, nz = int(math.ceil((x1 - x0) / step)), int(math.ceil((z1 - z0) / step))
+    index, verts, cols, faces = {}, [], [], []
+
+    def vid(i, j):
+        if (i, j) not in index:
+            x, z = x0 + i * step, z0 + j * step
+            index[(i, j)] = len(verts)
+            verts.append((x, z, y))
+            cols.append(color_fn(x, z))
+        return index[(i, j)]
+    for j in range(nz):
+        for i in range(nx):
+            if not keep(x0 + (i + 0.5) * step, z0 + (j + 0.5) * step):
+                continue
+            a, b_, c, d = vid(i, j), vid(i + 1, j), vid(i + 1, j + 1), vid(i, j + 1)
+            if (i + j) % 2 == 0:
+                faces += [(a, b_, c), (a, c, d)]
+            else:
+                faces += [(a, b_, d), (b_, c, d)]
+    return water_object(name, verts, faces, cols) if faces else None
+
+
 def build_water():
     objs = []
-    # lago
-    mb = L.MeshBuilder("W__lago")
+    # ---------------------------------------------------------------- lago
     xs = [p[0] for p in W.LAKE]; zs = [p[1] for p in W.LAKE]
-    step = 3.0
-    x = min(xs) - 6
-    while x < max(xs) + 6:
-        z = min(zs) - 6
-        while z < max(zs) + 6:
-            cx, cz = x + step / 2, z + step / 2
-            if T.in_lake(cx, cz) or T.poly_dist(cx, cz, W.LAKE) < 7:
-                col = "water_deep"
-                y = W.WATER_LAKE
-                mb.face([B(x, z, y), B(x + step, z, y), B(x + step, z + step, y), B(x, z + step, y)], col, slot=L.SLOT_WATER)
-            z += step
-        x += step
-    objs.append(finish_mesh_builder(mb))
-    # arroyos y estanque
-    mb = L.MeshBuilder("W__arroyos")
+
+    def lake_keep(cx, cz):
+        return T.in_lake(cx, cz) or (T.poly_dist(cx, cz, W.LAKE) < 6 and T.walk_dist(cx, cz) < 40)
+
+    def lake_col(x, z):
+        depth = W.WATER_LAKE - H(x, z)                     # metros de agua sobre el fondo
+        shore = max(0.0, min(1.0, 1.0 - depth / 0.9))      # 1 donde el terreno toca el agua
+        deep = max(0.0, min(1.0, depth / 3.0))
+        return (0.35 + 0.65 * deep, shore, deep)
+    o = grid_water("W__lago", min(xs) - 6, min(zs) - 6, max(xs) + 6, max(zs) + 6, 2.0, W.WATER_LAKE, lake_keep, lake_col)
+    if o:
+        objs.append(o)
+    # ---------------------------------------------------------------- arroyos (tiras subdivididas)
+    verts, cols, faces = [], [], []
     for pts, width in W.STREAMS:
         for i in range(len(pts) - 1):
             (ax, az), (bx, bz) = pts[i], pts[i + 1]
             dx, dz = bx - ax, bz - az
             Ln = math.hypot(dx, dz)
-            px, pz = -dz / Ln * (width * 0.5 + 0.6), dx / Ln * (width * 0.5 + 0.6)
-            ex, ez = dx / Ln * 1.2, dz / Ln * 1.2
-            y = W.WATER_STREAM
-            mb.face([B(ax - px - ex, az - pz - ez, y), B(ax + px - ex, az + pz - ez, y), B(bx + px + ex, bz + pz + ez, y), B(bx - px + ex, bz - pz + ez, y)], "water_shallow", slot=L.SLOT_WATER)
+            ux, uz = dx / Ln, dz / Ln
+            half = width * 0.5 + 0.6
+            n = max(1, int(math.ceil((Ln + 2.4) / 1.5)))
+            base = len(verts)
+            for k in range(n + 1):
+                s = -1.2 + (Ln + 2.4) * k / n
+                for side in (-1.0, 0.0, 1.0):
+                    x = ax + ux * s - uz * half * side
+                    z = az + uz * s + ux * half * side
+                    verts.append((x, z, W.WATER_STREAM))
+                    cols.append((0.3, 0.85 if side else 0.15, 0.25 if side else 0.45))
+            for k in range(n):
+                for c in range(2):
+                    v0 = base + k * 3 + c
+                    faces += [(v0, v0 + 1, v0 + 4), (v0, v0 + 4, v0 + 3)]
+    # estanque: anillos concéntricos
     px_, pz_, pr = W.POND
-    ring = [(px_ + math.cos(a) * (pr + 0.8), pz_ + math.sin(a) * (pr + 0.8)) for a in [i / 14 * math.tau for i in range(14)]]
-    mb.face([B(x, z, W.WATER_STREAM) for x, z in reversed(ring)], "water_deep", slot=L.SLOT_WATER)
-    # arrozales
+    rings = [(0.0, 1), (pr * 0.4, 10), (pr * 0.75, 16), (pr + 0.8, 22)]
+    ring_ids = []
+    for ri, (rr, cnt) in enumerate(rings):
+        ids = []
+        for k in range(cnt):
+            a = k / cnt * math.tau + ri * 0.3
+            ids.append(len(verts))
+            verts.append((px_ + math.cos(a) * rr, pz_ + math.sin(a) * rr, W.WATER_STREAM))
+            edge = rr / (pr + 0.8)
+            cols.append((0.25, max(0.0, (edge - 0.75) * 4.0), 1.0 - edge))
+        ring_ids.append(ids)
+    for ri in range(1, len(rings)):
+        inner, outer = ring_ids[ri - 1], ring_ids[ri]
+        # triangulación entre anillos con distinta cantidad de vértices
+        i = j = 0
+        ni, no = len(inner), len(outer)
+        while i < ni or j < no:
+            if j < no and (i >= ni or (j + 1) / no <= (i + 1) / ni):
+                faces.append((inner[i % ni], outer[j % no], outer[(j + 1) % no]))
+                j += 1
+            else:
+                faces.append((inner[i % ni], outer[j % no], inner[(i + 1) % ni]))
+                i += 1
+    # arrozales: grillas chicas
     for r in W.PADDIES:
-        y = -0.12
-        mb.face([B(r[0], r[1], y), B(r[2], r[1], y), B(r[2], r[3], y), B(r[0], r[3], y)], "water_shallow", slot=L.SLOT_WATER)
-    objs.append(finish_mesh_builder(mb))
+        nx_, nz_ = int((r[2] - r[0]) / 2), int((r[3] - r[1]) / 2)
+        base = len(verts)
+        for j in range(nz_ + 1):
+            for i in range(nx_ + 1):
+                x, z = r[0] + (r[2] - r[0]) * i / nx_, r[1] + (r[3] - r[1]) * j / nz_
+                edge = i in (0, nx_) or j in (0, nz_)
+                verts.append((x, z, -0.12))
+                cols.append((0.1, 0.5 if edge else 0.1, 0.1))
+        for j in range(nz_):
+            for i in range(nx_):
+                a = base + j * (nx_ + 1) + i
+                faces += [(a, a + 1, a + nx_ + 2), (a, a + nx_ + 2, a + nx_ + 1)]
+    objs.append(water_object("W__arroyos", verts, faces, cols))
     return objs
 
 
@@ -646,6 +757,45 @@ def export():
 
 
 # =========================================================================== vista previa
+def preview_water(t=0.7):
+    """Aproxima en Blender lo que hace el shader del agua: olas (en un instante t), facetas,
+    color por profundidad y espuma facetada en la orilla."""
+    mat = bpy.data.materials.new("PreviewWater")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    attr = nt.nodes.new("ShaderNodeVertexColor"); attr.layer_name = "Col"
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(attr.outputs["Color"], sep.inputs["Color"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")          # profundidad -> color
+    ramp.color_ramp.elements[0].color = (0.10, 0.36, 0.42, 1)
+    ramp.color_ramp.elements[1].color = (0.02, 0.09, 0.18, 1)
+    nt.links.new(sep.outputs["Blue"], ramp.inputs["Fac"])
+    foam = nt.nodes.new("ShaderNodeMath"); foam.operation = 'GREATER_THAN'; foam.inputs[1].default_value = 0.72
+    nt.links.new(sep.outputs["Green"], foam.inputs[0])
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = 'RGBA'
+    mix.inputs["B"].default_value = (0.75, 0.88, 0.92, 1)
+    nt.links.new(foam.outputs[0], mix.inputs["Factor"])
+    nt.links.new(ramp.outputs["Color"], mix.inputs["A"])
+    nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.18
+    for o in bpy.context.scene.objects:
+        if not o.name.startswith("W__"):
+            continue
+        me = o.data
+        col = me.color_attributes.get("Col")
+        amp = [0.0] * len(me.vertices)
+        if col is not None:
+            for li, l in enumerate(me.loops):
+                amp[l.vertex_index] = col.data[li].color[0]
+        for v in me.vertices:
+            gx, gz = -v.co.x, -v.co.y
+            v.co.z += wave_height(gx, gz, t, amp[v.index])
+        me.update()
+        for i in range(len(me.materials)):
+            me.materials[i] = mat
+
+
 def preview(shots):
     import nindo_preview as PV
     # construir cada prop una vez y crear instancias
@@ -674,6 +824,7 @@ def preview(shots):
         e.rotation_euler = (0, 0, math.radians(-yaw))
         e.scale = (sc, sc, sc)
         bpy.context.scene.collection.objects.link(e)
+    preview_water()
     PV.setup_night(ground=False, strength=1.1)
     scn = bpy.context.scene
     for o in WALL_OBJS:

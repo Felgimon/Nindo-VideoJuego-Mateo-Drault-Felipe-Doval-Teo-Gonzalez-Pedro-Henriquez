@@ -195,11 +195,15 @@ namespace Nindo
 
         void SetupWater(Transform t)
         {
+            var c = Game.Content;
+            Material mat = c != null ? c.waterMaterial : null;
+            // agua animada si su shader compiló en esta versión de URP
+            if (c != null && c.useAnimatedWater && c.waterAnimatedMaterial != null && c.waterAnimatedMaterial.shader != null && c.waterAnimatedMaterial.shader.isSupported)
+                mat = c.waterAnimatedMaterial;
             foreach (var r in t.GetComponentsInChildren<MeshRenderer>())
             {
                 r.shadowCastingMode = ShadowCastingMode.Off;
-                var c = Game.Content;
-                if (c != null && c.waterMaterial != null) r.sharedMaterial = c.waterMaterial;
+                if (mat != null) r.sharedMaterial = mat;
                 int water = LayerMask.NameToLayer("Water");
                 if (water >= 0) r.gameObject.layer = water;
             }
@@ -230,15 +234,23 @@ namespace Nindo
                 return;
             }
             specs.TryGetValue(id, out var spec);
-            bool nonStatic = spec != null && spec.tags != null && Array.IndexOf(spec.tags, "nonstatic") >= 0;
+            bool floating = Array.IndexOf(FloatingProps, id) >= 0;
+            bool nonStatic = floating || (spec != null && spec.tags != null && Array.IndexOf(spec.tags, "nonstatic") >= 0);
             var go = Instantiate(model, marker.position, marker.rotation, nonStatic ? dynamicRoot : staticRoot);
             go.transform.localScale = Vector3.Scale(go.transform.localScale, marker.lossyScale);
             go.name = id;
             ApplySpec(go, spec, marker.lossyScale);
+            if (floating)
+            {
+                foreach (var tr in go.GetComponentsInChildren<Transform>()) tr.gameObject.isStatic = false;
+                go.AddComponent<FloatingBob>();
+            }
             Destroy(marker.gameObject);
         }
 
         readonly HashSet<string> missing = new HashSet<string>();
+        /// <summary>Props que flotan y se mecen con las olas del agua.</summary>
+        static readonly string[] FloatingProps = { "boat_small" };
 
         GameObject InstantiateProp(string id, Vector3 pos, Quaternion rot, Transform parent, float scale = 1f)
         {
