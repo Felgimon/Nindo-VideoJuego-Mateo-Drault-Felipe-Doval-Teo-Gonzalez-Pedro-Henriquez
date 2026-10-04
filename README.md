@@ -101,6 +101,9 @@ Nindo/Assets/Nindo/
   Resources/      NindoContent.asset (referencias a todo el contenido)
   Scenes/         Menu.unity, Nindo.unity
 Assets/_Legacy/   el código y assets viejos que ya no se usan (se pueden borrar)
+Assets/Models/Environment, Assets/Materials, Assets/Textures
+                  el entorno viejo: tampoco entra en el build (solo lo usan los
+                  materiales de Sumo y Goro; esas texturas 4K ahora se importan a 1024)
 Tools/            pipelines en Python (Blender, audio, generación de assets de Unity)
 ```
 
