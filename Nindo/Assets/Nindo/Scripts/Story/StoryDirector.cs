@@ -1,0 +1,601 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Nindo
+{
+    /// <summary>
+    /// Guion del juego (según el documento de diseño): prólogo con la guadaña y la bandana,
+    /// tutorial de parry en cámara lenta, el rastro hasta la muralla, el jardín del clan, el
+    /// luchador de sumo (tutorial del dash mágico), los tres guardianes de los sellos, la
+    /// puerta del dojo y el combate final contra Kage para rescatar al abuelo.
+    /// </summary>
+    public class StoryDirector : MonoBehaviour
+    {
+        PlayerController P => Game.Player;
+        bool parryTutorial, dashTutorial, finisherTip;
+        int parryTutorialTries;
+        GameObject scytheProp;
+        Coroutine deathRoutine;
+
+        void Awake()
+        {
+            Game.Story = this;
+        }
+
+        void OnEnable()
+        {
+            GameEvents.PlayerDied += OnPlayerDied;
+            GameEvents.BossDefeated += OnBossDefeated;
+            GameEvents.FlagSet += OnFlag;
+            GameEvents.Parry += OnParry;
+        }
+
+        void OnDisable()
+        {
+            GameEvents.PlayerDied -= OnPlayerDied;
+            GameEvents.BossDefeated -= OnBossDefeated;
+            GameEvents.FlagSet -= OnFlag;
+            GameEvents.Parry -= OnParry;
+        }
+
+        void OnDestroy() { if (Game.Story == this) Game.Story = null; }
+
+        // ================================================================== inicio
+        public void Begin(bool newGame)
+        {
+            var s = Game.Save;
+            P.SetKatanaVisible(s.HasFlag(Flags.KatanaObtained));
+            UpdateObjective();
+            if (!s.HasFlag(Flags.IntroDone)) StartCoroutine(Intro());
+            else
+            {
+                StartCoroutine(Game.UI.Fade(0f, 1.2f));
+                Zone.ForceRefresh();
+            }
+        }
+
+        public void UpdateObjective() => Game.UI?.SetObjective(StoryText.Objective(Game.Save));
+
+        // ================================================================== cinemáticas
+        IEnumerator Cutscene(IEnumerator body, bool letterbox = true)
+        {
+            Game.InCutscene = true;
+            if (Game.Input != null) Game.Input.GameplayBlocked = true;
+            if (letterbox) Game.UI?.Letterbox(true);
+            P?.EnterScripted();
+            yield return body;
+            if (letterbox) Game.UI?.Letterbox(false);
+            Game.Camera?.CancelAllShots();
+            P?.ExitScripted();
+            Game.InCutscene = false;
+            if (Game.Input != null) { Game.Input.GameplayBlocked = Game.IsPaused; Game.Input.ClearBuffer(); }
+            UpdateObjective();
+        }
+
+        IEnumerator Say(string id) => Game.UI.Dialogue(StoryText.Dialogue(id));
+
+        public void PlayDialogueById(string id) => StartCoroutine(Cutscene(Say(id), false));
+
+        Vector3 PointPos(string id, Vector3 fallback)
+        {
+            var t = Game.World != null ? Game.World.Point(id) : null;
+            return t != null ? t.position : fallback;
+        }
+
+        // ================================================================== PRÓLOGO
+        IEnumerator Intro()
+        {
+            Game.InCutscene = true;
+            if (Game.Input != null) Game.Input.GameplayBlocked = true;
+            Game.UI.SetFade(1f);
+            Game.UI.Letterbox(true);
+            P.EnterScripted();
+            P.SetKatanaVisible(false);
+
+            // el ninja que se queda espera quieto
+            var introEnc = Encounter.Get("intro");
+            if (introEnc != null)
+            {
+                introEnc.manualActivation = true;
+                foreach (var m in introEnc.Members) if (m != null) m.EnterScripted();
+            }
+
+            // la guadaña tirada en el piso
+            Vector3 scythePos = PointPos("scythe", P.transform.position + P.transform.forward * 1.6f);
+            scytheProp = new GameObject("Guadaña");
+            scytheProp.transform.position = scythePos;
+            var model = Game.Content.Prop("scythe");
+            if (model != null) Instantiate(model, scytheProp.transform);
+            var bandana = scytheProp.AddComponent<BandanaScythe>();
+            bandana.prompt = "Desatar la cinta";
+            bandana.promptHeight = 1f;
+            bandana.radius = 2.5f;
+            bandana.enabled = false;
+
+            // abuelo y su secuestrador (animación "inicio" del equipo: el ninja lo tacklea y lo arrastra)
+            Vector3 kidPos = PointPos("kidnap_a", P.transform.position + new Vector3(6, 0, 8));
+            Vector3 exit = PointPos("kidnap_exit", kidPos + new Vector3(0, 0, 25));
+            var grandpa = NPC.Spawn("kidnap", kidPos, Quaternion.LookRotation((P.transform.position - kidPos).Flat().normalized + Vector3.forward * 0.001f), null);
+            grandpa.Play("Idle", 0f);
+            Enemy kidnapper = null;
+
+            // texto de apertura sobre negro
+            yield return new WaitForSecondsRealtime(0.6f);
+            Game.UI.ShowAreaTitle("Una noche de luna llena", "Kaito y su abuelo escucharon un ruido en los cultivos...", "忍");
+            yield return new WaitForSecondsRealtime(4.4f);
+            Game.UI.ShowAreaTitle("...", "Kaito salió con la guadaña. De un arbusto salió un golpe.", "");
+            Game.Audio?.Play("hit_heavy", null, 1f);
+            Game.Camera?.Shake(0.6f);
+            yield return new WaitForSecondsRealtime(4.2f);
+
+            // Kaito tirado en el piso
+            var lie = StartCoroutine(LieDown(true));
+            int shot = Game.Camera.PlayFollowShot(P.transform, new Vector3(2.2f, 2.2f, 2.6f), 0.3f, 32f, 0f, 0f, 1f, false);
+            yield return Game.UI.Fade(0f, 2.5f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return LieDown(false);
+            Game.Camera.CancelShot(shot);
+
+            // ve al abuelo siendo llevado
+            int shot2 = Game.Camera.PlayFollowShot(grandpa.transform, new Vector3(-3.5f, 3.2f, -6f), 1.0f, 32f, 0f, 0.9f, 0.9f, false);
+            grandpa.Play("Kidnap", 0.1f);
+            Game.Audio?.Play("hit_heavy", grandpa.transform.position, 0.8f);
+            yield return new WaitForSecondsRealtime(2.4f);
+            yield return Say("intro_wake");
+            Game.Camera.CancelShot(shot2);
+            // lo arrastran lentamente hacia el bosque
+            grandpa.FaceTo(grandpa.transform.position - (exit - grandpa.transform.position));
+            grandpa.SlideTo(exit, 1.1f);
+
+            // control al jugador: tiene que desatar la cinta
+            Game.UI.Letterbox(false);
+            P.ExitScripted();
+            Game.InCutscene = false;
+            if (Game.Input != null) Game.Input.GameplayBlocked = false;
+            bandana.enabled = true;
+            UpdateObjective();
+            Game.UI.ShowTutorial($"Acercate a la guadaña y presioná [{Game.Input.Glyph(Act.Interact)}]");
+            while (!Game.Save.HasFlag(Flags.KatanaObtained)) yield return null;
+            Game.UI.HideTutorial();
+
+            // ¡la bandana se ata sola y la guadaña se vuelve katana!
+            yield return Cutscene(BandanaAwakening(grandpa, kidnapper));
+
+            // pelea del prólogo con tutorial de parry
+            if (introEnc != null)
+            {
+                foreach (var m in introEnc.Members) if (m != null) m.ExitScripted(true);
+                introEnc.Activate();
+                parryTutorial = true;
+                parryTutorialTries = 0;
+            }
+            else FinishIntro();
+        }
+
+        IEnumerator LieDown(bool down)
+        {
+            var pivot = P.model != null ? P.model.parent : null;
+            if (pivot == null) yield break;
+            Quaternion lying = Quaternion.Euler(-82f, 0f, 0f);
+            if (down) { pivot.localRotation = lying; yield break; }
+            float t = 0f;
+            while (t < 1f)
+            {
+                t += Time.unscaledDeltaTime * 1.4f;
+                pivot.localRotation = Quaternion.Slerp(lying, Quaternion.identity, Mathf.SmoothStep(0f, 1f, t));
+                yield return null;
+            }
+            pivot.localRotation = Quaternion.identity;
+        }
+
+        IEnumerator BandanaAwakening(NPC grandpa, Enemy kidnapper)
+        {
+            P.ScriptedFace(scytheProp.transform.position);
+            int shot = Game.Camera.PlayAbilityShot(P.transform, CameraDirector.AbilityShot.LowOrbit, 3.2f);
+            Game.Time.SlowMotion(0.4f, 1.6f, 0.1f, 0.5f);
+            Game.FX.SealGlow(P.transform.position + Vector3.up);
+            Game.FX.Petals(P.transform.position + Vector3.up, 1.5f);
+            Game.Audio?.Play("rage_on", P.transform.position, 1f);
+            Destroy(scytheProp);
+            yield return new WaitForSecondsRealtime(0.9f);
+            P.SetKatanaVisible(true);
+            P.ScriptedPlay("Attack3");
+            Game.FX.Screen.WhiteFlash(0.7f);
+            Game.Camera.Shake(0.5f);
+            Game.UI.ShowToast("Espíritu de la Bandana", UIFactory.Gold, 2.2f);
+            yield return new WaitForSecondsRealtime(1.6f);
+            Game.Camera.CancelShot(shot);
+            yield return Say("intro_bandana");
+            // el secuestrador se lleva al abuelo entre el humo
+            if (grandpa != null) { Game.FX.SmokePuff(grandpa.transform.position + Vector3.up, 1.6f); Destroy(grandpa.gameObject); }
+            if (kidnapper != null) Destroy(kidnapper.gameObject);
+            Game.Audio?.Play("teleport", P.transform.position, 0.8f);
+            P.AddSpirit(60f);
+        }
+
+        void FinishIntro()
+        {
+            StartCoroutine(Cutscene(IntroOutro()));
+        }
+
+        IEnumerator IntroOutro()
+        {
+            parryTutorial = false;
+            P.RestoreAll();
+            yield return Say("intro_after_fight");
+            Game.Save.SetFlag(Flags.IntroDone);
+            var cp = Checkpoint.Get("cp_home");
+            if (cp != null) cp.Activate(P, false);
+            SaveSystem.Save();
+            Game.UI.ShowTutorial($"Tip: [{Game.Input.Glyph(Act.Lock)}] fija a un enemigo. Mantenelo apretado para soltarlo.");
+            StartCoroutine(HideTutorialLater(5f));
+        }
+
+        IEnumerator HideTutorialLater(float s) { yield return new WaitForSecondsRealtime(s); Game.UI.HideTutorial(); }
+
+        // ================================================================== tutoriales en cámara lenta
+        int tutorialSlow = -1;
+        bool waitingParry, waitingDash;
+
+        void Update()
+        {
+            if (P == null || Game.IsPaused) return;
+            if (parryTutorial && !waitingParry && !Game.InCutscene)
+            {
+                var enc = Encounter.Get("intro");
+                if (enc != null)
+                    foreach (var e in enc.Members)
+                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < 4f)
+                        {
+                            waitingParry = true;
+                            tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
+                            Game.UI.ShowTutorial($"¡AHORA! Presioná [{Game.Input.Glyph(Act.Parry)}] para desviar el golpe (Parry)");
+                            break;
+                        }
+            }
+            if (waitingParry && Game.Input != null && Game.Input.Pressed(Act.Parry))
+            {
+                waitingParry = false;
+                Game.Time.CancelSlowMotion(tutorialSlow);
+                Game.UI.HideTutorial();
+                parryTutorialTries++;
+                if (parryTutorialTries >= 3) parryTutorial = false;
+            }
+
+            // dash contra golpes imparables (luchador de sumo)
+            if (!Game.Save.HasFlag(Flags.DashUnlocked) && !waitingDash && !Game.InCutscene && Game.Combat != null)
+            {
+                foreach (var e in Game.Combat.Engaged)
+                    if (e != null && e.IsTelegraphingUnblockable && e.State == EnemyState.Attack)
+                    {
+                        waitingDash = true;
+                        Game.Save.SetFlag(Flags.DashUnlocked);
+                        tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
+                        Game.UI.ShowTutorial($"¡Golpe imparable (危)! No se puede desviar: presioná [{Game.Input.Glyph(Act.Dash)}] para el DASH MÁGICO (usa Espíritu)");
+                        P.AddSpirit(40f);
+                        break;
+                    }
+            }
+            if (waitingDash && Game.Input != null && Game.Input.Pressed(Act.Dash))
+            {
+                waitingDash = false;
+                Game.Time.CancelSlowMotion(tutorialSlow);
+                Game.UI.HideTutorial();
+            }
+
+            // primer enemigo desequilibrado: explicar la ejecución
+            if (!finisherTip && P.FinisherCandidate() != null && !Game.Save.HasFlag("tip_finisher"))
+            {
+                finisherTip = true;
+                Game.Save.SetFlag("tip_finisher");
+                Game.Time.SlowMotion(0.25f, 1.2f, 0.05f, 0.4f);
+                Game.UI.ShowTutorial($"¡Está desequilibrado! Pegale [{Game.Input.Glyph(Act.Attack)}] o EJECUTALO con [{Game.Input.Glyph(Act.Finisher)}] (cuesta Espíritu, te cura)");
+                StartCoroutine(HideTutorialLater(4.5f));
+            }
+        }
+
+        void OnParry(bool perfect)
+        {
+            if (parryTutorial && !Game.Save.HasFlag("tip_parry_done"))
+            {
+                Game.Save.SetFlag("tip_parry_done");
+                Game.UI.ShowToast(perfect ? "¡Parry perfecto!" : "¡Parry!", UIFactory.Gold);
+                Game.UI.ShowTutorial("Cada parry DESEQUILIBRA al enemigo. Cuando termine su combo, quedará vulnerable.");
+                StartCoroutine(HideTutorialLater(4.5f));
+            }
+        }
+
+        // ================================================================== triggers del mapa
+        public void OnTrigger(string id, StoryTrigger t)
+        {
+            if (!id.StartsWith("enc_done_")) Game.Save.SetFlag("trig_" + id);
+            switch (id)
+            {
+                case "enc_done_intro": FinishIntro(); break;
+                case "fields": StartCoroutine(Cutscene(Say("fields"), false)); break;
+                case "forest_reveal": StartCoroutine(Cutscene(ForestReveal())); break;
+                case "wall_guards":
+                    StartCoroutine(Cutscene(Say("wall_guards"), false));
+                    break;
+                case "enc_done_wall": StartCoroutine(Cutscene(WallOpens())); break;
+                case "garden": StartCoroutine(Cutscene(Say("garden"), false)); break;
+                case "sumo_intro": StartCoroutine(Cutscene(SumoIntro())); break;
+                case "enc_done_sumo": StartCoroutine(Cutscene(AbilitiesUnlock())); break;
+                case "dojo_gate":
+                    Game.Save.SetFlag(Flags.DojoGateSeen);
+                    StartCoroutine(Cutscene(DojoGateFirstLook()));
+                    break;
+            }
+            UpdateObjective();
+        }
+
+        IEnumerator ForestReveal()
+        {
+            Vector3 a = PointPos("forest_kidnap_a", P.transform.position + new Vector3(0, 0, 18));
+            Vector3 b = PointPos("forest_kidnap_b", a + new Vector3(0, 0, 14));
+            // el ninja arrastra al abuelo (último frame de la animación del secuestro)
+            var grandpa = NPC.Spawn("kidnap", a, Quaternion.LookRotation(-(b - a).Flat().normalized + Vector3.forward * 0.001f), null);
+            grandpa.Play("Kidnap", 0f);
+            grandpa.SkipToEnd();
+            yield return null;
+            grandpa.SlideTo(b, 1.3f);
+            int shot = Game.Camera.PlayFollowShot(grandpa.transform, new Vector3(-5f, 4.5f, -7f), 1f, 34f, 0f, 1.2f, 1.2f, false);
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return Say("forest_reveal");
+            yield return new WaitForSecondsRealtime(1.2f);
+            Game.FX.SmokePuff(grandpa.transform.position + Vector3.up, 1.5f);
+            Destroy(grandpa.gameObject);
+            Game.Camera.CancelShot(shot);
+            Game.Save.SetFlag(Flags.ForestSeen);
+        }
+
+        IEnumerator WallOpens()
+        {
+            Game.Save.SetFlag(Flags.WallGateOpen);
+            Vector3 gate = PointPos("wall_gate", P.transform.position + P.transform.forward * 8f);
+            int shot = Game.Camera.PlayStaticShot(gate + new Vector3(4f, 6f, -12f), gate + Vector3.up * 2f, 34f, 3.2f, 1f, 1f);
+            yield return new WaitForSecondsRealtime(3.4f);
+            yield return Say("wall_open");
+            Game.Camera.CancelShot(shot);
+        }
+
+        IEnumerator SumoIntro()
+        {
+            var enc = Encounter.Get("sumo");
+            Enemy sumo = null;
+            if (enc != null) foreach (var m in enc.Members) if (m != null && m.config.id.StartsWith("sumo")) sumo = m;
+            int shot = -1;
+            if (sumo != null)
+            {
+                sumo.EnterScripted();
+                sumo.ScriptedFace(P.transform.position);
+                sumo.ScriptedPlay("Spotted");
+                shot = Game.Camera.PlayBossIntroShot(sumo.transform, 2.6f, 3.5f);
+            }
+            yield return new WaitForSecondsRealtime(1.2f);
+            yield return Say("sumo_intro");
+            if (shot >= 0) Game.Camera.CancelShot(shot);
+            if (sumo != null) sumo.ExitScripted(true);
+            enc?.Activate();
+        }
+
+        IEnumerator AbilitiesUnlock()
+        {
+            Game.Save.SetFlag(Flags.AbilitiesUnlocked);
+            Game.Save.SetFlag(Flags.DashUnlocked);
+            P.AddSpirit(100f);
+            Game.FX.SealGlow(P.transform.position + Vector3.up);
+            int shot = Game.Camera.PlayAbilityShot(P.transform, CameraDirector.AbilityShot.LowOrbit, 2.5f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Say("abilities");
+            Game.Camera.CancelShot(shot);
+            Game.UI.ShowTutorial($"[{Game.Input.Glyph(Act.Ability1)}] Corte del Viento (35)   ·   [{Game.Input.Glyph(Act.Ability2)}] Torbellino de Hojas (30)");
+            StartCoroutine(HideTutorialLater(6f));
+        }
+
+        IEnumerator DojoGateFirstLook()
+        {
+            var gate = Game.World.Point("seal_gate");
+            int shot = -1;
+            if (gate != null) shot = Game.Camera.PlayStaticShot(gate.position + gate.forward * -16f + Vector3.up * 7f, gate.position + Vector3.up * 5f, 36f, 6f, 1.2f, 1f);
+            yield return new WaitForSecondsRealtime(1.4f);
+            yield return Say("dojo_gate");
+            if (shot >= 0) Game.Camera.CancelShot(shot);
+        }
+
+        // ================================================================== jefes
+        public void BossIntro(BossArena arena)
+        {
+            StartCoroutine(Cutscene(BossIntroRoutine(arena)));
+        }
+
+        IEnumerator BossIntroRoutine(BossArena arena)
+        {
+            var b = arena.Boss;
+            if (b == null) yield break;
+            b.EnterScripted();
+            b.ScriptedFace(P.transform.position);
+            Game.Audio?.StopMusic(1.5f);
+            int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 4f);
+            yield return new WaitForSecondsRealtime(0.8f);
+            b.ScriptedPlay(b.introAnim, 0.2f);
+            Game.Audio?.Play("boss_roar", b.transform.position, 1f);
+            Game.Camera.Shake(0.35f);
+            Game.UI.ShowAreaTitle(b.title, b.subtitle, "鬼");
+            yield return new WaitForSecondsRealtime(2.6f);
+            yield return Say(b.bossId + "_intro");
+            Game.Camera.CancelShot(shot);
+            yield return new WaitForSecondsRealtime(0.3f);
+            b.ExitScripted(false);
+            b.BeginFight();
+        }
+
+        void OnBossDefeated(Boss b)
+        {
+            foreach (var a in Game.World.Arenas) if (a.Boss == b) a.OnBossDefeated();
+            if (b.bossId == "kage") StartCoroutine(Ending());
+            else Game.UI?.ShowToast($"{b.title} derrotado", UIFactory.Gold, 2.5f);
+            UpdateObjective();
+        }
+
+        public void OnSealObtained(SealId seal)
+        {
+            StartCoroutine(Cutscene(SealRoutine(seal), false));
+        }
+
+        IEnumerator SealRoutine(SealId seal)
+        {
+            string id = seal == SealId.Montana ? "seal_mountain" : seal == SealId.Lago ? "seal_lake" : "seal_bamboo";
+            Game.UI.ShowToast($"Sello obtenido ({Game.Save.SealCount}/3)", UIFactory.Gold, 2.5f);
+            P.RestoreAll();
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return Say(id);
+            if (Game.Save.SealCount >= 3) Game.UI.ShowToast("¡Los tres sellos! Volvé a la puerta del dojo", UIFactory.Gold, 3f);
+            SaveSystem.Save();
+        }
+
+        public void OpenSealGate(SealGate gate)
+        {
+            if (Game.Save.SealCount < 3) { StartCoroutine(Cutscene(Say("dojo_gate_incomplete"), false)); return; }
+            if (Game.Save.HasFlag(Flags.DojoOpen)) return;
+            StartCoroutine(Cutscene(SealGateRoutine(gate)));
+        }
+
+        IEnumerator SealGateRoutine(SealGate gate)
+        {
+            int shot = Game.Camera.PlayStaticShot(gate.transform.position + gate.transform.forward * -14f + Vector3.up * 6f, gate.transform.position + Vector3.up * 5f, 36f, 7f, 1f, 1f);
+            yield return new WaitForSecondsRealtime(1f);
+            for (int i = 0; i < 3; i++) { gate.LightSocket(i); yield return new WaitForSecondsRealtime(0.8f); }
+            Game.Camera.Shake(0.5f);
+            Game.Save.SetFlag(Flags.DojoOpen);
+            SaveSystem.Save();
+            yield return new WaitForSecondsRealtime(2.2f);
+            yield return Say("dojo_gate_open");
+            Game.Camera.CancelShot(shot);
+        }
+
+        IEnumerator Ending()
+        {
+            Game.Save.SetFlag(Flags.FinalBossDone);
+            SaveSystem.Save();
+            yield return new WaitForSecondsRealtime(3.5f);
+            yield return Cutscene(EndingScene());
+            Game.UI.ShowEnding();
+            Game.Audio?.PlayMusic("menu", 3f);
+        }
+
+        IEnumerator EndingScene()
+        {
+            var gp = Game.World.Point("npc_grandpa_dojo");
+            NPC grandpa = gp != null ? gp.GetComponent<NPC>() : null;
+            if (grandpa == null) grandpa = NPC.Spawn("grandpa", P.transform.position + P.transform.forward * 3f, Quaternion.identity, null);
+            grandpa.FaceTo(P.transform.position);
+            P.ScriptedFace(grandpa.transform.position);
+            Vector3 mid = (P.transform.position + grandpa.transform.position) * 0.5f;
+            int shot = Game.Camera.PlayStaticShot(mid + new Vector3(3.5f, 2.6f, -4.5f), mid + Vector3.up * 1f, 34f, 0f, 1.5f, 1f);
+            yield return new WaitForSecondsRealtime(1.5f);
+            Game.FX.Petals(mid + Vector3.up * 2f, 2f);
+            yield return Say("ending");
+            Game.Camera.CancelShot(shot);
+            Game.Save.SetFlag(Flags.Ending);
+            SaveSystem.Save();
+            yield return Game.UI.Fade(1f, 2f);
+        }
+
+        // ================================================================== muerte / viaje
+        void OnPlayerDied()
+        {
+            if (deathRoutine != null) StopCoroutine(deathRoutine);
+            deathRoutine = StartCoroutine(DeathRoutine());
+        }
+
+        IEnumerator DeathRoutine()
+        {
+            waitingParry = false; waitingDash = false;
+            Game.UI.HideTutorial();
+            yield return new WaitForSecondsRealtime(1.4f);
+            yield return Game.UI.DeathScreen();
+            Game.Time.ClearSlowMotion();
+            Game.World.ResetAfterDeath();
+            P.RespawnAt(Game.World.RespawnPoint(), Quaternion.identity);
+            Game.Audio?.PlayMusic("explore", 0.5f);
+            Zone.ForceRefresh();
+            yield return new WaitForSecondsRealtime(0.4f);
+            yield return Game.UI.Fade(0f, 1.2f);
+            deathRoutine = null;
+        }
+
+        public void TravelTo(string checkpointId, bool fx)
+        {
+            StartCoroutine(Cutscene(TravelRoutine(checkpointId, fx), false));
+        }
+
+        IEnumerator TravelRoutine(string id, bool fx)
+        {
+            if (fx) { Game.FX.PortalBurst(P.transform.position + Vector3.up); Game.Audio?.Play("portal", P.transform.position, 1f); }
+            yield return Game.UI.Fade(1f, 0.7f);
+            var cp = Checkpoint.Get(id);
+            if (cp != null)
+            {
+                P.Teleport(cp.spawnPoint.position, cp.spawnPoint.rotation);
+                cp.Activate(P, false);
+            }
+            Zone.ForceRefresh();
+            yield return new WaitForSecondsRealtime(0.5f);
+            yield return Game.UI.Fade(0f, 0.9f);
+        }
+
+        void OnFlag(string f)
+        {
+            if (f.StartsWith("boss_") || f == Flags.DojoOpen) UpdateObjective();
+        }
+    }
+
+    /// <summary>La guadaña del abuelo: al desatar la cinta, Kaito obtiene la bandana y la katana.</summary>
+    public class BandanaScythe : Interactable
+    {
+        public override void Interact(PlayerController p)
+        {
+            Game.Save.SetFlag(Flags.KatanaObtained);
+            enabled = false;
+        }
+    }
+
+    /// <summary>Puerta del dojo con los tres huecos para los sellos.</summary>
+    public class SealGate : Interactable
+    {
+        readonly GameObject[] sockets = new GameObject[3];
+        static readonly Vector3[] offsets = { new Vector3(-1.5f, 6.1f, -0.75f), new Vector3(0f, 6.5f, -0.75f), new Vector3(1.5f, 6.1f, -0.75f) };
+
+        void Awake()
+        {
+            prompt = "Colocar los sellos";
+            radius = 4f;
+            promptHeight = 2.2f;
+            for (int i = 0; i < 3; i++)
+            {
+                var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Destroy(s.GetComponent<Collider>());
+                s.transform.SetParent(transform, false);
+                s.transform.localPosition = offsets[i];
+                s.transform.localScale = Vector3.one * 0.55f;
+                var r = s.GetComponent<MeshRenderer>();
+                r.sharedMaterial = Game.Content != null && Game.Content.emissiveMaterial != null ? Game.Content.emissiveMaterial : FXMaterials.Flash;
+                sockets[i] = s;
+                s.SetActive(Game.Save.HasFlag(Flags.DojoOpen));
+            }
+        }
+
+        public override bool CanInteract => !Game.Save.HasFlag(Flags.DojoOpen);
+
+        public override void Interact(PlayerController p) => Game.Story?.OpenSealGate(this);
+
+        public void LightSocket(int i)
+        {
+            sockets[i].SetActive(true);
+            Game.FX?.SealGlow(sockets[i].transform.position);
+            Game.Audio?.Play("seal", sockets[i].transform.position, 1f);
+        }
+    }
+}

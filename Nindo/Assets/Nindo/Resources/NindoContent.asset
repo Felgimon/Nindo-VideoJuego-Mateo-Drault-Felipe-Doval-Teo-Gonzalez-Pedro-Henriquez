@@ -1,0 +1,159 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3acaba40632f14388513f446651c0d4a, type: 3}
+  m_Name: NindoContent
+  m_EditorClassIdentifier:
+  characters:
+  - id: kaito
+    model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
+    controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
+    height: 1.5
+    materialOverrides: []
+  - id: kage
+    model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
+    controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
+    height: 1.6
+    materialOverrides: []
+  - id: ninja
+    model: {fileID: 919132149155446097, guid: 642c39cca7e4c9040ae0e8ba3072ec24, type: 3}
+    controller: {fileID: 9100000, guid: af122ddaa0ad524ad3c947730fe1632a, type: 2}
+    height: 1.7
+    materialOverrides: []
+  - id: sumo
+    model: {fileID: 919132149155446097, guid: 6e6d595635ec9544d83855ca6d060fbb, type: 3}
+    controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
+    height: 2.5
+    materialOverrides: []
+  - id: goro
+    model: {fileID: 919132149155446097, guid: dbac39bfe9be5fd41a31f29a324081f6, type: 3}
+    controller: {fileID: 9100000, guid: 9670f8c607c12d6033d22ad74703b944, type: 2}
+    height: 3.2
+    materialOverrides: []
+  - id: grandpa
+    model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
+    controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
+    height: 1.45
+    materialOverrides: []
+  - id: kidnap
+    model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
+    controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
+    height: 1.45
+    materialOverrides: []
+  zones: []
+  props: []
+  propsManifest: {fileID: 4900000, guid: c7014727a41b93f32ac97ff0b2faf9b0, type: 3}
+  worldData: {fileID: 0}
+  paletteTexture: {fileID: 2800000, guid: ef78f26dd6b0d012fd9e6844be73ab79, type: 3}
+  paletteMaterial: {fileID: 2100000, guid: 9a9c064036849a4ddae0da9a7b883748, type: 2}
+  emissiveMaterial: {fileID: 2100000, guid: 7af4a392de74164fc8fe8b24fdc8a732, type: 2}
+  foliageMaterial: {fileID: 2100000, guid: 09237699d0bb23cef8d7474533267e07, type: 2}
+  waterMaterial: {fileID: 2100000, guid: 8a162e23f02a76f7d3c758a65c237a43, type: 2}
+  trailMaterial: {fileID: 2100000, guid: c546a1c20b4b0f611dc805f1ffcbb7be, type: 2}
+  ghostMaterial: {fileID: 2100000, guid: d0f450a67131b072031d9a404da2657e, type: 2}
+  flashMaterial: {fileID: 2100000, guid: 780d8987a1cb7607a1711b7c7fb32e63, type: 2}
+  additiveMaterial: {fileID: 2100000, guid: ae39a8277e081d99bd692057688e7ccd, type: 2}
+  alphaMaterial: {fileID: 2100000, guid: 10c724d697b58eeb3dc28472c11a20f6, type: 2}
+  skyboxMaterial: {fileID: 2100000, guid: b488a2ae4c29995a68b8787f3bd2cdd7, type: 2}
+  vfxParry: {fileID: 8926484042661614526, guid: cca009be69e781f4293c748f5d741cb4, type: 3}
+  vfxHit: {fileID: 8926484042661614526, guid: 95f1825223e96c148a3df8a62711f432, type: 3}
+  vfxImpact: {fileID: 8926484042661614526, guid: ab8a6dbfa459f824ca631643b60124c2, type: 3}
+  vfxDamaged: {fileID: 8926484042661614526, guid: fd533dd6244875d45aa44a62565b1cce, type: 3}
+  vfxSlay: {fileID: 8926484042661614526, guid: 49211f098719aae4f96e9399834b0f4f, type: 3}
+  vfxSlash: {fileID: 8926484042661614526, guid: 5a391d04969da624c9b65d4b500dc991, type: 3}
+  vfxLines: {fileID: 8926484042661614526, guid: 8a385481c95b8b44ea8c1278e0e36dd1, type: 3}
+  vfxAura: {fileID: 8926484042661614526, guid: 0c48da95b202331448876216f4edf0da, type: 3}
+  sfx:
+  - key: clang
+    clips:
+    - {fileID: 8300000, guid: 3996a0f0dbc6cce48be0e5ec2f1e88a3, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: dash
+    clips:
+    - {fileID: 8300000, guid: a120d3f90dd82ec4bb4cdb8f11712754, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: enemy_swing
+    clips:
+    - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: enemy_swing_heavy
+    clips:
+    - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: finisher_hit
+    clips:
+    - {fileID: 8300000, guid: 20ad7977e4c6d6c45af26c677a05531b, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: hurt
+    clips:
+    - {fileID: 8300000, guid: 2a69907420918aa4ca962ed93fa99b84, type: 3}
+    volume: 0.9
+    pitchVariance: 0.06
+    spatial: 1
+  - key: parry
+    clips:
+    - {fileID: 8300000, guid: 3996a0f0dbc6cce48be0e5ec2f1e88a3, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: step
+    clips:
+    - {fileID: 8300000, guid: 8cfbe4d1e8d7d0e47b929d1130fa26c1, type: 3}
+    volume: 0.35
+    pitchVariance: 0.06
+    spatial: 1
+  - key: swing
+    clips:
+    - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    volume: 0.8
+    pitchVariance: 0.06
+    spatial: 1
+  - key: ui_select
+    clips:
+    - {fileID: 8300000, guid: dd0b5ce734f746c41906b9db5418419d, type: 3}
+    volume: 0.6
+    pitchVariance: 0.06
+    spatial: 0
+  music:
+  - key: explore
+    clips:
+    - {fileID: 8300000, guid: 8810fa0368d6ae54889b51c5b79dab2f, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: menu
+    clips:
+    - {fileID: 8300000, guid: 5a88bb5b7b682ab40b249fcea77a1f6f, type: 3}
+    volume: 0.7
+    pitchVariance: 0
+    spatial: 0
+  ambience: []
+  healthFill: {fileID: 21300000, guid: 21dbc76a291d055ac12d4fc3628e5bd9, type: 3}
+  healthFrame: {fileID: 21300000, guid: 710800330b66c8cbd828ca3fdd6b6992, type: 3}
+  spiritFill: {fileID: 21300000, guid: 8b1681006527a595a64aed22cf0a1904, type: 3}
+  spiritFrame: {fileID: 21300000, guid: 4b801baa2137a184ab941ac4452019c2, type: 3}
+  healthFillArea: {x: 0.11720867208672087, y: 0, width: 0.8306233062330624, height: 1}
+  spiritFillArea: {x: 0.009389671361502348, y: 0, width: 0.9818913480885312, height: 1}
+  menuEyesClosed: {fileID: 21300000, guid: 191465844bd02434b82d46feb96d73c4, type: 3}
+  menuEyesOpen: {fileID: 21300000, guid: 329e1b1292002c345978a06237d2d013, type: 3}
+  logo: {fileID: 0}
+  titleFont: {fileID: 12800000, guid: 7a8f1a2492020b71d9bb0c469f2fcd36, type: 3}
+  bodyFont: {fileID: 12800000, guid: c70b761f7e5011bda908185dbafe3d16, type: 3}
