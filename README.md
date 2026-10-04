@@ -124,6 +124,7 @@ B=/ruta/a/blender   # Blender 4.x
 # props (modelos low-poly con la paleta de Nindō)
 $B -b --python Tools/Blender/build_props.py -- --export [--module props_nature] [--only id1,id2] [--preview]
 # mundo (terreno, agua, límites, vegetación, marcadores)  ~2 min
+python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan (sin Blender)
 $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview]
 # audio (descarga los packs CC0 la primera vez)
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]
