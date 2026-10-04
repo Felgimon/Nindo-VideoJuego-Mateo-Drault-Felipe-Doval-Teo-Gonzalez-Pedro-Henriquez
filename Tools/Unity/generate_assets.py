@@ -551,7 +551,7 @@ def audio_entries():
     for k, v in gen.items():
         sfx.setdefault(k, [])
         sfx[k] = sorted(set(sfx[k] + v)) if k not in ("step",) else sorted(v)
-    vols = {"step": 0.35, "swing": 0.8, "hurt": 0.9, "ui_select": 0.6, "ambient": 0.5}
+    vols = {"swing": 0.8, "hurt": 0.9, "ui_select": 0.6, "hit": 0.9, "clang": 0.85}
     entries = []
     for k in sorted(sfx):
         clips = [g(p) for p in sfx[k] if g(p)]
@@ -563,14 +563,13 @@ def audio_entries():
             continue
         key = os.path.splitext(os.path.basename(p))[0]
         music[key] = [read_guid(p)]
-    # música del equipo
-    if g("Audios/Menu-TheRainInfectsAllWaters.mp3"):
-        music.setdefault("menu", [g("Audios/Menu-TheRainInfectsAllWaters.mp3")])
-    if g("Audios/BackgroundMusic.mp3"):
-        music.setdefault("explore", [g("Audios/BackgroundMusic.mp3")])
+    # "explore" es el tema genérico (fallback de las zonas): reutiliza el del jardín
+    if "explore" not in music and "explore_garden" in music:
+        music["explore"] = music["explore_garden"]
     amb = {}
-    for p in glob.glob(os.path.join(P_AUDIO, "Ambience", "*.wav")):
-        amb[os.path.splitext(os.path.basename(p))[0]] = [read_guid(p)]
+    for p in glob.glob(os.path.join(P_AUDIO, "Ambience", "*.*")):
+        if not p.endswith(".meta"):
+            amb[os.path.splitext(os.path.basename(p))[0]] = [read_guid(p)]
     return entries, music, amb
 
 
@@ -630,7 +629,7 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
 
     sfx, music, amb = audio
     mus_entries = [(k, v, 0.8 if k != "menu" else 0.7, 0, False) for k, v in sorted(music.items())]
-    amb_entries = [(k, v, 0.5, 0, False) for k, v in sorted(amb.items())]
+    amb_entries = [(k, v, 0.45, 0, False) for k, v in sorted(amb.items())]
     eyes_closed = read_guid(A("Sprites/Menunindo.png"))
     eyes_open = read_guid(A("Sprites/Menunindo (1).png"))
     text = f"""%YAML 1.1

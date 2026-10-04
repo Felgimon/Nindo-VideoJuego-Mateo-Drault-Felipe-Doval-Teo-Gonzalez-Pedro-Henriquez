@@ -481,8 +481,8 @@ namespace Nindo
             SaveSystem.Save();
             yield return new WaitForSecondsRealtime(3.5f);
             yield return Cutscene(EndingScene());
+            Game.Audio?.PlayMusic("ending", 3f);
             Game.UI.ShowEnding();
-            Game.Audio?.PlayMusic("menu", 3f);
         }
 
         IEnumerator EndingScene()
@@ -514,13 +514,14 @@ namespace Nindo
         {
             waitingParry = false; waitingDash = false;
             Game.UI.HideTutorial();
+            Game.Audio?.PlayMusic("gameover", 1f, loop: false);
             yield return new WaitForSecondsRealtime(1.4f);
             yield return Game.UI.DeathScreen();
             Game.Time.ClearSlowMotion();
             Game.World.ResetAfterDeath();
             P.RespawnAt(Game.World.RespawnPoint(), Quaternion.identity);
-            Game.Audio?.PlayMusic("explore", 0.5f);
             Zone.ForceRefresh();
+            Game.Audio?.ResumeExplore(1.5f);
             yield return new WaitForSecondsRealtime(0.4f);
             yield return Game.UI.Fade(0f, 1.2f);
             deathRoutine = null;

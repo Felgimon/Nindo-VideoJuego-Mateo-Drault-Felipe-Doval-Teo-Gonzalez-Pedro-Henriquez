@@ -86,24 +86,45 @@ namespace Nindo
         }
 
         // ------------------------------------------------------------------ música
-        public void PlayMusic(string key, float fadeTime = 2f)
+        public void PlayMusic(string key, float fadeTime = 2f, bool loop = true)
         {
             if (key == currentMusic) return;
-            var entry = Game.LoadContent().Music(key);
-            if (entry == null || entry.clips == null || entry.clips.Length == 0)
-            {
-                if (key == "combat" || key == "boss_final") { entry = Game.Content.Music(key == "boss_final" ? "boss" : "explore"); }
-                if (entry == null || entry.clips == null || entry.clips.Length == 0) return;
-            }
+            var entry = FindMusic(key);
+            if (entry == null) return;
             currentMusic = key;
             var clip = entry.clips[Random.Range(0, entry.clips.Length)];
             int next = 1 - musicActive;
             music[next].clip = clip;
+            music[next].loop = loop;
             music[next].time = 0f;
             music[next].Play();
             if (fade != null) StopCoroutine(fade);
             fade = StartCoroutine(Crossfade(musicActive, next, fadeTime, entry.volume));
             musicActive = next;
+        }
+
+        /// <summary>Busca el tema; si falta usa uno parecido (explore_lago → explore, boss_final → boss...).</summary>
+        NindoContent.AudioEntry FindMusic(string key)
+        {
+            var c = Game.LoadContent();
+            string[] chain =
+                key == "boss_final" ? new[] { key, "boss", "combat" } :
+                key == "boss" ? new[] { key, "combat" } :
+                key == "combat" ? new[] { key, "explore" } :
+                key.StartsWith("explore_") ? new[] { key, "explore" } : new[] { key };
+            foreach (var k in chain)
+            {
+                var e = c != null ? c.Music(k) : null;
+                if (e != null && e.clips != null && e.clips.Length > 0) return e;
+            }
+            return null;
+        }
+
+        /// <summary>Vuelve a la música de la zona actual (después de morir o de una cinemática).</summary>
+        public void ResumeExplore(float fadeTime = 2f)
+        {
+            currentMusic = "";
+            PlayMusic(exploreMusic, fadeTime);
         }
 
         public void StopMusic(float fadeTime = 2f)

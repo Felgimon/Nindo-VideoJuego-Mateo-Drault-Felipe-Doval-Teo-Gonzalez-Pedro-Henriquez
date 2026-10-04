@@ -90,39 +90,50 @@ namespace Nindo
         public Font titleFont;
         public Font bodyFont;
 
+        // búsquedas por clave con diccionarios (se arman la primera vez que se usan)
+        System.Collections.Generic.Dictionary<string, CharacterEntry> charMap;
+        System.Collections.Generic.Dictionary<string, GameObject> propMap;
+        System.Collections.Generic.Dictionary<string, AudioEntry> sfxMap, musicMap, ambMap;
+
+        void OnValidate() => ClearCache();
+        void OnEnable() => ClearCache();
+        public void ClearCache() { charMap = null; propMap = null; sfxMap = musicMap = ambMap = null; }
+
+        static System.Collections.Generic.Dictionary<string, T> Map<TE, T>(TE[] arr, Func<TE, string> key, Func<TE, T> val)
+        {
+            var d = new System.Collections.Generic.Dictionary<string, T>();
+            if (arr != null) foreach (var e in arr) if (e != null && !string.IsNullOrEmpty(key(e)) && !d.ContainsKey(key(e))) d[key(e)] = val(e);
+            return d;
+        }
+
         public CharacterEntry Character(string id)
         {
-            if (characters == null) return null;
-            foreach (var c in characters) if (c != null && c.id == id) return c;
-            return null;
+            charMap ??= Map(characters, c => c.id, c => c);
+            return id != null && charMap.TryGetValue(id, out var c) ? c : null;
         }
 
         public GameObject Prop(string id)
         {
-            if (props == null) return null;
-            foreach (var p in props) if (p != null && p.id == id) return p.model;
-            return null;
+            propMap ??= Map(props, p => p.id, p => p.model);
+            return id != null && propMap.TryGetValue(id, out var m) ? m : null;
         }
 
         public AudioEntry Sfx(string key)
         {
-            if (sfx == null) return null;
-            foreach (var a in sfx) if (a != null && a.key == key) return a;
-            return null;
+            sfxMap ??= Map(sfx, a => a.key, a => a);
+            return key != null && sfxMap.TryGetValue(key, out var a) ? a : null;
         }
 
         public AudioEntry Music(string key)
         {
-            if (music == null) return null;
-            foreach (var a in music) if (a != null && a.key == key) return a;
-            return null;
+            musicMap ??= Map(music, a => a.key, a => a);
+            return key != null && musicMap.TryGetValue(key, out var a) ? a : null;
         }
 
         public AudioEntry Ambience(string key)
         {
-            if (ambience == null) return null;
-            foreach (var a in ambience) if (a != null && a.key == key) return a;
-            return null;
+            ambMap ??= Map(ambience, a => a.key, a => a);
+            return key != null && ambMap.TryGetValue(key, out var a) ? a : null;
         }
     }
 }

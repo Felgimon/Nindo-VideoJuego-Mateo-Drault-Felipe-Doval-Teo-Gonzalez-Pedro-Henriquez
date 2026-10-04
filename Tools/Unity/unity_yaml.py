@@ -134,7 +134,7 @@ def audio_meta(stream=False, mono=False):
     preloadAudioData: {0 if stream else 1}
   platformSettingOverrides: {{}}
   forceToMono: {1 if mono else 0}
-  normalize: 1
+  normalize: 0
   loadInBackground: {1 if stream else 0}
   ambisonic: 0
   3D: 1

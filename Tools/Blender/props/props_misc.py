@@ -9,7 +9,7 @@ Special pivots:
 """
 import math
 import bmesh
-from mathutils import Vector, Matrix
+from mathutils import Vector
 
 import nindo_lib as L
 
@@ -307,13 +307,10 @@ def blk(mb, base, size, color, top=None, rot=(0, 0, 0), open_bottom=True, jitter
     return p
 
 
-def shide(mb, x, y, ztop, h=0.26, w=0.07, color="paper", facing=(0, -1, 0)):
+def shide(mb, x, y, ztop, h=0.26, w=0.07, color="paper"):
     """Zigzag paper streamer (shide) hanging from ztop, as a thin closed slab in the XZ plane."""
     s = h / 4.0
-    pts = [(-w / 2, 0), (w / 2, 0), (w / 2, -s), (w * 1.0, -s), (w * 1.0, -2 * s), (w * 0.0, -2 * s),
-           (w * 0.0, -3 * s), (w * 0.5, -3 * s), (w * 0.5, -4 * s), (-w * 0.5, -4 * s), (-w * 0.5, -3 * s),
-           (-w * 1.0, -3 * s), (-w * 1.0, -2 * s), (-w / 2, -2 * s)]
-    # simplify to an 8-point lightning bolt
+    # lightning-bolt zigzag
     pts = [(-w * 0.5, 0.0), (w * 0.5, 0.0), (w * 0.5, -s * 1.3), (w * 1.1, -s * 1.3), (w * 0.2, -s * 4),
            (w * 0.2, -s * 2.5), (-w * 0.5, -s * 2.5)]
     return slab(mb, pts, (x, y + 0.008, ztop), (1, 0, 0), (0, 0, 1), 0.016, color)
@@ -329,7 +326,8 @@ def build_lantern_stone(seed):
           top_color="stone_light")
     lathe(mb, [(0.115, 0.17), (0.105, 0.62), (0.16, 0.67), (0.30, 0.79), (0.31, 0.865), (0.25, 0.88)], n,
           "stone", ["stone", "stone", "stone_dark", "stone_light", "stone_light"], top_color="stone_light")
-    fb = lathe(mb, [(0.22, 0.86), (0.22, 1.30)], n, "stone_light", cap_top=False)
+    fb = lathe(mb, [(0.22, 0.86), (0.22, 1.30)], n, "stone_light", cap_top=True, cap_bottom=True,
+               top_color="stone_dark", bottom_color="stone_dark")
     sides = fb.bands[0]
     fbk = faces_facing(sides, (0, -1, 0), 0.9) + faces_facing(sides, (0, 1, 0), 0.9)
     inset(mb, fbk, 0.03, -0.035, "glow_warm")
@@ -353,14 +351,14 @@ def build_lantern_stone_tall(seed):
     lathe(mb, [(0.47, 0.0), (0.47, 0.15), (0.3, 0.27)], n, "stone", ["stone_dark", "stone"],
           top_color="stone_light", face_color=lambda k, i: "stone_light" if (k == 1 and i % 2 == 0) else None)
     # sao (pillar) with a fushi node
-    lathe(mb, [(0.13, 0.25), (0.13, 1.0), (0.17, 1.07), (0.12, 1.56)], n,
-          "stone", ["stone", "stone_light", "stone"], cap_top=False)
+    lathe(mb, [(0.13, 0.25), (0.155, 1.04), (0.12, 1.56)], n, "stone", ["stone", "stone_light"], cap_top=False)
     # chudai (platform) with lotus flare
     lathe(mb, [(0.12, 1.55), (0.36, 1.69), (0.36, 1.77), (0.27, 1.785)], n, "stone",
-          ["stone", "stone_light", "stone_light"], top_color="stone_light",
+          ["stone", "stone_light", "stone_light"], cap_top=False,
           face_color=lambda k, i: "stone_dark" if (k == 0 and i % 2 == 1) else None)
     # hibukuro (firebox)
-    fb = lathe(mb, [(0.26, 1.765), (0.26, 2.22)], n, "stone_light", cap_top=False)
+    fb = lathe(mb, [(0.26, 1.74), (0.26, 2.22)], n, "stone_light", cap_top=True, cap_bottom=True,
+               top_color="stone_dark", bottom_color="stone_dark")
     sides = fb.bands[0]
     fbk = faces_facing(sides, (0, -1, 0), 0.9) + faces_facing(sides, (0, 1, 0), 0.9)
     inset(mb, fbk, 0.035, -0.04, "glow_warm")
@@ -464,7 +462,7 @@ def build_lantern_string(seed):
     return mb.finish()
 
 
-def fire_cluster(mb, z, r, h, simple_side=True, seed_phase=0.0):
+def fire_cluster(mb, z, r, h, seed_phase=0.0):
     """Chunky faceted fire: main tongue + outer red tongues + bright yellow core tongues."""
     flame(mb, (0, 0, z), r, h, "glow_fire", n=5, lean=(0.03, -0.02), phase=0.3 + seed_phase)
     for k in range(3):
@@ -505,7 +503,7 @@ def build_torch_brazier(seed):
 
 def build_campfire(seed):
     mb = L.MeshBuilder("campfire", seed)
-    lathe(mb, [(0.46, 0.0), (0.36, 0.035), (0.24, 0.045)], 7, "dirt_dark", ["dirt_dark", "black"],
+    lathe(mb, [(0.46, 0.0), (0.36, 0.035), (0.24, 0.045)], 6, "dirt_dark", ["dirt_dark", "black"],
           top_color="glow_fire")
     k = 8
     for i in range(k):
@@ -520,7 +518,6 @@ def build_campfire(seed):
         tip = Vector((math.cos(a) * 0.05, math.sin(a) * 0.05, 0.4))
         tube(mb, [foot - (tip - foot) * 0.1, tip], 0.06, 5, "trunk", cap_color="wood_pale")
     fire_cluster(mb, 0.04, 0.22, 0.76, seed_phase=0.5)
-    spark(mb, (0.1, -0.12, 0.98), 0.03)
     mb.collider_none()
     mb.tag("light_fire")
     mb.set("light_offset", [0.0, 0.0, 0.45])
@@ -817,7 +814,6 @@ def spear(mb, x, y, z0, h, lean=0.0):
     d = (b - a).normalized()
     c = b + d * 0.02
     bar(mb, c - d * 0.06, c + d * 0.02, 0.075, "black")
-    tip = b + d * 0.36
     base = c + d * 0.02
     lathe(mb, [(0.0, 0.0), (0.05, 0.08), (0.0, 0.36)], 4, "iron_light", loc=base,
           rot=(-math.degrees(math.atan2(lean, h)), 0, 0), phase=0.0)
@@ -939,18 +935,17 @@ def build_cart_hand(seed):
     return mb.finish()
 
 
-def barrel_body(mb, loc, rot=(0, 0, 0), r=0.355, h=0.9, hoops=True, lid="wood_light"):
-    prof = [(r * 0.84, 0.0), (r * 0.91, h * 0.08), (r, h * 0.42), (r, h * 0.58), (r * 0.91, h * 0.92),
-            (r * 0.84, h)]
-    cols = ["iron", "wood", "wood", "wood", "iron"] if hoops else ["iron", "wood", "iron", "wood", "iron"]
-    p = lathe(mb, prof, 8, "wood", cols, loc=loc, rot=rot, cap_top=True, cap_bottom=True, top_color=lid,
-              bottom_color=lid, face_color=lambda k, i: "wood_light" if (k in (1, 3) and i % 2 == 0) else None)
+def barrel_body(mb, loc, rot=(0, 0, 0), r=0.355, h=0.9, lid="wood_light"):
+    prof = [(r * 0.84, 0.0), (r * 0.91, h * 0.08), (r, h * 0.5), (r * 0.91, h * 0.92), (r * 0.84, h)]
+    p = lathe(mb, prof, 8, "wood", ["iron", "wood", "wood", "iron"], loc=loc, rot=rot, cap_top=True,
+              cap_bottom=True, top_color=lid, bottom_color=lid,
+              face_color=lambda k, i: "wood_light" if (k in (1, 2) and i % 2 == 0) else None)
     return p
 
 
 def build_barrel(seed):
     mb = L.MeshBuilder("barrel", seed)
-    r, h = 0.34, 0.9
+    r = 0.34
     prof = [(r * 0.85, 0.0), (r * 0.92, 0.08), (r, 0.36), (r, 0.54), (r * 0.92, 0.82), (r * 0.85, 0.9),
             (r * 0.78, 0.9), (r * 0.78, 0.86)]
     lathe(mb, prof, 8, "wood", ["iron", "wood", "wood", "wood", "iron", "wood_dark", "wood_dark"],
@@ -970,13 +965,11 @@ def build_barrel_stack(seed):
     barrel_body(mb, (-0.3, 0.45, r + up), rot=(90, 0, 18), r=r)
     # komodaru: straw-wrapped sake barrel
     x = 0.78
-    lathe(mb, [(0.29, 0.0), (0.33, 0.1), (0.33, 0.52), (0.29, 0.64), (0.25, 0.65)], 8, "straw",
-          ["rope", "straw", "rope", "wood_light"], loc=(x, -0.05, 0), top_color="wood_light",
+    lathe(mb, [(0.29, 0.0), (0.33, 0.1), (0.33, 0.54), (0.27, 0.65)], 8, "straw",
+          ["rope", "straw", "rope"], loc=(x, -0.05, 0), top_color="wood_light",
           face_color=lambda k, i: "thatch" if (k == 1 and i % 2) else None)
-    slab(mb, [(-0.12, 0.0), (0.12, 0.0), (0.12, 0.26), (-0.12, 0.26)], (x, -0.05 - 0.33 * 0.92 + 0.01, 0.17),
+    slab(mb, [(-0.12, 0.0), (0.12, 0.0), (0.12, 0.27), (-0.12, 0.27)], (x, -0.05 - 0.33 * 0.92 + 0.01, 0.17),
          (1, 0, 0), (0, 0, 1), 0.02, "cloth_red", back=False)
-    slab(mb, [(-0.035, 0.0), (0.035, 0.0), (0.035, 0.2), (-0.035, 0.2)], (x, -0.05 - 0.33 * 0.92 - 0.006, 0.2),
-         (1, 0, 0), (0, 0, 1), 0.012, "cloth_white", back=False)
     mb.collider_box((2.0, 0.95, 1.4), (0.0, 0.0, 0.7))
     return mb.finish()
 
@@ -992,6 +985,7 @@ def crate(mb, base, size, rz=0.0, brace=True, stamp=False, frame="wood_light", p
     p.verts = [v for v in p.verts if v.is_valid]
     vis = [f for f in p.faces]
     inset(mb, vis, 0.075 * min(sx, sy, sz) / 0.8, -0.025, panel)
+    p.verts = list({v for f in p.faces for v in f.verts})   # include the new inset verts
     extra = []
     if brace:
         a = math.degrees(math.atan2(sz - 0.12, sx - 0.12))
@@ -1091,8 +1085,7 @@ def build_well(seed):
     bx, by = -0.3, -0.62
     tube(mb, [(-0.13, 0, 1.78), (bx, by, 1.2), (bx, by, 1.18)], 0.025, 3, "rope")
     lathe(mb, [(0.13, 0.9), (0.165, 1.16), (0.14, 1.16), (0.13, 1.0)], 8, "wood_light",
-          ["wood_light", "wood_dark", "wood_dark"], loc=(bx, by, 0), top_color="water_shallow",
-          face_color=lambda k, i: "bamboo_dark" if False else None)
+          ["wood_light", "wood_dark", "wood_dark"], loc=(bx, by, 0), top_color="water_shallow")
     lathe(mb, [(0.15, 0.94), (0.15, 0.99)], 8, "bamboo_dark", loc=(bx, by, 0), cap_top=False)
     lathe(mb, [(0.163, 1.08), (0.163, 1.12)], 8, "bamboo_dark", loc=(bx, by, 0), cap_top=False)
     mb.box((bx, by, 1.2), (0.36, 0.05, 0.05), "wood")
@@ -1139,6 +1132,332 @@ def build_signpost(seed):
     return mb.finish()
 
 
+
+# =====================================================================================
+#  LAKE / MISC DRESSING
+# =====================================================================================
+def build_boat_small(seed):
+    mb = L.MeshBuilder("boat_small", seed)
+    # stations along Y (bow at -Y):  y, half-width, gunwale z, keel z
+    st = [(-2.1, 0.03, 0.68, 0.34), (-1.72, 0.32, 0.5, 0.02), (-1.0, 0.57, 0.38, -0.15),
+          (-0.2, 0.66, 0.34, -0.2), (0.6, 0.64, 0.35, -0.2), (1.4, 0.56, 0.4, -0.15), (2.05, 0.47, 0.46, -0.07)]
+    t = 0.055
+    rings = []
+    for (y, w, zg, zk) in st:
+        wc = w * 0.72
+        zc = zk + 0.07
+        wi = max(w - t, 0.008)
+        wci = max(wc - t, 0.006)
+        zf = min(zk + 0.12, zg - 0.05)
+        rings.append([(-w, y, zg), (-wc, y, zc), (0, y, zk), (wc, y, zc), (w, y, zg),
+                      (wi, y, zg), (wci, y, zf + 0.02), (0, y, zf), (-wci, y, zf + 0.02), (-wi, y, zg)])
+    cols = {0: "wood", 1: "wood_dark", 2: "wood_dark", 3: "wood", 4: "wood_black",
+            5: "wood_light", 6: "wood_pale", 7: "wood_pale", 8: "wood_light", 9: "wood_black"}
+    skin(mb, rings, "wood", cap_top=True, cap_bottom=True, top_color="wood",
+         bottom_color="wood_dark", face_color=lambda k, i: cols[i])
+    # thwarts
+    for (y, w, zg) in ((-0.75, 0.55, 0.36), (0.85, 0.57, 0.36)):
+        mb.box((0, y, zg - 0.06), (2 * w - 0.06, 0.2, 0.05), "wood_light")
+    # oar resting across the boat
+    oar = [mb.box((0, 0, 0), (0.05, 2.1, 0.05), "wood_light"),
+           mb.box((0, 1.2, 0), (0.18, 0.5, 0.035), "wood")]
+    rotate_parts(oar, (0, 0, 0), (6, 0, -12))
+    for q in oar:
+        q.transform(loc=(0.12, 0.1, 0.42))
+    # lantern pole at the stern
+    px, py = -0.32, 1.72
+    blk(mb, (px, py, -0.02), (0.07, 0.07, 1.55), "wood_dark", open_bottom=False)
+    mb.box((px + 0.22, py, 1.5), (0.5, 0.06, 0.06), "wood_dark")
+    mb.box((px + 0.42, py, 1.45), (0.03, 0.03, 0.1), "black")
+    lx, lz = px + 0.42, 1.4
+    lathe(mb, [(0.07, lz - 0.32), (0.13, lz - 0.26), (0.13, lz - 0.07), (0.07, lz)], 6, "black",
+          ["black", "glow_warm", "black"], loc=(lx, py, 0), top_color="black", bottom_color="black",
+          cap_bottom=True)
+    # coiled rope on the floor
+    lathe(mb, [(0.16, -0.04), (0.16, 0.0), (0.08, 0.01)], 6, "rope", ["rope", "rope"], loc=(0.25, -1.25, 0),
+          top_color="thatch_dark")
+    mb.collider_box((1.35, 4.2, 0.8), (0.0, 0.0, 0.2))
+    mb.tag("light_warm")
+    mb.set("light_offset", [lx, py, lz - 0.17])
+    return mb.finish()
+
+
+def build_net_rack(seed):
+    mb = L.MeshBuilder("net_rack", seed)
+    for sx in (-1, 1):
+        blk(mb, (sx * 1.18, 0, 0), (0.1, 0.1, 1.86), "wood_grey", top="wood")
+        bar(mb, (sx * 1.18, 0.4, 0.0), (sx * 1.18, 0.02, 1.5), 0.07, "wood_grey")
+    tube(mb, [(-1.32, 0, 1.82), (1.32, 0, 1.82)], 0.05, 6, "bamboo_dry", cap_color="bamboo_dark")
+    tube(mb, [(-1.3, 0.06, 1.22), (1.3, 0.06, 1.22)], 0.04, 5, "bamboo_dry", cap_color="bamboo_dark")
+    # fishing net draped over the top pole: gathered towards the bottom, deep folds in two shades
+    def net(x0, x1, y, ztop, zbot, gather, n=6, amp=0.05, dy=0.03):
+        rings = []
+        for (z, g) in ((ztop, 1.0), (zbot, gather)):
+            cx = (x0 + x1) / 2
+            hw = (x1 - x0) / 2 * g
+            front = [(cx - hw + 2 * hw * i / n, y + (amp if i % 2 else -amp) * (0.6 + 0.4 * g), z)
+                     for i in range(n + 1)]
+            back = [(x, yy + dy * (1 if y > 0 else -1) * -1, z) for x, yy, _ in reversed(front)]
+            rings.append(front + back)
+        part = skin(mb, rings, "clay_dark", cap_top=True, cap_bottom=True, top_color="rope",
+                    bottom_color="rock_brown_dark",
+                    face_color=lambda k, i: "rock_brown_dark" if i % 2 else None)
+        return part
+    net(-1.08, 0.12, -0.08, 1.8, 0.62, 0.72)
+    net(-1.02, 0.02, 0.08, 1.8, 1.05, 0.85)
+    for i, x in enumerate((-0.82, -0.47, -0.12)):
+        spark(mb, (x, -0.13, 0.62), 0.065, "wood_pale" if i % 2 else "copper_green")
+    # dried fish hanging from the lower pole
+    for i, x in enumerate((0.3, 0.52, 0.74, 0.96, 1.15)):
+        z = 1.2 - 0.02
+        lathe(mb, [(0.0, z - 0.36), (0.06, z - 0.31), (0.07, z - 0.14), (0.0, z)], 4, "iron_light",
+              ["stone_light", "iron_light", "iron_light"], loc=(x, 0.06, 0), scale=(1.0, 0.4, 1.0), phase=0.0,
+              cap_top=False)
+    mb.collider_box((2.5, 0.6, 1.9))
+    return mb.finish()
+
+
+def build_bench_wood(seed):
+    mb = L.MeshBuilder("bench_wood", seed)
+    mb.box((0, 0, 0.46), (1.6, 0.38, 0.08), "wood_light").jitter(0.012)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            bar(mb, (sx * 0.62, sy * 0.1, 0.44), (sx * 0.72, sy * 0.17, 0.0), 0.075, "wood")
+    mb.box((0, 0, 0.2), (1.3, 0.06, 0.06), "wood_dark")
+    for sx in (-1, 1):
+        mb.box((sx * 0.62, 0, 0.36), (0.08, 0.36, 0.07), "wood_dark")
+    # a little tea cup left on the bench
+    lathe(mb, [(0.04, 0.5), (0.06, 0.58)], 6, "cloth_white", loc=(0.55, -0.02, 0), top_color="tatami_edge")
+    mb.collider_box((1.6, 0.45, 0.5))
+    return mb.finish()
+
+
+def build_temple_bell(seed):
+    mb = L.MeshBuilder("temple_bell", seed)
+    px, py = 0.85, 0.7
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            blk(mb, (sx * px, sy * py, 0), (0.32, 0.32, 0.16), "stone", top="stone_light").jitter(0.01)
+            blk(mb, (sx * px, sy * py, 0.12), (0.15, 0.15, 2.48), "wood_red", top="wood_red_dark")
+            mb.box((sx * px, sy * py, 2.6), (0.26, 0.26, 0.1), "wood_dark")
+    for sy in (-1, 1):
+        mb.box((0, sy * py, 2.45), (2.0, 0.13, 0.16), "wood_dark")
+        mb.box((0, sy * py, 0.42), (1.84, 0.1, 0.1), "wood_red_dark")
+    for sx in (-1, 1):
+        mb.box((sx * px, 0, 2.45), (0.13, 1.62, 0.16), "wood_dark")
+    mb.box((0, 0, 2.5), (1.86, 0.18, 0.18), "wood")
+    # tiled roof
+    gable_roof(mb, 0, 0, 2.62, 2.55, 2.25, 0.55, 0.1, "tile_dark", nx=3, sag=0.06, upturn=0.14,
+               under_color="wood_dark", edge_color="tile_light")
+    mb.box((0, 0, 3.15), (2.65, 0.2, 0.14), "tile_light")
+    for sx in (-1, 1):
+        mb.box((sx * 1.3, 0, 3.22), (0.12, 0.24, 0.24), "tile_light", rot=(0, sx * -20, 0))
+    # bronze bell
+    prof = [(0.45, 0.95), (0.47, 1.05), (0.41, 1.13), (0.4, 1.5), (0.38, 1.86), (0.3, 1.99), (0.14, 2.05),
+            (0.0, 2.06)]
+    lathe(mb, prof, 12, "copper_green", ["gold", "gold_dark", "copper_green", "copper_green", "copper_green",
+                                         "copper_green", "copper_green"], cap_top=False, cap_bottom=True,
+          bottom_color="black",
+          face_color=lambda k, i: ("gold_dark" if (k == 2 and i % 3 == 0) else
+                                   ("gold" if (k == 4 and i % 2 == 0) else None)))
+    # striking pad
+    slab(mb, octa_pts(0.0, 0.0, 0.1, 8), (0, -0.395, 1.3), (1, 0, 0), (0, 0, 1), 0.03, "gold", back=False)
+    # ryuzu loop on top + hanger
+    tube(mb, [(-0.1, 0, 2.03), (-0.1, 0, 2.17), (0.0, 0, 2.24), (0.1, 0, 2.17), (0.1, 0, 2.03)], 0.04, 4,
+         "gold_dark", cap=False)
+    mb.box((0, 0, 2.33), (0.06, 0.06, 0.24), "iron")
+    # shumoku striker hanging from the front beam
+    tube(mb, [(0, -0.48, 1.28), (0, -1.62, 1.28)], 0.105, 6, "wood_light", cap_color="wood_pale")
+    for x in (-0.1, 0.1):
+        tube(mb, [(x * 1.6, -py, 2.38), (x * 0.4, -0.85, 1.35)], 0.022, 3, "rope", cap=False)
+    tube(mb, [(0, -1.6, 1.25), (0.05, -1.75, 0.95), (0.03, -1.78, 0.62)], 0.025, 3, "cloth_red", cap=True)
+    mb.collider_box((2.0, 1.7, 3.2))
+    return mb.finish()
+
+
+def build_banner_nobori(seed):
+    mb = L.MeshBuilder("banner_nobori", seed)
+    blk(mb, (0, 0, 0), (0.36, 0.36, 0.18), "stone", top="stone_light").jitter(0.01)
+    lathe(mb, [(0.05, 0.12), (0.042, 3.96)], 6, "wood_black", cap_top=True)
+    spark(mb, (0, 0, 4.02), 0.06, "gold")
+    mb.box((0.36, 0, 3.82), (0.72, 0.045, 0.045), "wood_black")
+    # cloth panel: subdivided slab so it can flutter (fixed at the pole edge and the top bar)
+    x0, x1, zt, zb, th = 0.07, 0.67, 3.78, 1.58, 0.012
+    xs = [x0, (x0 + x1) / 2, x1]
+    rows = [zt - (zt - zb) * (i / 6) for i in range(7)]
+    rings = []
+    for z in rows:
+        rings.append([(xs[0], -th, z), (xs[1], -th, z), (xs[2], -th, z), (xs[2], th, z), (xs[1], th, z),
+                      (xs[0], th, z)])
+    cloth = skin(mb, list(reversed(rings)), "cloth_red", cap_top=True, cap_bottom=True, slot=L.SLOT_FOLIAGE)
+    # white circle emblem on both faces
+    cx, cz, r = (x0 + x1) / 2, 3.12, 0.2
+    disc_f = slab(mb, octa_pts(cx, cz, r, 10), (0, -th + 0.002, 0), (1, 0, 0), (0, 0, 1), 0.006, "cloth_white",
+                  back=False, slot=L.SLOT_FOLIAGE)
+    disc_b = slab(mb, [(-x, z) for x, z in octa_pts(cx, cz, r, 10)], (0, th - 0.002, 0), (-1, 0, 0), (0, 0, 1),
+                  0.006, "cloth_white", back=False, slot=L.SLOT_FOLIAGE)
+    # sway weight: 0 along the pole edge and the top bar, 1 at the free bottom corner
+    cl = mb.col
+    for part in (cloth, disc_f, disc_b):
+        for f in part.faces:
+            for l in f.loops:
+                u = max(0.0, min(1.0, (l.vert.co.x - x0) / (x1 - x0)))
+                v = max(0.0, min(1.0, (zt - l.vert.co.z) / (zt - zb)))
+                w = (u ** 0.8) * (v ** 0.6)
+                c = l[cl]
+                l[cl] = (w, c[1], c[2], 1.0)
+    # loops tying the cloth to the pole
+    for z in (3.6, 2.85, 2.1):
+        mb.box((0.05, 0, z), (0.07, 0.1, 0.07), "cloth_white")
+    mb.collider_capsule(0.15, 4.0)
+    return mb.finish()
+
+
+def build_firewood_stack(seed):
+    mb = L.MeshBuilder("firewood_stack", seed)
+    for sx in (-1, 1):
+        blk(mb, (sx * 0.82, 0, 0), (0.08, 0.08, 1.0), "wood_dark", top="wood")
+    for sy in (-1, 1):
+        mb.box((0, sy * 0.15, 0.04), (1.6, 0.09, 0.08), "trunk")
+    rows = [(7, 0.16), (7, 0.35), (6, 0.54), (4, 0.72)]
+    k = 0
+    for ri, (cnt, z) in enumerate(rows):
+        w = 1.56 / 7
+        x0 = -w * (cnt - 1) / 2
+        for i in range(cnt):
+            k += 1
+            x = x0 + w * i + (w * 0.25 if ri % 2 else 0) * (1 if i % 2 else -1) * 0.3
+            n = 3 if (k % 3) else 5
+            r = 0.115 if n == 3 else 0.1
+            a = mb.rng.uniform(0, TAU)
+            lathe(mb, [(r, -0.23 + mb.rng.uniform(-0.03, 0.03)), (r, 0.23 + mb.rng.uniform(-0.03, 0.03))], n,
+                  "trunk" if k % 4 else "wood", rot=(90, 0, 0), loc=(x, 0, z), phase=a, cap_top=True,
+                  cap_bottom=True, top_color="wood_pale" if k % 2 else "wood_light",
+                  bottom_color="wood_light" if k % 2 else "wood_pale")
+    mb.collider_box((1.7, 0.5, 1.0))
+    return mb.finish()
+
+
+def build_pottery_jars(seed):
+    mb = L.MeshBuilder("pottery_jars", seed)
+    lathe(mb, [(0.2, 0.0), (0.31, 0.16), (0.34, 0.4), (0.27, 0.64), (0.16, 0.74), (0.18, 0.8), (0.14, 0.8),
+               (0.12, 0.74)], 8, "clay", ["clay_dark", "clay", "clay", "rope", "clay", "clay_dark", "black"],
+          loc=(-0.3, 0.1, 0), top_color="black")
+    lathe(mb, [(0.15, 0.0), (0.23, 0.13), (0.24, 0.33), (0.16, 0.47), (0.17, 0.51)], 7, "clay_dark",
+          ["clay_dark", "clay_dark", "clay", "clay"], loc=(0.28, 0.18, 0), cap_top=False)
+    lathe(mb, [(0.19, 0.5), (0.19, 0.55), (0.0, 0.6)], 7, "wood", ["wood_dark", "wood"], loc=(0.28, 0.18, 0))
+    mb.box((0.28, 0.18, 0.62), (0.05, 0.05, 0.05), "wood_dark")
+    lathe(mb, [(0.1, -0.15), (0.15, -0.07), (0.15, 0.06), (0.08, 0.13), (0.09, 0.16), (0.07, 0.16)], 6, "clay",
+          ["clay", "clay", "clay_dark", "clay", "black"], loc=(0.12, -0.36, 0.15), rot=(80, 0, 25),
+          cap_bottom=True, top_color="black", bottom_color="clay_dark")
+    mb.collider_box((1.0, 0.95, 0.8))
+    return mb.finish()
+
+
+def build_sake_table(seed):
+    mb = L.MeshBuilder("sake_table", seed)
+    mb.box((0, 0, 0.305), (0.84, 0.52, 0.05), "wood_red").color_faces(
+        lambda f: "wood_red_dark" if abs(f.normal.z) < 0.5 else None)
+    for sx in (-1, 1):
+        blk(mb, (sx * 0.34, 0, 0), (0.06, 0.44, 0.29), "wood_black")
+    # tokkuri bottle + cups
+    lathe(mb, [(0.06, 0.33), (0.095, 0.4), (0.1, 0.5), (0.045, 0.59), (0.035, 0.65), (0.05, 0.68)], 6,
+          "white", ["white", "cloth_indigo", "white", "white", "white"], loc=(-0.2, 0.06, 0), top_color="black")
+    for (x, y) in ((-0.02, -0.12), (0.1, 0.1)):
+        lathe(mb, [(0.035, 0.33), (0.055, 0.39)], 6, "white", loc=(x, y, 0), top_color="water_foam")
+    # plate of onigiri
+    lathe(mb, [(0.1, 0.33), (0.14, 0.35)], 6, "clay_dark", loc=(0.22, -0.04, 0), top_color="clay")
+    for (dx, a) in ((-0.045, -8), (0.05, 10)):
+        tri = [(-0.055, 0.0), (0.055, 0.0), (0.04, 0.05), (0.0, 0.1), (-0.04, 0.05)]
+        p = slab(mb, tri, (0, 0.03, 0), (1, 0, 0), (0, 0, 1), 0.06, "white")
+        q = slab(mb, [(-0.035, -0.003), (0.035, -0.003), (0.035, 0.04), (-0.035, 0.04)], (0, -0.034, 0),
+                 (1, 0, 0), (0, 0, 1), 0.07, "black", back=True)
+        for part in (p, q):
+            part.transform(rot=(0, 0, a))
+            part.transform(loc=(0.22 + dx, -0.04, 0.35))
+    # zabuton cushions
+    for sx, c in ((-1, "cloth_indigo"), (1, "cloth_purple")):
+        cu = blk(mb, (sx * 0.78, 0.0, 0.0), (0.55, 0.52, 0.08), c, rot=(0, 0, sx * 6))
+        for f in cu.faces:
+            f.normal_update()
+        top = [f for f in cu.faces if f.normal.z > 0.9]
+        bmesh.ops.inset_individual(mb.bm, faces=top, thickness=0.1, depth=0.035)
+    mb.collider_none()
+    return mb.finish()
+
+
+def build_grave_stone(seed):
+    mb = L.MeshBuilder("grave_stone", seed)
+    blk(mb, (0, 0, 0), (0.42, 0.38, 0.12), "stone_dark", top="stone_moss").jitter(0.01)
+    sy = 0.82
+    lathe(mb, [(0.15, 0.1), (0.175, 0.22), (0.16, 0.42), (0.115, 0.52)], 8, "stone",
+          ["stone", "stone", "stone"], scale=(1, sy, 1), top_color="stone",
+          face_color=lambda k, i: "stone_moss" if (k == 0 and i in (1, 2, 5)) else None)
+    lathe(mb, [(0.08, 0.49), (0.125, 0.56), (0.125, 0.67), (0.07, 0.76), (0.0, 0.79)], 8, "stone_light",
+          ["stone_light", "stone_light", "stone_moss", "moss"])
+    # red bib + collar
+    lathe(mb, [(0.135, 0.47), (0.12, 0.53)], 8, "cloth_red", scale=(1, sy, 1), cap_top=False)
+    bib = [(-0.12, 0.0), (0.12, 0.0), (0.1, -0.12), (0.0, -0.17), (-0.1, -0.12)]
+    p = slab(mb, bib, (0, -0.13 * sy + 0.005, 0.52), (1, 0, 0), (0, 0, 1), 0.025, "cloth_red", back=True)
+    p.transform(loc=(0, 0.13 * sy, -0.52))
+    p.transform(rot=(-12, 0, 0))
+    p.transform(loc=(0, -0.13 * sy - 0.01, 0.52))
+    # serene closed eyes
+    fy = -0.125 * math.cos(math.pi / 8) + 0.004
+    ink(mb, (0, fy, 0.625), (1, 0, 0), (0, 0, 1), [(-0.07, 0.0, -0.025, 0.014), (0.025, 0.0, 0.07, 0.014)],
+        depth=0.006)
+    # offering cup
+    lathe(mb, [(0.04, 0.12), (0.055, 0.17)], 6, "clay", loc=(0.0, -0.26, 0), top_color="water_shallow")
+    mb.collider_capsule(0.25, 0.8)
+    return mb.finish()
+
+
+def build_stepping_stones(seed):
+    mb = L.MeshBuilder("stepping_stones", seed)
+    for k in range(5):
+        y = -1.75 + 3.5 * k / 4
+        x = 0.38 * math.sin(y * 0.95)
+        r = 0.3 + 0.04 * ((k * 7) % 3) - 0.03
+        n = 7
+        ph = mb.rng.uniform(0, TAU)
+        bot, top = [], []
+        for i in range(n):
+            a = ph + TAU * i / n + mb.rng.uniform(-0.18, 0.18)
+            rr = r * mb.rng.uniform(0.82, 1.12)
+            sx, sy_ = (1.15, 0.9) if k % 2 else (0.95, 1.1)
+            bot.append((x + rr * math.cos(a) * sx, y + rr * math.sin(a) * sy_, 0.0))
+            top.append((x + rr * 0.86 * math.cos(a) * sx, y + rr * 0.86 * math.sin(a) * sy_,
+                        0.075 + mb.rng.uniform(-0.006, 0.006)))
+        moss = (k % 2 == 0)
+        skin(mb, [bot, top], "stone", cap_top=True, top_color="stone_light" if k % 2 else "stone",
+             face_color=lambda kk, i, moss=moss: "stone_moss" if (moss and i in (1, 2)) else None)
+    mb.collider_none()
+    return mb.finish()
+
+
+def build_rope_barrier(seed):
+    mb = L.MeshBuilder("rope_barrier", seed)
+    X, zr, sag = 1.45, 1.14, 0.28
+    for sx in (-1, 1):
+        rock(mb, (sx * X, 0, 0), 0.2, 0.12, "stone_dark", top_color="stone", n=5)
+        lathe(mb, [(0.075, 0.0), (0.07, 1.32), (0.0, 1.44)], 6, "wood_pale", ["wood_pale", "wood_light"],
+              loc=(sx * X, 0, 0))
+        lathe(mb, [(0.088, zr - 0.06), (0.088, zr + 0.05)], 6, "straw", loc=(sx * X, 0, 0), cap_top=False)
+    shimenawa(mb, (-X + 0.04, 0, zr), (X - 0.04, 0, zr), sag, 0.11, segs=10, sides=5)
+
+    def rope_z(x):
+        t = (x + X) / (2 * X)
+        return zr - sag * 4 * t * (1 - t)
+    for x in (-0.78, 0.0, 0.78):
+        shide(mb, x, 0.0, rope_z(x) - 0.04, h=0.34, w=0.1)
+    for x in (-0.4, 0.4):
+        z = rope_z(x) - 0.04
+        lathe(mb, [(0.0, z - 0.2), (0.055, z)], 4, "straw", loc=(x, 0, 0), cap_top=True, top_color="thatch")
+    mb.collider_box((3.0, 0.3, 1.4))
+    mb.tag("nonstatic")
+    return mb.finish()
+
+
 PROPS = {
     "lantern_stone": build_lantern_stone,
     "lantern_stone_tall": build_lantern_stone_tall,
@@ -1166,4 +1485,15 @@ PROPS = {
     "hay_bale": build_hay_bale,
     "well": build_well,
     "signpost": build_signpost,
+    "boat_small": build_boat_small,
+    "net_rack": build_net_rack,
+    "bench_wood": build_bench_wood,
+    "temple_bell": build_temple_bell,
+    "banner_nobori": build_banner_nobori,
+    "firewood_stack": build_firewood_stack,
+    "pottery_jars": build_pottery_jars,
+    "sake_table": build_sake_table,
+    "grave_stone": build_grave_stone,
+    "stepping_stones": build_stepping_stones,
+    "rope_barrier": build_rope_barrier,
 }

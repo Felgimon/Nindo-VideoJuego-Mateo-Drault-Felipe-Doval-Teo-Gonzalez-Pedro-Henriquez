@@ -62,7 +62,8 @@ def rbox(mb, loc, size, color, rz=0.0, rx=0.0, ry=0.0, **kw):
 
 def loft_dd(mb, rings, color, cap_start=False, cap_end=False, closed=True, slot=None, eps=1e-4, skip_seg=None):
     """Loft that de-duplicates coincident points (rings may collapse to lines/points).
-    Returns (part, faces_by_band) where faces_by_band[i] lists (face, seg_index)."""
+    Returns (part, bands, caps): bands[i] lists (face, seg_index) between ring i and
+    i+1, caps lists the cap faces.  skip_seg omits one segment (a hidden face)."""
     bm = mb.bm
     cache = {}
 
@@ -155,10 +156,6 @@ def stone_slab(mb, x, y, z_top, rx, ry, h, color="stone", sides=7, rz=0.0, jit=0
     return p
 
 
-def footing(mb, x, y, z_top, r=0.17, color="stone"):
-    return mb.prism((x, y, -0.02), r, z_top + 0.02, 6, color, radius_top=r * 0.8, base=False)
-
-
 def frange(a, b, n):
     """n+1 evenly spaced values from a to b."""
     return [a + (b - a) * i / n for i in range(n + 1)]
@@ -172,6 +169,7 @@ class Facade:
 
     def __init__(self, mb, axis, plane, sign):
         self.mb, self.axis, self.plane, self.sign = mb, axis, plane, sign
+        self._k = 0
 
     def p(self, u, v, w):
         if self.axis == 'x':
@@ -179,9 +177,14 @@ class Facade:
         return (self.plane + self.sign * w, u, v)
 
     def box(self, u0, u1, v0, v1, w0, w1, color, back=False, **kw):
+        drop = () if (back or w0 > -0.005) else (('-' if self.sign > 0 else '+') + ('y' if self.axis == 'x' else 'x'),)
+        if drop:
+            # open-backed boxes must not share rim vertices with each other (the lib's
+            # merge pass would weld them into one mixed shell): unique hidden depth.
+            self._k += 1
+            w0 -= 0.0013 * (1 + self._k % 11)
         a = self.p(u0, v0, w0)
         b = self.p(u1, v1, w1)
-        drop = () if (back or w0 > -0.005) else (('-' if self.sign > 0 else '+') + ('y' if self.axis == 'x' else 'x'),)
         return bx(self.mb, a[0], b[0], a[1], b[1], a[2], b[2], color, drop=drop, **kw)
 
     def window(self, uc, v0, v1, width, bars=4, frame="wood_dark", bar="wood_dark",
@@ -410,7 +413,7 @@ class Roof:
         return part
 
     def ribs(self, mb, color, spacing=0.5, w=0.17, h=0.075, segs=3, sink=0.05, margin=0.15,
-             sides=(0, 1, 2, 3), eave_ext=0.06, end_color=None):
+             sides=(0, 1, 2, 3), eave_ext=0.06, d_max=None):
         """Raised tile ribs running down every slope, clipped at the hips."""
         sec = [(-w / 2, -sink), (w / 2, -sink), (0.0, h)]
         for k in sides:
@@ -426,6 +429,8 @@ class Roof:
                     dend = (self.D - margin) if abs(c) <= self.xg else (self.W - abs(c) - margin * 0.6)
                 else:
                     dend = min(self.D - abs(c) - margin * 0.6, self.dg - margin * 0.3)
+                if d_max is not None:
+                    dend = min(dend, d_max - 0.05)
                 if dend < 0.3:
                     continue
                 pts = []
@@ -440,7 +445,7 @@ class Roof:
                         x, y = sgn * (self.W - d), c
                         z = self.z(sgn * (self.W - dd), c)
                     pts.append((self.cx + x, self.cy + y, z))
-                tube(mb, pts, sec, color, skip_seg=0)
+                tube(mb, pts, sec, color)
 
     def hip_lines(self):
         """Polylines (local) for the 4 corner ridges: ridge end -> verge -> hip -> eave."""
@@ -562,7 +567,7 @@ class ProfileRoof:
         cnt = max(1, int(span / spacing) + 1)
         for k in range(cnt):
             a = self.a0 + inset + (span * k / (cnt - 1) if cnt > 1 else span / 2)
-            tube(mb, [self.P(a, s, z) for (s, z) in path], sec, color, skip_seg=0)
+            tube(mb, [self.P(a, s, z) for (s, z) in path], sec, color)
 
     def ridge(self, mb, color, w=0.3, h=0.3, ext=0.05, band=None):
         """Main ridge box over the highest profile point (+ optional white mortar band)."""
@@ -584,14 +589,21 @@ class ProfileRoof:
 
 
 # ============================================================== small props
+def lathe(mb, x, y, prof, sides, color, phase=0.0):
+    """Closed solid of revolution from a (radius, z) profile (bottom -> top)."""
+    rings = [L.ring(x, y, z, max(r, 1e-4), sides, phase) for (r, z) in prof]
+    p, _, _ = loft_dd(mb, rings, color, cap_start=True, cap_end=True)
+    return p
+
+
 def hanging_lantern(mb, x, y, z_top, h=0.5, r=0.19, glow="glow_warm", cap="wood_black", cord=0.25):
-    bx(mb, x - 0.025, x + 0.025, y - 0.025, y + 0.025, z_top - cord, z_top + 0.05, cap)
-    zt = z_top - cord
-    mb.prism((x, y, zt - 0.06), r * 0.75, 0.06, 6, cap)
-    mb.prism((x, y, zt - 0.06 - h * 0.15), r * 0.82, h * 0.15, 8, glow, radius_top=r * 0.75)
-    mb.prism((x, y, zt - 0.06 - h * 0.85), r, h * 0.7, 8, glow)
-    mb.prism((x, y, zt - 0.06 - h), r * 0.82, h * 0.15, 8, glow, radius_top=r)
-    mb.prism((x, y, zt - 0.12 - h), r * 0.75, 0.06, 6, cap)
+    bx(mb, x - 0.025, x + 0.025, y - 0.025, y + 0.025, z_top - cord - 0.02, z_top + 0.05, cap)
+    zt = z_top - cord          # top of the lantern (cap)
+    z1 = zt - 0.06             # top of the paper body
+    z0 = z1 - h                # bottom of the paper body
+    lathe(mb, x, y, [(r * 0.78, z0), (r, z0 + h * 0.18), (r, z1 - h * 0.18), (r * 0.78, z1)], 8, glow)
+    mb.prism((x, y, z1 - 0.012), r * 0.72, 0.072, 6, cap)
+    mb.prism((x, y, z0 - 0.06), r * 0.72, 0.072, 6, cap)
 
 
 def barrel(mb, x, y, r=0.34, h=0.75, top="water_deep"):
@@ -638,7 +650,6 @@ def thatch_ridge(mb, roof, color="thatch_dark", strap="wood_dark", straps=5, w=0
     sec = [(-w, -0.4), (w, -0.4), (w * 0.85, h * 0.45), (w * 0.4, h), (-w * 0.4, h), (-w * 0.85, h * 0.45)]
     tube(mb, [(roof.cx + x0, roof.cy, zr), (roof.cx + x1, roof.cy, zr)], sec, color)
     for x in frange(x0 + 0.35, x1 - 0.35, max(1, straps - 1)):
-        secs = [(-0.08, -0.3), (0.08, -0.3), (0.08, h + 0.05), (-0.08, h + 0.05)]
         bx(mb, roof.cx + x - 0.08, roof.cx + x + 0.08, roof.cy - w * 0.9, roof.cy + w * 0.9,
            zr + h * 0.3, zr + h + 0.06, strap)
         for s in (-1, 1):
@@ -757,7 +768,7 @@ def build_house_farmer_a(seed):
     back.window(0.6, 1.25, 1.8, 1.0, bars=5)
     left.window(0.0, 1.3, 1.75, 0.6, bars=3)
     # thatched hip roof
-    roof = Roof(W=3.5, D=2.5, ze=2.8, H=1.5, xg=1.15, curve=-0.05, lift=0.1, steps=[(0.85, 0.18)], nlev=3,
+    roof = Roof(W=3.5, D=2.5, ze=2.8, H=1.33, xg=1.15, curve=-0.05, lift=0.1, steps=[(0.85, 0.18)], nlev=3,
                 frL=[0.0, 0.1, 0.3, 0.5, 0.7, 0.9], frS=[0.0, 0.15, 0.5, 0.85])
     rp = roof.build(mb, "thatch", "thatch_dark", "thatch_dark", gable="wood_dark", thick=0.5, bevel=0.08,
                     nose=[(-0.06, -0.25)], step_nose=0.06, top2="thatch_light")
@@ -808,7 +819,7 @@ def build_house_farmer_b(seed):
     xs = frange(X0 - 0.45 + 0.21, X1 + 0.3 - 0.21, 11)
     for sgn in (-1, 1):
         for i, x in enumerate(xs):
-            col = rng.choice(("wood_grey", "wood_grey", "stone_warm", "wood_grey", "wood_light"))
+            col = rng.choice(("wood_grey", "wood_grey", "wood_grey", "stone_warm", "wood"))
             e = rng.uniform(-0.08, 0.06)
             a = (x, sgn * (2.5 + e), 2.62 + 0.035 - e * 0.46)
             b = (x, sgn * 0.02, 2.62 + 1.15 + 0.035)
@@ -861,7 +872,7 @@ def tile_irimoya(mb, roof, rib_spacing=0.5, segs=2, slab="tile_dark", rib="tile_
                  hip_w=0.24, d_top=None, ridge_h=0.34, rafters=None):
     roof.build(mb, slab, "wood_dark", under, gable=gable, thick=thick, d_top=d_top,
                cap_col=slab, nose=[(-0.05, -thick * 0.45)])
-    roof.ribs(mb, rib, spacing=rib_spacing, segs=segs)
+    roof.ribs(mb, rib, spacing=rib_spacing, segs=segs, d_max=d_top)
     if d_top is None:
         roof.ridges(mb, ridge, w=0.34, h=ridge_h, hip_w=hip_w, hip_h=0.2, oni=oni)
         if band:
@@ -1288,7 +1299,7 @@ def build_dojo_gate(seed):
     # threshold + door stops
     bx(mb, -OW, OW, -0.12, 0.12, -0.02, 0.08, "wood_dark")
     for s in (-1, 1):
-        bx(mb, s * OW - 0.04, s * (OW + 0.3), -0.3, 0.3, 0.0, OH, "wood_red_dark")
+        bx(mb, s * OW, s * (OW + 0.3), -0.3, 0.3, 0.0, OH, "wood_red_dark")
     # --- lower roof (truncated hip with up-turned corners)
     DT = 1.25
     low = Roof(W=5.3, D=2.55, ze=6.72, H=1.25, curve=0.35, lift=0.45, lift_len=2.4, flare=0.18, nlev=2,
@@ -1470,7 +1481,7 @@ def build_wall_gate(seed):
         bx(mb, x_in + s * 0.25, x_out, D0 + 0.0, D0 + 0.2, 2.7, 2.88, "wood_dark")
         bx(mb, x_in + s * 0.25, x_out, D1 - 0.2, D1 - 0.0, 2.7, 2.88, "wood_dark")
         # door stop posts
-        bx(mb, s * OW - 0.05, s * OW + 0.05 + s * 0.2, -0.25, 0.25, 0.0, OH, "wood_black")
+        bx(mb, s * OW, s * (OW + 0.25), -0.25, 0.25, 0.0, OH, "wood_black")
     # lintel + tower floor
     bx(mb, -HX, HX, D0 - 0.05, D1 + 0.05, OH, OH + 0.4, "wood_dark")
     bx(mb, -OW, OW, -0.12, 0.12, -0.02, 0.06, "wood_dark")
@@ -1511,7 +1522,6 @@ def snow_blanket(mb, x0, x1, D, ze, H, rng, nx=6, ny=3, thick=0.24, inset=0.14, 
     ys = [-Di * (1 - i / ny) for i in range(ny + 1)] + [Di * (1 - i / ny) for i in range(ny - 1, -1, -1)]
     surf = lambda y: ze + H * (1 - abs(y) / D)
     xs = frange(x0, x1, nx)
-    bumps = {}
     rings = []
     for xi, x in enumerate(xs):
         endf = 0.55 if xi in (0, nx) else 1.0
@@ -1588,10 +1598,10 @@ def build_mountain_cabin(seed):
         k += 1
     bx(mb, X0 + 0.2, X1 - 0.2, Y0 + 0.2, Y1 - 0.2, ZS - 0.05, 3.1, "wood_black", drop=('-z', '+z'))
     for x in (X0 + 0.12, X1 - 0.12):
-        gable_wall(mb, x, Y0 + 0.05, Y1 - 0.05, 2.75, 4.25, 0.16, "wood_dark")
+        gable_wall(mb, x, Y0 + 0.05, Y1 - 0.05, 2.75, 4.1, 0.16, "wood_dark")
         sx = -1 if x < 0 else 1
         for yb in (-0.9, -0.3, 0.3, 0.9):
-            ztop = 4.25 - abs(yb) / 2.1 * 1.5 - 0.08
+            ztop = 4.1 - abs(yb) / 2.1 * 1.35 - 0.08
             bx(mb, x + sx * 0.07, x + sx * 0.12, yb - 0.035, yb + 0.035, 2.8, ztop, "wood")
     # door with a glowing gap + small window
     bx(mb, -0.6, 0.6, Y0 - 0.06, Y0 + 0.3, ZS - 0.1, 2.45, "wood_black")
@@ -1610,10 +1620,10 @@ def build_mountain_cabin(seed):
     for u in (-1.48, -1.25, -1.02):
         bx(mb, u - 0.03, u + 0.03, Y1 - 0.3, Y1 + 0.12, 1.78, 2.27, "wood_dark")
     # board roof (ridge along X) with a thick snow blanket
-    ze, H = 2.75, 1.65
+    ze, H = 2.75, 1.5
     roof = ProfileRoof.gable(-3.5, 3.5, 3.0, ze, H, 0.2, curve=0.0, n=2)
     roof.build(mb, "wood_dark", "wood_dark", "wood_dark")
-    snow_blanket(mb, -3.32, 3.32, 3.0, ze, H, rng, nx=6, ny=3, thick=0.26, inset=0.16)
+    snow_blanket(mb, -3.32, 3.32, 3.0, ze, H, rng, nx=6, ny=3, thick=0.26, inset=0.16, bump=0.05)
     zr = ze + H
     # smoke vent on the ridge
     bx(mb, -0.45, 0.45, -0.35, 0.35, zr - 0.1, zr + 0.55, "wood_dark")
@@ -1846,15 +1856,15 @@ def build_torii_stone(seed):
     rng = random.Random(seed * 3 + 9)
     PX = 1.85
     for s in (-1, 1):
-        p = pile(mb, s * PX, 0, 0.0, 3.6, r=0.24, color="stone", sides=8, lean=(-s * 0.07, 0.0))
+        p = pile(mb, s * PX, 0, 0.0, 3.45, r=0.24, color="stone", sides=8, lean=(-s * 0.07, 0.0))
         p.jitter(0.012)
         p.color_faces(lambda f: "stone_moss" if (f.calc_center_median().z < 0.9 and rng.random() < 0.6) else None)
         mb.prism((s * PX, 0, -0.02), 0.36, 0.3, 8, "stone_dark", radius_top=0.32, base=False).jitter(0.015)
-    bx(mb, -PX - 0.45, PX + 0.45, -0.13, 0.13, 2.85, 3.13, "stone").jitter(0.012)
-    tube(mb, kasagi_path(2.45, 3.58, 0.1), rect_section(0.34, 0.24, 0.0), "stone_light")
-    k = tube(mb, kasagi_path(2.7, 3.82, 0.2), [(-0.26, 0.0), (0.26, 0.0), (0.22, 0.38), (-0.22, 0.38)], "stone")
+    bx(mb, -PX - 0.45, PX + 0.45, -0.13, 0.13, 2.72, 3.0, "stone").jitter(0.012)
+    tube(mb, kasagi_path(2.45, 3.42, 0.1), rect_section(0.34, 0.24, 0.0), "stone_light")
+    k = tube(mb, kasagi_path(2.7, 3.64, 0.18), [(-0.26, 0.0), (0.26, 0.0), (0.22, 0.38), (-0.22, 0.38)], "stone")
     k.color_faces(lambda f: "stone_moss" if f.normal.z > 0.5 and rng.random() < 0.35 else None)
-    bx(mb, -0.14, 0.14, -0.11, 0.11, 3.1, 3.62, "stone")
+    bx(mb, -0.14, 0.14, -0.11, 0.11, 2.98, 3.46, "stone")
     mb.collider_mesh()
     return mb.finish()
 
@@ -1970,7 +1980,7 @@ def build_boardwalk_segment(seed):
         y0 = -HL + i * w
         dz = rng.uniform(-0.012, 0.012)
         bx(mb, -HW + rng.uniform(0, 0.05), HW - rng.uniform(0, 0.05), y0 + 0.015, y0 + w - 0.015, DZ - 0.07 + dz, DZ + dz,
-           rng.choice(("wood_light", "wood", "wood_light", "wood_grey")))
+           rng.choice(("wood_light", "wood", "wood_light", "wood_pale")))
     for x in (-0.65, 0.65):
         bx(mb, x - 0.09, x + 0.09, -HL, HL, DZ - 0.27, DZ - 0.07, "wood_dark", drop=('-y', '+y'))
     for y in (-1.5, 1.5):
@@ -1987,7 +1997,7 @@ def build_boardwalk_segment(seed):
         for i in range(4):
             t = i / 3
             y = y_from + (y_to - y_from) * t
-            u = 0.5 + 0.5 * t if not rising else 0.5 * t     # param on the full 3 m span
+            u = 0.5 * t if not rising else 0.5 + 0.5 * t     # param on the full post-to-post span
             pts.append((0.95, y, zr - sag * 4 * u * (1 - u)))
         sec = [(0.04 * math.cos(2 * math.pi * k / 5), 0.04 * math.sin(2 * math.pi * k / 5)) for k in range(5)]
         tube(mb, pts, sec, "rope")
@@ -2076,7 +2086,7 @@ def build_fence_wood(seed):
         for x in (-HL, HL):
             bx(mb, x - 0.085, x + 0.085, -0.085, 0.085, z - 0.045, z + 0.045, "rope")
     # a leaning middle stake for a hand-made look
-    rbox(mb, (0.15, 0.05, 0.5), (0.08, 0.06, 1.0), "wood_grey", ry=6)
+    rbox(mb, (0.15, 0.05, 0.5), (0.08, 0.06, 1.0), "wood_light", ry=6)
     mb.collider_box((2.5, 0.2, 1.1), (0, 0, 0.55))
     return mb.finish()
 
@@ -2203,7 +2213,7 @@ def build_pavilion_azumaya(seed):
         for (xx, yy) in ((x0 + 0.12, y0 + 0.12), (x1 - 0.12, y1 - 0.12)):
             bx(mb, xx - 0.06, xx + 0.06, yy - 0.06, yy + 0.06, 0.14, 0.43, "wood_dark", drop=('-z',))
     # thatched pyramidal roof (hogyo) with a clay finial
-    roof = Roof(W=2.05, D=2.05, ze=2.82, H=1.05, xg=0.0, curve=-0.05, lift=0.08, steps=[(0.55, 0.14)], nlev=2,
+    roof = Roof(W=2.05, D=2.05, ze=2.82, H=0.9, xg=0.0, curve=-0.05, lift=0.08, steps=[(0.55, 0.14)], nlev=2,
                 frL=[0.0, 0.25, 0.5, 0.75], frS=[0.0, 0.25, 0.5, 0.75])
     rp = roof.build(mb, "thatch", "thatch_dark", "thatch_dark", thick=0.4, bevel=0.06, nose=[(-0.04, -0.18)],
                     step_nose=0.04, top2="thatch_light")
@@ -2255,7 +2265,7 @@ def build_pagoda_small(seed):
                     frL=[0.0, 0.1, 0.3, 0.5, 0.7, 0.9], frS=[0.0, 0.1, 0.3, 0.5, 0.7, 0.9])
         roof.build(mb, "tile_dark", "wood_red_dark", "wood_dark", thick=0.24, d_top=dt, cap_col="tile_dark",
                    nose=[(-0.04, -0.1)])
-        roof.ribs(mb, "tile_blue", spacing=0.42, segs=2, w=0.14, h=0.06)
+        roof.ribs(mb, "tile_blue", spacing=0.5, segs=2, w=0.14, h=0.06)
         roof.ridges(mb, "tile_dark", main=False, hip_w=0.16, hip_h=0.14, end_up=0.14, end_ext=0.14)
         if dt is not None:
             z = roof.base(dt) - 0.05
@@ -2310,6 +2320,57 @@ def build_arch_bamboo_gate(seed):
     return mb.finish()
 
 
+def orient_islands(obj):
+    """Safety net over nindo_lib's recalc_face_normals: every manifold-connected island
+    whose signed volume (about its own centroid) is negative is turned inside-out
+    again, so all shells face outward (Unity culls back faces)."""
+    import bmesh
+    me = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.faces.ensure_lookup_table()
+    seen = set()
+    flips = []
+    for f in bm.faces:
+        if f.index in seen:
+            continue
+        stack, isl = [f], []
+        seen.add(f.index)
+        while stack:
+            g = stack.pop()
+            isl.append(g)
+            for e in g.edges:
+                if len(e.link_faces) != 2:
+                    continue
+                for h in e.link_faces:
+                    if h.index not in seen:
+                        seen.add(h.index)
+                        stack.append(h)
+        verts = {v for g in isl for v in g.verts}
+        c = sum((v.co for v in verts), Vector()) / len(verts)
+        vol = 0.0
+        for g in isl:
+            vs = [v.co - c for v in g.verts]
+            for i in range(1, len(vs) - 1):
+                vol += vs[0].dot(vs[i].cross(vs[i + 1]))
+        if vol < -1e-7:
+            flips.extend(isl)
+    if flips:
+        bmesh.ops.reverse_faces(bm, faces=flips, flip_multires=False)
+        bm.to_mesh(me)
+        me.update()
+    bm.free()
+    return obj
+
+
+def _oriented(fn):
+    def build(seed):
+        return orient_islands(fn(seed))
+    build.__name__ = fn.__name__
+    build.__doc__ = fn.__doc__
+    return build
+
+
 PROPS = {
     "house_kaito": build_house_kaito,
     "house_farmer_a": build_house_farmer_a,
@@ -2342,3 +2403,5 @@ PROPS = {
     "pagoda_small": build_pagoda_small,
     "arch_bamboo_gate": build_arch_bamboo_gate,
 }
+PROPS = {k: _oriented(v) for k, v in PROPS.items()}
+

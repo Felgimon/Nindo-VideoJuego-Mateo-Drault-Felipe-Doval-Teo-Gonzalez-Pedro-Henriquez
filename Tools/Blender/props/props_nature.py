@@ -11,7 +11,7 @@ is unambiguous.  That keeps it correct with back-face culling in Unity.
 """
 import math, random
 import bmesh
-from mathutils import Vector, Matrix, Euler, Quaternion
+from mathutils import Vector, Matrix
 import nindo_lib as L
 
 FOL = L.SLOT_FOLIAGE
@@ -60,29 +60,50 @@ def nrm(f):
     return f.normal
 
 
+class FaceDice:
+    """Per-face deterministic dice for colour choices made while iterating Part.faces (a set,
+    whose order changes between runs).  It still advances the shared rng exactly like a plain
+    rng.random()/rng.choice() call would, so geometry built afterwards is unaffected."""
+
+    def __init__(self, rng, f, salt=0):
+        self.rng = rng
+        c = f.calc_center_median()
+        self.r = random.Random(hash((round(c.x * 1000), round(c.y * 1000), round(c.z * 1000), salt)))
+
+    def random(self):
+        self.rng.random()
+        return self.r.random()
+
+    def choice(self, seq):
+        self.rng.choice(seq)
+        return self.r.choice(seq)
+
+
 def shade(part, top, side, under, t_top=0.55, t_under=-0.3, rng=None, alt=None, p_alt=0.0,
           alt_side=None, p_alt_side=0.0):
     """Colours faces of a part by facing: top / side / under (+ random accents)."""
     rng = rng or random.Random(0)
 
     def fn(f):
+        d = FaceDice(rng, f)
         n = nrm(f)
         if n.z >= t_top:
-            return alt if (alt and rng.random() < p_alt) else top
+            return alt if (alt and d.random() < p_alt) else top
         if n.z <= t_under:
             return under
-        return alt_side if (alt_side and rng.random() < p_alt_side) else side
+        return alt_side if (alt_side and d.random() < p_alt_side) else side
     part.color_faces(fn)
     return part
 
 
 def bark(part, rng, dark="trunk", light="trunk_light", p_light=0.35, snow=None, snow_t=0.6):
     def fn(f):
+        d = FaceDice(rng, f)
         n = nrm(f)
         if snow and n.z > snow_t:
             return snow
         lit = (n.z * 0.6 - n.y * 0.25 - n.x * 0.35)
-        return light if (lit > 0.18 or rng.random() < p_light * 0.5) else dark
+        return light if (lit > 0.18 or d.random() < p_light * 0.5) else dark
     part.color_faces(fn)
     return part
 
@@ -207,29 +228,8 @@ def hull(mb, pts, color, slot=None, wind=None):
     if junk:
         bmesh.ops.delete(mb.bm, geom=junk, context='VERTS')
     faces = [g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)]
-    verts = list({v for f in faces for v in f.verts})
+    verts = sorted({v for f in faces for v in f.verts}, key=lambda v: tuple(v.co))   # stable order
     return mb._new(verts, color, slot, wind)
-
-
-def rock_pts(rng, c, sx, sy, sz, n=14, flat_bottom=-0.15, squareness=0.0):
-    """Random points on a squashed ellipsoid (for faceted rocks via convex hull)."""
-    cx, cy, cz = c
-    pts = []
-    golden = math.pi * (3 - math.sqrt(5))
-    for i in range(n):
-        y = 1 - (i + 0.5) / n * 2
-        rad = math.sqrt(max(0.0, 1 - y * y))
-        th = golden * i + rng.uniform(-0.35, 0.35)
-        x, zz = math.cos(th) * rad, math.sin(th) * rad
-        # (x, zz, y) -> use y as vertical
-        px, py, pz = x, zz, y
-        if squareness:
-            m = max(abs(px), abs(py), abs(pz), 1e-3)
-            px, py, pz = [a * (1 - squareness) + (a / m) * squareness * 0.8 for a in (px, py, pz)]
-        k = rng.uniform(0.82, 1.12)
-        pz = max(pz, flat_bottom)
-        pts.append((cx + px * sx * k, cy + py * sy * k, cz + pz * sz * k))
-    return pts
 
 
 def drop_below_ground(mb, part, z=0.0):
@@ -286,11 +286,6 @@ def _branch(mb, rng, start, direction, length, rise, r0, r1, sides=5, droop=0.0,
     pts = bez(p0, p1, p2, p3, segs)
     radii = [r0 + (r1 - r0) * (i / (segs - 1)) for i in range(segs)]
     return tube(mb, pts, radii, sides, "trunk", rng, jitter=0.06), p3
-
-
-def _canopy_wind(part, z0, z1, maximum):
-    part.wind_by_height(z0, z1, maximum)
-    return part
 
 
 def shade_pad(mb, p, rng, light, base, dark, p_light=0.6, p_side_dark=0.3, side=None):
@@ -555,7 +550,7 @@ def build_sakura(seed, H, name, nmain=4):
         puffs.append((end + Vector((0, 0, 0.35 * s)), rng.uniform(1.1, 1.3) * s, 0.7))
     # gap fillers between neighbouring branch ends: lower, smaller, drooping edge of the umbrella
     for i in range(nmain):
-        (e0, a_0), (e1, a_1) = ends[i], ends[(i + 1) % nmain]
+        (e0, _), (e1, _) = ends[i], ends[(i + 1) % nmain]
         if nmain <= 3 and i == nmain - 1:
             continue
         m = e0.lerp(e1, 0.5)
@@ -639,8 +634,9 @@ def build_round(seed, H, name):
         shade(b, "leaf_light", "leaf", "leaf_dark", t_top=0.55, t_under=-0.25, rng=rng,
               alt="leaf", p_alt=0.3, alt_side="leaf_dark", p_alt_side=0.3)
         parts.append(b)
+    fit_height(mb, H)
     fol = group(mb, *parts)
-    fol.wind_by_height(top.z, H, 0.45)
+    fol.wind_by_height(top.z, H, 0.6)
     mb.collider_capsule(0.35, 3.0)
     mb.tag("occluder")
     return mb.finish()
@@ -677,6 +673,7 @@ def build_dead(seed, H, name):
         tw = tube(mb, [q0, q0.lerp(q1, 0.5) + Vector((0, 0, 0.1)), q1], [0.07, 0.05, 0.0], 4, "trunk_snow", rng)
         bark(tw, rng, "trunk_snow", "trunk", snow="snow", snow_t=0.5)
     _roots(mb, rng, 4, 0.42, "trunk_snow", "trunk")
+    fit_height(mb, H)
     mb.collider_capsule(0.35, 3.0)
     mb.tag("occluder")
     return mb.finish()
@@ -724,7 +721,7 @@ def culm(mb, rng, base, height, r, lean, nodes, sides=6, color="bamboo", light="
         zs.append(zn)
         zs.append(zn + 0.16)
     zs.append(height)
-    pts, radii, cols = [], [], []
+    pts, radii = [], []
     for i, z in enumerate(zs):
         t = z / height
         p = base + lean * (t ** 1.6)
@@ -798,10 +795,10 @@ def build_bamboo_wall(seed, name, length=6.0, H=9.0, n=13):
             t = 0.52 + 0.4 * (k + rng.uniform(0.1, 0.9)) / 3
             p = base + lean * (t ** 1.6) + Vector((0, 0, h * t))
             side = 1 if (k + i) % 2 else -1
-            od = dirvec(rng.uniform(-0.9, 0.9) + (0 if side > 0 else math.pi))
+            od = dirvec(rng.uniform(-0.5, 0.5) + (0 if side > 0 else math.pi))
             leaves += leaf_spray(mb, rng, p, od, 3, rng.uniform(1.0, 1.2), width=0.18)
-        leaves += leaf_spray(mb, rng, pts[-1] + Vector((0, 0, -0.4)), dirvec(rng.uniform(0, TAU)), 3, 0.9,
-                             width=0.17)
+        leaves += leaf_spray(mb, rng, pts[-1] + Vector((0, 0, -0.4)),
+                             dirvec(rng.choice((0, math.pi)) + rng.uniform(-0.5, 0.5)), 3, 0.9, width=0.17)
     fol = group(mb, *leaves)
     fol.wind_by_height(H * 0.4, H, 0.9)
     mb.collider_box((length, 0.9, 3.0), (0, 0, 1.5))
@@ -889,37 +886,45 @@ def build_azalea(seed, name, flower):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
     H = 0.9
-    mounds = [pad(mb, (0, 0, 0.32), 0.95, 0.85, 0.95, 12, rng, top_r=0.74, lobe=0.93, under=0.36, droop=0.04),
-              pad(mb, (0.78, -0.42, 0.2), 0.55, 0.5, 0.6, 8, rng, top_r=0.72, lobe=0.92, under=0.36, droop=0.04)]
     alt = {"flower_pink": "sakura", "flower_white": "sakura_light"}.get(flower, flower)
-    for m in mounds:
-        def fn(k, f):
-            kind = k % 4
-            if kind == 0:
-                return "leaf_dark"
+    specs = [((0, 0, 0.42), 0.62, (1.25, 1.1, 0.78))]
+    a0 = rng.uniform(0, TAU)
+    for i in range(4):
+        a = a0 + TAU * i / 4 + rng.uniform(-0.3, 0.3)
+        c = dirvec(a) * rng.uniform(0.55, 0.7)
+        r = rng.uniform(0.36, 0.44)
+        specs.append(((c.x, c.y, r * 0.75), r, (1.15, 1.05, 0.8)))
+    parts = []
+    for (c, r, sc) in specs:
+        b = blob(mb, c, r, rng, scale=sc, segs=7, rings=4, jitter=0.1)
+
+        def fn(f):
+            d = FaceDice(rng, f)
             n = nrm(f)
-            if kind == 3:
-                return flower if rng.random() < 0.7 else alt
-            if n.z > 0.62:
-                return flower if rng.random() < 0.5 else "leaf"
-            return "leaf_dark" if rng.random() < 0.5 else "leaf"
-        color_kinds(mb, m, list(range(len(m.flist))), fn)
+            if n.z > 0.5:
+                return flower if d.random() < 0.7 else alt
+            if n.z < -0.2:
+                return "leaf_dark"
+            if n.z > 0.15:
+                return flower if d.random() < 0.3 else "leaf"
+            return "leaf" if d.random() < 0.6 else "leaf_dark"
+        b.color_faces(fn)
+        parts.append(b)
     dots = []
-    for m in mounds:
-        fs = [f for f in m.flist if nrm(f).z > 0.15]
-        fs = [f for f in m.flist if 0.15 < nrm(f).z < 0.8]
-        for f in rng.sample(fs, min(len(fs), 12 if m is mounds[0] else 6)):
+    for b in parts[:]:
+        fs = sorted((f for f in b.faces if 0.0 < nrm(f).z < 0.6), key=lambda f: tuple(f.calc_center_median()))
+        for f in rng.sample(fs, min(len(fs), 4)):
             c = f.calc_center_median()
             n = nrm(f)
             tng = (f.verts[0].co - c).normalized()
             bt = n.cross(tng)
-            rr = rng.uniform(0.1, 0.14)
+            rr = rng.uniform(0.09, 0.12)
             pts = [c + (tng * math.cos(a) + bt * math.sin(a)) * rr for a in (0, TAU / 3, 2 * TAU / 3)]
             dots.append(pyramid(mb, pts, c + n * 0.06, flower, FOL))
+    for b in parts:
+        drop_below_ground(mb, b, 0.0)
     fit_height(mb, H, z_from=0.0)
-    for m in mounds:
-        drop_below_ground(mb, m, 0.0)
-    fol = group(mb, *mounds, *dots)
+    fol = group(mb, *parts, *dots)
     fol.wind_by_height(0.2, H, 0.25)
     mb.collider_none()
     return mb.finish()
@@ -937,20 +942,23 @@ def build_bush_snow(seed, name):
         b = blob(mb, c, r, rng, scale=sc, segs=6, rings=4, jitter=0.18)
 
         def fn(f):
+            d = FaceDice(rng, f)
             n = nrm(f)
-            if n.z > 0.72 and f.calc_center_median().z > 0.35:
-                return "snow" if rng.random() < 0.8 else "snow_shade"
+            if n.z > 0.8 and f.calc_center_median().z > 0.45:
+                return "snow" if d.random() < 0.8 else "snow_shade"
             if n.z < -0.2:
                 return "leaf_pine_dark"
-            return "leaf_pine" if rng.random() < 0.6 else "leaf_pine_dark"
+            if n.z > 0.4:
+                return "leaf_pine_light" if d.random() < 0.6 else "leaf_pine"
+            return "leaf_pine" if d.random() < 0.6 else "leaf_pine_dark"
         b.color_faces(fn)
         drop_below_ground(mb, b, 0.0)
         parts.append(b)
     a0 = rng.uniform(0, TAU)
-    for i in range(5):
-        a = a0 + TAU * i / 5
-        base = dirvec(a) * 0.45 + Vector((0, 0, rng.uniform(0.3, 0.55)))
-        parts.append(leaf_tent(mb, base, dirvec(a), 0.4, 0.17, 0.12, "leaf_pine_light", rng))
+    for i in range(9):
+        a = a0 + TAU * i / 9 + rng.uniform(-0.2, 0.2)
+        base = dirvec(a) * 0.45 + Vector((0, 0, rng.uniform(0.25, 0.6)))
+        parts.append(leaf_tent(mb, base, dirvec(a), 0.38, 0.15, 0.1, rng.choice(("leaf_pine_light", "leaf_pine")), rng))
     fit_height(mb, H, z_from=0.0)
     fol = group(mb, *parts)
     fol.wind_by_height(0.15, H, 0.25)
@@ -989,7 +997,6 @@ def build_tall_grass(seed, name):
                 clumps.append(c)
                 break
     cols = ("grass_teal", "grass_teal", "grass_light", "grass_light", "grass_dry", "grass")
-    nb = 0
     per = max(6, 80 // max(1, len(clumps)))
     for c in clumps:
         dry = rng.random() < 0.3
@@ -1001,7 +1008,6 @@ def build_tall_grass(seed, name):
             tip = base + dirvec(a) * rng.uniform(0.15, 0.4) * h + Vector((0, 0, h))
             col = "grass_dry" if (dry and rng.random() < 0.6) else rng.choice(cols)
             blades.append(blade(mb, base, tip, rng.uniform(0.09, 0.12), col, rng))
-            nb += 1
     fol = group(mb, *blades)
     fol.wind_by_height(0.0, 1.1, 1.0)
     mb.collider_none()
@@ -1059,10 +1065,10 @@ def build_flowers(seed, name, petal_col, centre_col, n=8, star=True, nleaf=12):
         fol.append(blade(mb, c + Vector((0, 0, -0.02)), head + Vector((0, 0, 0.01)), 0.05, "grass", rng, thick=0.04))
         r = rng.uniform(0.09, 0.12)
         a0 = rng.uniform(0, TAU)
-        k = 10 if star else 6
+        k = 10
         pts = []
         for j in range(k):
-            rr = r if (not star or j % 2 == 0) else r * 0.45
+            rr = r if j % 2 == 0 else r * (0.45 if star else 0.72)
             pts.append(head + dirvec(a0 + TAU * j / k) * rr + Vector((0, 0, -0.015 if j % 2 == 0 else 0.0)))
         fl = pyramid(mb, pts, head + Vector((0, 0, 0.03)), petal_col, FOL)
         fol.append(fl)
@@ -1097,7 +1103,7 @@ def build_lily_pads(seed, name):
         faces = [(0, j + 1, j + 2) for j in range(n - 1)]
         col = rng.choice(("leaf", "leaf", "leaf_dark", "grass_light"))
         p = geo(mb, co, faces, col)
-        p.color_faces(lambda f: rng.choice((col, col, "leaf_dark" if col != "leaf_dark" else "leaf")))
+        p.color_faces(lambda f: FaceDice(rng, f).choice((col, col, "leaf_dark" if col != "leaf_dark" else "leaf")))
     # lotus flowers
     for li in range(2):
         c, r = pads[li]
@@ -1125,30 +1131,56 @@ def build_lily_pads(seed, name):
 
 
 # ================================================================= ROCKS / CLIFFS
+def _nkey(n, salt=0):
+    """Stable pseudo-random value per facet orientation (coplanar tris share it)."""
+    k = (round(n.x * 6), round(n.y * 6), round(n.z * 6), salt)
+    return (hash(k) % 1000) / 1000.0
+
+
 def rock_colors(part, rng, light="rock_light", mid="rock", dark="rock_dark", top=None, top_t=0.72, p_top=0.8,
                 top_alt=None):
+    salt = rng.randrange(1000)
+
     def fn(f):
         n = nrm(f)
-        if top and n.z > top_t and rng.random() < p_top:
-            return top_alt if (top_alt and rng.random() < 0.3) else top
-        if n.z > 0.45:
-            return light if rng.random() < 0.7 else mid
+        r = _nkey(n, salt)
+        if top and n.z > top_t and r < p_top:
+            return top_alt if (top_alt and r < p_top * 0.3) else top
+        if n.z > 0.55:
+            return light if r < 0.75 else mid
         if n.z < -0.25:
             return dark
-        lit = -0.5 * n.x + 0.45 * n.y + n.z * 0.5
-        if lit > 0.2:
-            return mid if rng.random() < 0.7 else light
-        return dark if rng.random() < 0.55 else mid
+        lit = -0.5 * n.x + 0.45 * n.y + n.z * 0.6
+        if lit > 0.25:
+            return light if r < 0.35 else mid
+        return dark if r < 0.5 else mid
     part.color_faces(fn)
     return part
 
 
-def rock_chunk(mb, rng, c, sx, sy, sz, n=14, rot=None, squareness=0.25, **cols):
-    pts = rock_pts(rng, c, sx, sy, sz, n, flat_bottom=-0.45, squareness=squareness)
+def chamfer_box_pts(rng, c, sx, sy, sz, chamfer=0.38, jit=0.1, taper=0.82, cheap=False):
+    cx, cy, cz = c
+    pts = []
+    for zn in (-1, 1):
+        tp = taper if zn > 0 else 1.0
+        for xn in (-1, 1):
+            for yn in (-1, 1):
+                for axis in (range(3) if (zn > 0 or not cheap) else (2,)):
+                    p = [xn * sx * tp, yn * sy * tp, zn * sz]
+                    p[axis] *= 1 - chamfer * rng.uniform(0.55, 1.45)
+                    p = [p[0] + rng.uniform(-jit, jit) * sx, p[1] + rng.uniform(-jit, jit) * sy,
+                         p[2] + rng.uniform(-jit, jit) * sz]
+                    pts.append((cx + p[0], cy + p[1], cz + p[2]))
+    return pts
+
+
+def rock_chunk(mb, rng, c, sx, sy, sz, n=14, rot=None, chamfer=0.38, taper=0.82, tilt=6, **cols):
+    """Faceted boulder: convex hull of a jittered chamfered box (n <= 12 -> cheaper, only top chamfered)."""
+    pts = chamfer_box_pts(rng, c, sx, sy, sz, chamfer=chamfer, taper=taper, cheap=(n <= 12))
     rot = rng.uniform(0, 360) if rot is None else rot
     p = hull(mb, pts, "rock")
-    p.transform(rot=(0, 0, 0))
-    M = Matrix.Translation(Vector(c)) @ Matrix.Rotation(math.radians(rot), 4, 'Z') @ Matrix.Translation(-Vector(c))
+    M = (Matrix.Translation(Vector(c)) @ Matrix.Rotation(math.radians(rot), 4, 'Z') @
+         Matrix.Rotation(math.radians(rng.uniform(-tilt, tilt)), 4, 'X') @ Matrix.Translation(-Vector(c)))
     for v in p.verts:
         v.co = M @ v.co
     rock_colors(p, rng, **cols)
@@ -1172,25 +1204,42 @@ def _box_from_bounds(mb, shrink=0.85):
 def build_rock(seed, name, size, n=14, parts=1, moss=False, snow=False, collider="box", squareness=0.25):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
-    sx = size * 0.55
-    sy = size * rng.uniform(0.42, 0.5)
-    sz = size * rng.uniform(0.42, 0.5)
+    sx = size * 0.5
+    sy = size * rng.uniform(0.36, 0.44)
+    sz = size * rng.uniform(0.28, 0.36)
     cols = {}
     if moss:
         cols = dict(top="moss", top_alt="stone_moss", top_t=0.7, p_top=0.75)
     if snow:
-        cols = dict(top="snow", top_alt="snow_shade", top_t=0.45, p_top=0.95)
-    main = rock_chunk(mb, rng, (0, 0, sz * 0.32), sx, sy, sz, n, squareness=squareness, **cols)
+        cols = dict(top="snow", top_alt="snow_shade", top_t=0.45, p_top=0.95, light="rock", mid="rock",
+                    dark="rock_dark")
+    main = rock_chunk(mb, rng, (0, 0, sz * 0.8), sx, sy, sz, n, chamfer=0.25 + squareness * 0.5, **cols)
     chunks = [main]
     a0 = rng.uniform(0, TAU)
     for i in range(parts - 1):
         a = a0 + i * 2.2
         k = rng.uniform(0.35, 0.5)
         c = dirvec(a) * sx * 0.95
-        chunks.append(rock_chunk(mb, rng, (c.x, c.y, sz * k * 0.3), sx * k, sy * k, sz * k, max(10, n - 4),
-                                 squareness=squareness, **({} if snow else cols)))
+        chunks.append(rock_chunk(mb, rng, (c.x, c.y, sz * k * 0.7), sx * k, sy * k, sz * k, max(10, n - 4),
+                                 **({} if snow else cols)))
+    zmin = min(v.co.z for v in main.verts)
+    dz = -zmin - 0.07 * sz
+    for v in mb.bm.verts:
+        v.co.z += dz
     for c in chunks:
         drop_below_ground(mb, c, 0.0)
+    if snow:
+        # thick snow cap: convex hull of the rock's upper verts, lifted and slightly enlarged
+        ztop = max(v.co.z for v in main.verts)
+        top = sorted((v.co.copy() for v in main.verts if v.co.z > ztop - 0.45 * sz), key=tuple)
+        cx = sum(p.x for p in top) / len(top)
+        cy = sum(p.y for p in top) / len(top)
+        pts = []
+        for p in top:
+            q = Vector((cx + (p.x - cx) * 1.06, cy + (p.y - cy) * 1.06, p.z + 0.1 + rng.uniform(0, 0.05)))
+            pts += [q, q - Vector((0, 0, 0.24))]
+        cap = hull(mb, pts, "snow")
+        cap.color_faces(lambda f: "snow" if nrm(f).z > 0.5 else "snow_shade")
     if collider == "box":
         _box_from_bounds(mb)
     elif collider == "mesh":
@@ -1201,120 +1250,115 @@ def build_rock(seed, name, size, n=14, parts=1, moss=False, snow=False, collider
 
 
 STRATA = {
-    "brown": ["rock_brown", "rock_brown_dark", "rock", "rock_brown", "rock_dark", "rock_brown_dark", "rock",
-              "rock_brown"],
-    "grey": ["rock", "rock_dark", "rock", "rock_light", "rock_dark", "rock", "rock_dark", "rock"],
+    "brown": ["rock_brown_dark", "rock_brown", "rock", "rock_brown", "rock_brown_dark", "rock", "rock_brown",
+              "rock_dark"],
+    "grey": ["rock_dark", "rock", "rock_brown_dark", "rock", "rock_dark", "rock", "rock_brown_dark", "rock"],
 }
 
 
-def _slab(mb, rng, x0, x1, y0, y1, z0, z1, color, jit=0.18, nfront=3):
-    """Faceted block: ring (CCW) with extra points on the front, bottom ring, jittered mid ring, top ring."""
-    pts = []
-    # front edge (y0) left->right, then right side, back edge right->left, left side
-    for k in range(nfront + 1):
-        t = k / nfront
-        pts.append((x0 + (x1 - x0) * t, y0 + rng.uniform(-jit, jit) * 0.6))
-    pts.append((x1 + rng.uniform(-jit, jit), (y0 + y1) / 2 + rng.uniform(-0.3, 0.3)))
-    pts.append((x1 - rng.uniform(0, jit), y1))
-    pts.append((x0 + rng.uniform(0, jit), y1))
-    pts.append((x0 + rng.uniform(-jit, jit), (y0 + y1) / 2 + rng.uniform(-0.3, 0.3)))
-    # chamfer the front corners a bit
-    pts[0] = (pts[0][0] + 0.15, pts[0][1] + 0.12)
-    pts[nfront] = (pts[nfront][0] - 0.15, pts[nfront][1] + 0.12)
-    cx = sum(p[0] for p in pts) / len(pts)
-    cy = sum(p[1] for p in pts) / len(pts)
+def _column(mb, rng, x, w, yf, yb, ztop, bands, strata, snowy, slope, front_jit=0.28, lean=0.0):
+    """One faceted rock column of the cliff: ring per strata boundary, grass/snow lip + cap on top."""
+    hw = w / 2
+    fp = [(x - hw, yf + rng.uniform(0.3, 0.6)), (x - hw * 0.2, yf + rng.uniform(-0.1, 0.15)),
+          (x + hw * 0.5, yf + rng.uniform(0.0, 0.25)), (x + hw, yf + rng.uniform(0.35, 0.7)),
+          (x + hw, yb), (x - hw, yb)]
+    cx = sum(p[0] for p in fp) / len(fp)
+    cy = sum(p[1] for p in fp) / len(fp)
+    levels = [b for b in bands if b < ztop - 0.6] + [ztop - 0.5]
     rings = []
-    zm = (z0 + z1) / 2 + rng.uniform(-0.15, 0.15) * (z1 - z0)
-    for z, j in ((z0, 0.0), (zm, jit), (z1, 0.0)):
+    for li, z in enumerate(levels):
         ring = []
-        for (x, y) in pts:
-            d = Vector((x - cx, y - cy, 0))
-            if d.length > 1e-4:
-                d.normalize()
-            o = d * rng.uniform(-j, j * 1.2)
-            ring.append((x + o.x, y + o.y, z + (rng.uniform(-0.12, 0.12) if z == z1 else 0.0)))
+        inset = 0.12 * (z / max(ztop, 1.0))
+        for (px, py) in fp:
+            d = Vector((px - cx, py - cy, 0))
+            dl = d.length
+            d = d / dl if dl > 1e-4 else d
+            j = 0.0 if li == 0 else rng.uniform(-front_jit, front_jit)
+            o = d * (j - inset * 2) + Vector((lean * z, 0, 0))
+            ring.append((px + o.x, py + o.y, z + slope * px + (rng.uniform(-0.15, 0.15) if li else 0.0)))
         rings.append(ring)
-    return mb.loft(rings, color, cap_end=True)
+    # grass/snow lip (slightly overhanging) and top edge
+    lip, top = [], []
+    for (qx, qy, qz) in rings[-1]:
+        d = Vector((qx - cx, qy - cy, 0))
+        d = d.normalized() if d.length > 1e-4 else d
+        lip.append((qx + d.x * 0.22, qy + d.y * 0.22, ztop - 0.18 + slope * qx * 0.3 + rng.uniform(-0.06, 0.06)))
+        top.append((qx + d.x * 0.08, qy + d.y * 0.08, ztop + slope * qx * 0.3 + rng.uniform(-0.05, 0.12)))
+    rings += [lip, top]
+    part = mb.loft(rings, "rock", cap_end=True)
+    nl = len(levels)
+    grass_top, grass_side, ledge = ("snow", "snow_shade", "snow") if snowy else ("grass", "moss", "stone_moss")
+
+    def fn(f):
+        n = nrm(f)
+        zc = f.calc_center_median().z
+        if zc > ztop - 0.12 and n.z > 0.5:
+            return grass_top if _nkey(n) < 0.7 else (grass_side if snowy else "grass_light")
+        if zc > levels[-1] + 0.02:
+            return grass_side if n.z < 0.5 else grass_top
+        bi = 0
+        for k in range(nl - 1):
+            if zc - slope * f.calc_center_median().x > levels[k]:
+                bi = k
+        col = strata[bi % len(strata)]
+        if n.z > 0.55:
+            return ledge
+        if n.z < -0.3:
+            return "rock_brown_dark" if "brown" in col else "rock_dark"
+        return col
+    part.color_faces(fn)
+    return part
 
 
-def build_cliff(seed, name, W, Hc, D=5.0, layers=5, scheme="brown", snowy=False):
+def build_cliff(seed, name, W, Hc, D=5.0, layers=5, scheme="brown", snowy=False, ncol=5):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
     strata = STRATA[scheme]
-    zs = [-0.1]
+    bands = [-0.1]
     for i in range(layers):
-        zs.append(zs[-1] + Hc / layers * rng.uniform(0.8, 1.2))
-    k = Hc / zs[-1]
-    zs = [z * k for z in zs]
-    zs[0] = -0.1
-    blocks = []
-    front_off = 0.0
-    for i in range(layers):
-        z0, z1 = zs[i], zs[i + 1]
-        t = i / max(1, layers - 1)
-        half = W / 2 * (1.0 - 0.12 * t) + rng.uniform(-0.2, 0.2)
-        front_off = rng.uniform(-0.35, 0.35) + 0.25 * t       # ledges & small overhangs
-        nchunk = rng.choice((2, 3)) if W > 9 else 2
-        cuts = sorted(rng.uniform(0.3, 0.7) * 2 * half - half for _ in range(nchunk - 1))
-        xs = [-half] + cuts + [half]
-        col = strata[i % len(strata)]
-        for c in range(nchunk):
-            xa, xb = xs[c], xs[c + 1]
-            fo = front_off + rng.uniform(-0.2, 0.2)
-            zt = z1 + rng.uniform(-0.25, 0.1) if i < layers - 1 else z1 + rng.uniform(-0.15, 0.15)
-            b = _slab(mb, rng, xa - 0.05, xb + 0.05, -D / 2 + fo, D / 2 - 0.2 * t, z0, zt, col, nfront=2)
-            ledge = "snow" if snowy else "stone_moss"
-
-            def fn(f, col=col, ledge=ledge, top=(i == layers - 1)):
-                n = nrm(f)
-                if n.z > 0.8:
-                    if top:
-                        return None
-                    return ledge if rng.random() < 0.7 else ("snow_shade" if snowy else "moss")
-                if n.z < -0.3:
-                    return "rock_dark" if col.startswith("rock") and "brown" not in col else "rock_brown_dark"
-                if n.z > 0.35:
-                    return "snow" if snowy else ("moss" if rng.random() < 0.4 else col)
-                return col if rng.random() < 0.8 else ("rock_dark" if "brown" not in col else "rock_brown_dark")
-            b.color_faces(fn)
-            blocks.append(b)
-    # top cap (grass / snow): irregular slab slightly overhanging the top layer
-    ztop = zs[-1]
-    half = W / 2 * (1.0 - 0.12) + 0.1
-    n = 14
-    pts2 = []
-    for j in range(n):
-        a = TAU * j / n
-        x = math.cos(a) * half * rng.uniform(0.9, 1.02)
-        y = math.sin(a) * D / 2 * rng.uniform(0.92, 1.05)
-        x = max(-half, min(half, x * 1.25))
-        y = max(-D / 2 - 0.1, min(D / 2, y * 1.15))
-        pts2.append((x, y + 0.25))
-    capcol = "snow" if snowy else "grass"
-    cap = mb.extrude_polygon(pts2, ztop - 0.35, ztop + 0.3, "moss" if not snowy else "snow_shade",
-                             top_color=capcol)
-    for v in cap.verts:
-        if v.co.z > ztop:
-            v.co.z += rng.uniform(-0.12, 0.18)
-    # mounds/bushes on top for silhouette
+        bands.append(bands[-1] + Hc / layers * rng.uniform(0.75, 1.25))
+    k = Hc / bands[-1]
+    bands = [b * k for b in bands]
+    bands[0] = -0.1
+    slope = rng.uniform(-0.06, 0.06)
+    xs = [-W / 2 + W * (i + 0.5) / ncol + rng.uniform(-0.2, 0.2) * W / ncol for i in range(ncol)]
+    tops = []
+    for i, x in enumerate(xs):
+        w = W / ncol * rng.uniform(1.4, 1.6)
+        ztop = Hc * rng.uniform(0.86, 1.0)
+        if i in (0, ncol - 1):
+            ztop *= rng.uniform(0.88, 0.96)
+        yf = -D / 2 + rng.uniform(0.0, 0.5)
+        _column(mb, rng, x, w, yf, D / 2, ztop, bands, strata, snowy, slope)
+        tops.append((x, w, ztop))
+    # lower buttresses in front: ledges seen from the high camera
+    for j in range(2 if W > 9 else 1):
+        x = rng.uniform(-W / 2 + 1.5, W / 2 - 1.5)
+        w = rng.uniform(1.8, 2.6)
+        zt = Hc * rng.uniform(0.35, 0.55)
+        _column(mb, rng, x, w, -D / 2 - rng.uniform(0.8, 1.3), -D / 2 + 1.0, zt, bands, strata, snowy, slope)
+    # top decoration: grass mounds / snow drifts and a rock
     for j in range(3 if W > 9 else 2):
-        a = rng.uniform(0, TAU)
-        c = Vector((rng.uniform(-half * 0.6, half * 0.6), rng.uniform(-D * 0.2, D * 0.25), ztop + 0.2))
+        x, w, zt = tops[rng.randrange(len(tops))]
+        c = (x + rng.uniform(-0.5, 0.5), rng.uniform(-D * 0.2, D * 0.2), zt + 0.1)
         if snowy:
-            m = pad(mb, tuple(c), rng.uniform(0.8, 1.3), rng.uniform(0.7, 1.0), 0.6, 7, rng, slot=None, under=0.4)
+            m = pad(mb, c, rng.uniform(0.8, 1.2), rng.uniform(0.7, 1.0), 0.55, 7, rng, slot=None, under=0.4)
             shade_pad(mb, m, rng, "snow", "snow", "snow_shade", p_light=0.8, p_side_dark=0.4)
         else:
-            m = pad(mb, tuple(c), rng.uniform(0.8, 1.2), rng.uniform(0.7, 1.0), 0.8, 7, rng, slot=FOL, under=0.4)
+            m = pad(mb, c, rng.uniform(0.7, 1.0), rng.uniform(0.6, 0.9), 0.9, 7, rng, slot=FOL, under=0.4)
             shade_pad(mb, m, rng, "leaf_light", "leaf", "leaf_dark", p_light=0.6, p_side_dark=0.4)
-            m.wind_by_height(ztop, ztop + 1.0, 0.25)
+            m.wind_by_height(zt, zt + 1.0, 0.3)
+    x, w, zt = tops[rng.randrange(len(tops))]
+    ch = rock_chunk(mb, rng, (x, rng.uniform(-1, 1), zt + 0.2), 0.7, 0.55, 0.45, 10,
+                    **(dict(top="snow", top_t=0.5) if snowy else {}))
     # base boulders
     for j in range(3):
         x = rng.uniform(-W / 2 + 1, W / 2 - 1)
-        s = rng.uniform(0.6, 1.1)
+        sc = rng.uniform(0.55, 0.95)
         cols = dict(top="snow", top_alt="snow_shade", top_t=0.6) if snowy else {}
         if scheme == "brown":
             cols.update(light="rock_brown", mid="rock_brown", dark="rock_brown_dark")
-        ch = rock_chunk(mb, rng, (x, -D / 2 - 0.3, s * 0.3), s, s * 0.8, s * 0.75, 10, **cols)
+        ch = rock_chunk(mb, rng, (x, -D / 2 - 0.9, sc * 0.55), sc, sc * 0.8, sc * 0.6, 10, **cols)
         drop_below_ground(mb, ch, 0.0)
     mb.collider_mesh()
     return mb.finish()
@@ -1323,28 +1367,43 @@ def build_cliff(seed, name, W, Hc, D=5.0, layers=5, scheme="brown", snowy=False)
 def build_pillar(seed, name, H=6.0):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
-    z = -0.2
-    w = 1.25
-    xo = Vector((0, 0, 0))
-    nseg = 4
-    for i in range(nseg):
-        h = H / nseg * rng.uniform(0.95, 1.2)
-        c = xo + Vector((0, 0, z + h * 0.5))
-        top = (i == nseg - 1)
-        cols = dict(top="snow", top_alt="snow_shade", top_t=0.75) if top else {}
-        rock_chunk(mb, rng, tuple(c), w * rng.uniform(0.9, 1.05), w * rng.uniform(0.8, 0.95), h * 0.62, 14,
-                   squareness=0.45, **cols)
-        z += h * 0.88
-        w *= rng.uniform(0.78, 0.86)
-        xo += Vector((rng.uniform(-0.18, 0.18), rng.uniform(-0.18, 0.18), 0))
-    for j in range(2):
-        a = rng.uniform(0, TAU)
-        c = dirvec(a) * 1.3
-        ch = rock_chunk(mb, rng, (c.x, c.y, 0.15), 0.5, 0.45, 0.4, 10)
-    fit_height(mb, H, 0.5)
-    for f in list(mb.bm.faces):
-        pass
-    mn, mx = _bounds(mb)
+    n = 7
+    ph = rng.uniform(0, TAU)
+    rings = []
+    nseg = 6
+    off = Vector((0, 0, 0))
+    r = 1.0
+    zs = [-0.15] + sorted(rng.uniform(0.5, 5.4) for _ in range(nseg - 1)) + [H - 0.25]
+    for li, z in enumerate(zs):
+        if li:
+            off += Vector((rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), 0))
+            r *= rng.uniform(0.88, 0.97) if li % 2 else rng.uniform(1.0, 1.08)
+        ring = []
+        for k in range(n):
+            a = ph + TAU * k / n
+            rr = r * rng.uniform(0.8, 1.1) * (1.0 if k % 2 else 0.9)
+            ring.append((off.x + math.cos(a) * rr, off.y + math.sin(a) * rr * 0.85, z + rng.uniform(-0.1, 0.1) * (li > 0)))
+        rings.append(ring)
+    top = [(x * 0.7 + off.x * 0.3, y * 0.7 + off.y * 0.3, H + rng.uniform(-0.08, 0.05)) for (x, y, z) in rings[-1]]
+    rings.append(top)
+    col = mb.loft(rings, "rock", cap_end=True)
+    strata = ["rock_dark", "rock", "rock_light", "rock", "rock_dark", "rock", "rock_light"]
+
+    def fn(f):
+        nn = nrm(f)
+        zc = f.calc_center_median().z
+        if nn.z > 0.6:
+            return "snow" if zc > H - 0.6 else "snow_shade"
+        if nn.z < -0.3:
+            return "rock_dark"
+        bi = max(i for i, z in enumerate(zs) if zc >= z - 1e-3) if zc >= zs[0] else 0
+        return strata[bi % len(strata)]
+    col.color_faces(fn)
+    for j in range(3):
+        a = ph + j * 2.1
+        c = dirvec(a) * 1.15
+        ch = rock_chunk(mb, rng, (c.x, c.y, 0.3), 0.55, 0.45, 0.4, 10)
+        drop_below_ground(mb, ch, 0.0)
     mb.collider_box((1.9, 1.7, H), (0, 0, H / 2))
     return mb.finish()
 
@@ -1371,13 +1430,14 @@ def build_log(seed, name):
     log = mb.loft(rings, "trunk", cap_start=True, cap_end=True)
 
     def fn(f):
+        d = FaceDice(rng, f)
         n_ = nrm(f)
         if abs(n_.x) > 0.85:
             return "wood_light"
         if n_.z > 0.75:
-            return "moss" if rng.random() < 0.55 else "stone_moss"
+            return "moss" if d.random() < 0.4 else ("stone_moss" if d.random() < 0.5 else "trunk_light")
         if n_.z > 0.3:
-            return "trunk_light" if rng.random() < 0.6 else "trunk"
+            return "trunk_light" if d.random() < 0.6 else "trunk"
         return "trunk"
     log.color_faces(fn)
     # broken branch stub
@@ -1414,6 +1474,7 @@ def build_stump(seed, name):
     st = mb.loft(rings, "trunk", cap_end=True)
 
     def fn(f):
+        d = FaceDice(rng, f)
         n_ = nrm(f)
         c = f.calc_center_median()
         if n_.z > 0.85 and c.z > H - 0.1:
@@ -1421,7 +1482,7 @@ def build_stump(seed, name):
             return "wood_light" if r < 0.15 else "wood_pale"
         if n_.z > 0.3:
             return "trunk_light"
-        return "trunk_light" if rng.random() < 0.3 else "trunk"
+        return "trunk_light" if d.random() < 0.3 else "trunk"
     st.color_faces(fn)
     _roots(mb, rng, 4, 0.38, length=0.45)
     pyramid(mb, [(math.cos(a) * 0.1, math.sin(a) * 0.1, H + 0.01) for a in (0, TAU / 3, 2 * TAU / 3)],
@@ -1435,8 +1496,9 @@ def build_rice(seed, name):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
     S = 1.0
-    water = mb.extrude_polygon([(-S, -S), (S, -S), (S, S), (-S, S)], -0.02, 0.02, "water_shallow",
-                               slot=L.SLOT_WATER)
+    # shallow water slab, top at z = 0.02 (closed box so its normal can't flip)
+    mb.extrude_polygon([(-S, -S), (S, -S), (S, S), (-S, S)], -0.02, 0.02, "water_shallow",
+                       slot=L.SLOT_WATER)
     blades = []
     rows, cols = 5, 5
     for i in range(rows):
@@ -1460,28 +1522,26 @@ def build_wheat(seed, name):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
     fol = []
-    n = 26
-    pts = []
-    for i in range(n):
-        for _ in range(30):
-            c = Vector((rng.uniform(-0.9, 0.9), rng.uniform(-0.9, 0.9), -0.03))
-            if all((c - o).length > 0.26 for o in pts):
-                break
-        pts.append(c)
-        h = rng.uniform(0.82, 1.0)
-        lean = dirvec(rng.uniform(0, TAU)) * rng.uniform(0.04, 0.14)
-        hb = c + lean + Vector((0, 0, h - 0.22))
-        fol.append(blade(mb, c, hb + Vector((0, 0, 0.04)), 0.05, "wheat_dark", rng, thick=0.04))
-        d = (lean.normalized() if lean.length > 1e-3 else Vector((1, 0, 0)))
-        head = tube(mb, [hb, hb + d * 0.03 + Vector((0, 0, 0.11)), hb + d * 0.09 + Vector((0, 0, 0.27))],
-                    [0.0, 0.055, 0.0], 3, "wheat", rng, slot=FOL)
-        shade(head, "wheat", "wheat", "wheat_dark", t_top=0.2, rng=rng, alt_side="wheat_dark", p_alt_side=0.3)
-        fol.append(head)
-    for i in range(10):
-        c = Vector((rng.uniform(-0.9, 0.9), rng.uniform(-0.9, 0.9), -0.03))
-        a = rng.uniform(0, TAU)
-        fol.append(blade(mb, c, c + dirvec(a) * 0.25 + Vector((0, 0, rng.uniform(0.4, 0.6))), 0.08,
-                         rng.choice(("wheat_dark", "grass_dry")), rng))
+    wind = dirvec(rng.uniform(0, TAU))
+    nx, ny = 4, 4
+    for i in range(nx):
+        for j in range(ny):
+            c = Vector((-0.85 + 1.7 * (i + rng.uniform(0.25, 0.75)) / nx,
+                        -0.85 + 1.7 * (j + rng.uniform(0.25, 0.75)) / ny, -0.03))
+            a0 = rng.uniform(0, TAU)
+            for k in range(3):
+                a = a0 + TAU * k / 3 + rng.uniform(-0.4, 0.4)
+                base = c + dirvec(a) * rng.uniform(0.03, 0.1)
+                h = rng.uniform(0.82, 1.0)
+                lean = (wind * 0.5 + dirvec(a) * 0.6) * rng.uniform(0.1, 0.22)
+                eb = base + lean * 0.75 + Vector((0, 0, h - 0.3))
+                fol.append(blade(mb, base, eb + Vector((0, 0, 0.06)), 0.055, rng.choice(("wheat_dark", "grass_dry")),
+                                 rng, thick=0.05))
+                d = lean.normalized() if lean.length > 1e-3 else Vector((1, 0, 0))
+                sd = Vector((-d.y, d.x, 0))
+                tip = eb + d * 0.08 + Vector((0, 0, 0.32))
+                ring = [eb + sd * 0.05, eb - sd * 0.05 + d * 0.01, eb - d * 0.05]
+                fol.append(pyramid(mb, ring, tip, "wheat" if rng.random() < 0.75 else "wheat_dark", FOL))
     g = group(mb, *fol)
     g.wind_by_height(0.0, 1.05, 1.0)
     mb.collider_none()
@@ -1491,7 +1551,7 @@ def build_wheat(seed, name):
 def build_cabbages(seed, name):
     rng = random.Random(seed)
     mb = L.MeshBuilder(name, seed)
-    Lr = 3.4
+    Lr = 3.0
     secs = []
     for k in range(6):
         x = -Lr / 2 + Lr * k / 5
@@ -1505,7 +1565,7 @@ def build_cabbages(seed, name):
         return "dirt" if n_.z > 0.85 else "dirt_dark"
     ridge.color_faces(fn)
     for i in range(6):
-        x = -1.25 + 2.5 * i / 5 + rng.uniform(-0.06, 0.06)
+        x = -1.2 + 2.4 * i / 5 + rng.uniform(-0.05, 0.05)
         c = Vector((x, rng.uniform(-0.04, 0.04), 0.2))
         r = rng.uniform(0.19, 0.23)
         core = blob(mb, (c.x, c.y, c.z + r * 0.7), r, rng, scale=(1, 1, 0.85), segs=6, rings=3, jitter=0.1,
@@ -1516,7 +1576,7 @@ def build_cabbages(seed, name):
             a = a0 + TAU * k / 5
             base = c + dirvec(a) * r * 0.5 + Vector((0, 0, r * 0.65))
             lf = leaf_tent(mb, base, dirvec(a), r * 1.35, r * 1.0, r * 0.55, "leaf", rng, slot=None)
-            lf.color_faces(lambda f: rng.choice(("leaf", "leaf_light", "grass")))
+            lf.color_faces(lambda f: FaceDice(rng, f).choice(("leaf", "leaf_light", "grass")))
     mb.collider_none()
     return mb.finish()
 
@@ -1585,20 +1645,20 @@ PROPS = {
     "grass_tuft_b": lambda seed: build_grass_tuft(seed + 19, "grass_tuft_b", 12, 0.5, ("grass", "grass_light", "grass_light", "grass_dark")),
     "tall_grass_patch": lambda seed: build_tall_grass(seed + 21, "tall_grass_patch"),
     "reeds_patch": lambda seed: build_reeds(seed + 15, "reeds_patch"),
-    "flowers_yellow": lambda seed: build_flowers(seed + 5, "flowers_yellow", "flower_yellow", "wood_light", 8, False),
+    "flowers_yellow": lambda seed: build_flowers(seed + 5, "flowers_yellow", "flower_yellow", "wood_light", 7, False, 10),
     "flowers_blue": lambda seed: build_flowers(seed + 25, "flowers_blue", "flower_blue", None, 7, True),
     "flowers_pink": lambda seed: build_flowers(seed + 45, "flowers_pink", "flower_pink", "flower_yellow", 7, True, 9),
     "lily_pads": lambda seed: build_lily_pads(seed + 12, "lily_pads"),
-    "rock_small_a": lambda seed: build_rock(seed + 1, "rock_small_a", 0.6, 12, 1, collider="box"),
+    "rock_small_a": lambda seed: build_rock(seed + 1, "rock_small_a", 0.5, 12, 1, collider="box"),
     "rock_small_b": lambda seed: build_rock(seed + 2, "rock_small_b", 0.45, 10, 2, collider="none", squareness=0.4),
     "rock_medium_a": lambda seed: build_rock(seed + 3, "rock_medium_a", 1.3, 14, 2, collider="box"),
-    "rock_medium_b": lambda seed: build_rock(seed + 4, "rock_medium_b", 1.6, 16, 1, collider="box", squareness=0.45),
-    "rock_large_a": lambda seed: build_rock(seed + 5, "rock_large_a", 3.0, 18, 3, moss=True, collider="box"),
-    "rock_large_b": lambda seed: build_rock(seed + 6, "rock_large_b", 3.4, 20, 2, moss=True, collider="mesh",
+    "rock_medium_b": lambda seed: build_rock(seed + 4, "rock_medium_b", 1.25, 16, 1, collider="box", squareness=0.45),
+    "rock_large_a": lambda seed: build_rock(seed + 5, "rock_large_a", 2.5, 18, 3, moss=True, collider="box"),
+    "rock_large_b": lambda seed: build_rock(seed + 6, "rock_large_b", 2.75, 20, 2, moss=True, collider="mesh",
                                             squareness=0.4),
-    "rock_snow_a": lambda seed: build_rock(seed + 7, "rock_snow_a", 2.0, 16, 2, snow=True, collider="box"),
+    "rock_snow_a": lambda seed: build_rock(seed + 7, "rock_snow_a", 1.75, 16, 2, snow=True, collider="box"),
     "cliff_a": lambda seed: build_cliff(seed + 1, "cliff_a", 10.0, 10.0, 5.0, 5, "brown"),
-    "cliff_b": lambda seed: build_cliff(seed + 2, "cliff_b", 13.0, 14.0, 6.0, 7, "brown"),
+    "cliff_b": lambda seed: build_cliff(seed + 2, "cliff_b", 11.8, 14.0, 6.0, 7, "brown"),
     "cliff_c": lambda seed: build_cliff(seed + 3, "cliff_c", 9.0, 12.0, 5.0, 6, "grey", snowy=True),
     "rock_pillar": lambda seed: build_pillar(seed + 9, "rock_pillar"),
     "log_fallen": lambda seed: build_log(seed + 3, "log_fallen"),

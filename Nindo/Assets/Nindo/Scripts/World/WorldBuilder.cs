@@ -12,6 +12,7 @@ namespace Nindo
     /// Construye el mundo a partir de los modelos de zona exportados desde Blender
     /// (Tools/Blender/world). Cada zona es un FBX con:
     ///   T__*  terreno (MeshCollider)      W__*  agua      B__*  límites invisibles
+    ///   D__*  decoración de suelo fusionada por chunk (pasto, flores...: sin collider ni sombras)
     ///   P__propId__n  instancias de props (se reemplazan por el modelo del prop + collider)
     ///   M__Tipo__args  marcadores de gameplay (spawns, santuarios, triggers, zonas, jefes...)
     /// Después hace static batching, construye el NavMesh en runtime y prepara la atmósfera.
@@ -79,16 +80,27 @@ namespace Nindo
             }
             else
             {
+                // 1) instanciar todas las zonas y juntar sus nodos
+                var nodes = new List<Transform>();
                 foreach (var zone in content.zones)
                 {
                     if (zone == null) continue;
                     var inst = Instantiate(zone, staticRoot);
                     inst.name = zone.name;
-                    ProcessZone(inst.transform);
-                    yield return null;
+                    foreach (Transform c in inst.transform) nodes.Add(c);
+                }
+                yield return null;
+                // 2) procesarlos por fases: geometría, después los marcadores "contenedores"
+                //    (arenas, encuentros, zonas) y al final los que se enganchan a ellos (jefes, enemigos...).
+                //    Así no importa en qué archivo ni en qué orden quedó cada nodo.
+                nodes.Sort((a, b) => Phase(a.name).CompareTo(Phase(b.name)));
+                int n = 0;
+                foreach (var c in nodes)
+                {
+                    ProcessNode(c);
+                    if (++n % 400 == 0) yield return null;
                 }
             }
-
             // static batching de todo lo estático (terreno + props)
             StaticBatchingUtility.Combine(staticRoot.gameObject);
             yield return null;
@@ -112,20 +124,23 @@ namespace Nindo
             catch (Exception e) { Debug.LogWarning("[Nindo] Manifest de props inválido: " + e.Message); }
         }
 
-        void ProcessZone(Transform zone)
+        static int Phase(string n)
         {
-            var children = new List<Transform>();
-            foreach (Transform c in zone) children.Add(c);
-            foreach (var c in children)
-            {
-                string n = c.name;
-                if (n.StartsWith("P__")) SpawnProp(c);
-                else if (n.StartsWith("M__")) SpawnMarker(c);
-                else if (n.StartsWith("T__")) SetupTerrain(c);
-                else if (n.StartsWith("W__")) SetupWater(c);
-                else if (n.StartsWith("B__")) SetupBoundary(c);
-                else SetupTerrain(c);
-            }
+            if (!n.StartsWith("M__")) return 0;
+            if (n.StartsWith("M__BossArena") || n.StartsWith("M__Encounter") || n.StartsWith("M__Zone")) return 1;
+            return 2;
+        }
+
+        void ProcessNode(Transform c)
+        {
+            string n = c.name;
+            if (n.StartsWith("P__")) SpawnProp(c);
+            else if (n.StartsWith("M__")) SpawnMarker(c);
+            else if (n.StartsWith("T__")) SetupTerrain(c);
+            else if (n.StartsWith("W__")) SetupWater(c);
+            else if (n.StartsWith("B__")) SetupBoundary(c);
+            else if (n.StartsWith("D__")) SetupDecor(c);
+            else SetupTerrain(c);
         }
 
         static string[] Parts(string name)
@@ -149,6 +164,17 @@ namespace Nindo
             }
         }
 
+        void SetupDecor(Transform t)
+        {
+            bool shadows = t.name.Contains("_sh_");   // arbustos sí proyectan sombra; pasto y flores no
+            foreach (var r in t.GetComponentsInChildren<MeshRenderer>())
+            {
+                r.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+                r.receiveShadows = true;
+                r.gameObject.isStatic = true;
+            }
+        }
+
         void SetupWater(Transform t)
         {
             foreach (var r in t.GetComponentsInChildren<MeshRenderer>())
@@ -169,8 +195,7 @@ namespace Nindo
                 mf.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
                 var r = mf.GetComponent<MeshRenderer>();
                 if (r != null) r.enabled = false;
-                // no queremos que el NavMesh camine por encima de los límites
-                mf.gameObject.AddComponent<NavMeshExclude>();
+                // son paredes verticales: en el NavMesh funcionan como obstáculo (los enemigos no salen del mapa)
             }
         }
 
@@ -451,6 +476,8 @@ namespace Nindo
             settings.agentClimb = 0.5f;
             settings.agentSlope = 42f;
             settings.minRegionArea = 4f;
+            settings.overrideVoxelSize = true;
+            settings.voxelSize = 0.2f;        // mapa grande: voxels algo más gruesos = build mucho más rápido
             var data = new NavMeshData(0);
             navInstance = NavMesh.AddNavMeshData(data);
             var op = NavMeshBuilder.UpdateNavMeshDataAsync(data, settings, sources, bounds);

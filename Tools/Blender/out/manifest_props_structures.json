@@ -1,0 +1,739 @@
+{
+ "arch_bamboo_gate": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   5.300000190734863,
+   3.230621814727783,
+   1.2645351886749268
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 554
+ },
+ "boardwalk_segment": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   1.9908363819122314,
+   3.75,
+   6.0037150382995605
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 446
+ },
+ "bridge_arch": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   2.6600000858306885,
+   3.753351926803589,
+   9.029356002807617
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 1388
+ },
+ "bridge_plank": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   2.1117873191833496,
+   1.2175401449203491,
+   6.239617347717285
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 374
+ },
+ "dock_segment": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   2.708467960357666,
+   3.0799999237060547,
+   4.0
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 288
+ },
+ "dojo_gate": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   11.181102752685547,
+   8.605000495910645,
+   5.681102275848389
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 3996
+ },
+ "dojo_gate_door": {
+  "collider": {
+   "center": [
+    -1.05,
+    2.2,
+    -0.0
+   ],
+   "size": [
+    2.1,
+    4.4,
+    0.25
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "pivot": "hinge_edge_x0",
+  "size": [
+   2.119999885559082,
+   4.480000019073486,
+   0.4300000071525574
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "nonstatic"
+  ],
+  "tris": 560
+ },
+ "dojo_main": {
+  "collider": {
+   "type": "mesh"
+  },
+  "light_offset": [
+   -0.0,
+   3.0,
+   6.0
+  ],
+  "module": "props_structures",
+  "size": [
+   21.899999618530273,
+   13.254908561706543,
+   15.809999465942383
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_warm"
+  ],
+  "tris": 6624
+ },
+ "fence_bamboo": {
+  "collider": {
+   "center": [
+    0,
+    0.65,
+    0
+   ],
+   "size": [
+    2.5,
+    1.3,
+    0.2
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   2.6160473823547363,
+   1.3700000047683716,
+   0.1380000114440918
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 311
+ },
+ "fence_wood": {
+  "collider": {
+   "center": [
+    0,
+    0.55,
+    0
+   ],
+   "size": [
+    2.5,
+    1.1,
+    0.2
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   2.6700000762939453,
+   1.1399998664855957,
+   0.17000000178813934
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 112
+ },
+ "house_farmer_a": {
+  "collider": {
+   "center": [
+    0,
+    2.15,
+    0
+   ],
+   "size": [
+    5.7,
+    4.3,
+    3.7
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   7.156933784484863,
+   4.644236087799072,
+   5.195242881774902
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 1494
+ },
+ "house_farmer_b": {
+  "collider": {
+   "center": [
+    -0.2,
+    2.0,
+    0
+   ],
+   "size": [
+    5.6,
+    4.0,
+    3.5
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   6.205979347229004,
+   3.957247018814087,
+   5.207667350769043
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 2502
+ },
+ "house_fisher": {
+  "collider": {
+   "type": "mesh"
+  },
+  "light_offset": [
+   -0.85,
+   2.8,
+   2.4
+  ],
+  "module": "props_structures",
+  "size": [
+   9.034029960632324,
+   8.584881782531738,
+   8.080894470214844
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "walkable",
+   "light_warm"
+  ],
+  "tris": 2648
+ },
+ "house_kaito": {
+  "collider": {
+   "center": [
+    -0.0,
+    2.7,
+    0.18
+   ],
+   "size": [
+    7.5,
+    5.4,
+    5.85
+   ],
+   "type": "box"
+  },
+  "light_offset": [
+   -0.0,
+   1.8,
+   4.0
+  ],
+  "module": "props_structures",
+  "size": [
+   9.239898681640625,
+   5.848378658294678,
+   7.726078987121582
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_warm"
+  ],
+  "tris": 2920
+ },
+ "house_village_a": {
+  "collider": {
+   "center": [
+    0,
+    2.45,
+    0
+   ],
+   "size": [
+    6.9,
+    4.9,
+    4.9
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   8.58110237121582,
+   5.117236614227295,
+   6.58110237121582
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 2610
+ },
+ "house_village_b": {
+  "collider": {
+   "center": [
+    0,
+    3.6,
+    0
+   ],
+   "size": [
+    5.4,
+    7.2,
+    4.9
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   6.539999961853027,
+   7.588236331939697,
+   6.398219585418701
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 2692
+ },
+ "lake_arena_platform": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   19.981281280517578,
+   4.440000057220459,
+   19.981281280517578
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 1272
+ },
+ "mountain_cabin": {
+  "collider": {
+   "center": [
+    0,
+    2.3,
+    0
+   ],
+   "size": [
+    5.6,
+    4.6,
+    4.4
+   ],
+   "type": "box"
+  },
+  "light_offset": [
+   -0.0,
+   1.2,
+   2.9
+  ],
+  "module": "props_structures",
+  "size": [
+   7.2777252197265625,
+   5.180469036102295,
+   6.074577331542969
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_fire"
+  ],
+  "tris": 1933
+ },
+ "pagoda_small": {
+  "collider": {
+   "center": [
+    0,
+    5.0,
+    0
+   ],
+   "size": [
+    3.0,
+    10.0,
+    3.0
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   3.6001269817352295,
+   9.670159339904785,
+   3.6500635147094727
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 3018
+ },
+ "pavilion_azumaya": {
+  "collider": {
+   "type": "mesh"
+  },
+  "light_offset": [
+   -0.0,
+   2.0,
+   -0.0
+  ],
+  "module": "props_structures",
+  "size": [
+   4.192921161651611,
+   4.210000038146973,
+   4.205996513366699
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_warm"
+  ],
+  "tris": 694
+ },
+ "shrine_small": {
+  "collider": {
+   "center": [
+    0,
+    1.95,
+    0.05
+   ],
+   "size": [
+    4.4,
+    3.9,
+    3.8
+   ],
+   "type": "box"
+  },
+  "light_offset": [
+   -1.05,
+   1.8,
+   1.7
+  ],
+  "module": "props_structures",
+  "size": [
+   4.420000076293945,
+   4.738336086273193,
+   3.9698028564453125
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_warm"
+  ],
+  "tris": 1304
+ },
+ "stairs_stone": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   4.099999904632568,
+   2.0103986263275146,
+   3.30855131149292
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 200
+ },
+ "stairs_stone_large": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   9.260000228881836,
+   5.050000190734863,
+   8.210000038146973
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "walkable"
+  ],
+  "tris": 472
+ },
+ "storehouse_kura": {
+  "collider": {
+   "center": [
+    0,
+    2.45,
+    0
+   ],
+   "size": [
+    3.7,
+    4.9,
+    3.7
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   4.639999866485596,
+   5.134541988372803,
+   4.741641044616699
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 1586
+ },
+ "torii_red": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   6.599999904632568,
+   5.016382694244385,
+   0.6000000238418579
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 296
+ },
+ "torii_stone": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_structures",
+  "size": [
+   5.400000095367432,
+   4.2310566902160645,
+   0.7380363941192627
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 228
+ },
+ "wall_gate": {
+  "collider": {
+   "type": "mesh"
+  },
+  "light_offset": [
+   -0.0,
+   2.6,
+   2.2
+  ],
+  "module": "props_structures",
+  "size": [
+   9.166960716247559,
+   7.675000190734863,
+   5.066959857940674
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [
+   "occluder",
+   "light_warm"
+  ],
+  "tris": 2878
+ },
+ "wall_gate_door": {
+  "collider": {
+   "center": [
+    -0.85,
+    1.75,
+    -0.0
+   ],
+   "size": [
+    1.7,
+    3.5,
+    0.2
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "pivot": "hinge_edge_x0",
+  "size": [
+   1.7200000286102295,
+   3.5799999237060547,
+   0.3799999952316284
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "nonstatic"
+  ],
+  "tris": 368
+ },
+ "wall_post": {
+  "collider": {
+   "center": [
+    0,
+    1.9,
+    0
+   ],
+   "size": [
+    1.2,
+    3.8,
+    1.2
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   2.047060966491699,
+   3.819999933242798,
+   2.047060966491699
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 536
+ },
+ "wall_segment": {
+  "collider": {
+   "center": [
+    0,
+    1.75,
+    0
+   ],
+   "size": [
+    8.0,
+    3.5,
+    0.9
+   ],
+   "type": "box"
+  },
+  "module": "props_structures",
+  "size": [
+   8.0,
+   3.5399999618530273,
+   1.8164290189743042
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 848
+ }
+}

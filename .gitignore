@@ -63,6 +63,5 @@ __pycache__/
 *.pyc
 Tools/Audio/.cache/
 Tools/Blender/out/previews/
-Tools/Blender/out/world/*.log
-Tools/Blender/out/world/*.time
-Tools/Blender/out/world/stats.json
+Tools/Blender/out/world/
+Tools/Blender/out/sheet_*.png

@@ -1,0 +1,1019 @@
+{
+ "bamboo_cluster_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.8,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.005919456481934,
+   8.97523307800293,
+   4.886429786682129
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 660
+ },
+ "bamboo_cluster_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.8,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.133844375610352,
+   8.497899055480957,
+   4.853398323059082
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 690
+ },
+ "bamboo_wall": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "size": [
+    6.0,
+    3.0,
+    0.9
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   7.100804328918457,
+   9.35937786102295,
+   2.617259979248047
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 894
+ },
+ "bamboo_young": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.6230151653289795,
+   2.504946708679199,
+   1.8032405376434326
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [],
+  "tris": 240
+ },
+ "bush_azalea_pink": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   2.052778720855713,
+   0.9561454057693481,
+   2.097032308578491
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 270
+ },
+ "bush_azalea_white": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   2.0580894947052,
+   0.965237021446228,
+   1.9995057582855225
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 270
+ },
+ "bush_round_a": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.677558422088623,
+   1.172186017036438,
+   1.5619791746139526
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 192
+ },
+ "bush_round_b": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   2.2585196495056152,
+   1.4272252321243286,
+   2.257751941680908
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 232
+ },
+ "bush_round_c": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.426585078239441,
+   0.9031062126159668,
+   1.262688159942627
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 154
+ },
+ "bush_snow": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.6832425594329834,
+   1.020248532295227,
+   1.640047550201416
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 198
+ },
+ "cabbage_row": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   3.118034601211548,
+   0.5567523837089539,
+   0.8704948425292969
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 238
+ },
+ "cliff_a": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_nature",
+  "size": [
+   10.990524291992188,
+   10.09656810760498,
+   7.056239128112793
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [],
+  "tris": 734
+ },
+ "cliff_b": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_nature",
+  "size": [
+   13.875293731689453,
+   14.327765464782715,
+   8.130314826965332
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [],
+  "tris": 842
+ },
+ "cliff_c": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_nature",
+  "size": [
+   9.740438461303711,
+   12.367461204528809,
+   7.152463912963867
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 720
+ },
+ "flowers_blue": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.000685691833496,
+   0.4776041507720947,
+   0.9528417587280273
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 127
+ },
+ "flowers_pink": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.9239630699157715,
+   0.49443021416664124,
+   0.9547807574272156
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 146
+ },
+ "flowers_yellow": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.9515202641487122,
+   0.5134735703468323,
+   1.0244197845458984
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 149
+ },
+ "grass_tuft_a": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.31533777713775635,
+   0.3457143306732178,
+   0.264862060546875
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 27
+ },
+ "grass_tuft_b": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.3938300907611847,
+   0.48092323541641235,
+   0.3633679151535034
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 36
+ },
+ "lily_pads": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.7978354692459106,
+   0.3099999725818634,
+   1.888796091079712
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 105
+ },
+ "log_fallen": {
+  "collider": {
+   "center": [
+    0,
+    0.33,
+    0
+   ],
+   "size": [
+    3.5,
+    0.66,
+    0.75
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   3.563999891281128,
+   0.8239212036132812,
+   1.023614764213562
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 104
+ },
+ "mushroom_cluster": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.6161571741104126,
+   0.43276506662368774,
+   0.6719040870666504
+  ],
+  "slots": [
+   0,
+   1
+  ],
+  "tags": [],
+  "tris": 227
+ },
+ "reeds_patch": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.4329588413238525,
+   1.5264079570770264,
+   1.4926851987838745
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 258
+ },
+ "rice_patch": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   2.0,
+   0.4744204580783844,
+   2.0
+  ],
+  "slots": [
+   2,
+   3
+  ],
+  "tags": [],
+  "tris": 235
+ },
+ "rock_large_a": {
+  "collider": {
+   "center": [
+    0.010863125324249268,
+    0.8545144230127334,
+    -0.018248021602630615
+   ],
+   "size": [
+    2.6566382884979247,
+    1.7090288460254668,
+    2.865814733505249
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   3.1254568099975586,
+   1.859485149383545,
+   3.371546745300293
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 131
+ },
+ "rock_large_b": {
+  "collider": {
+   "type": "mesh"
+  },
+  "module": "props_nature",
+  "size": [
+   3.435464859008789,
+   1.828353762626648,
+   3.204326629638672
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 84
+ },
+ "rock_medium_a": {
+  "collider": {
+   "center": [
+    0.1704276204109192,
+    0.3750084787607193,
+    -0.00798100233078003
+   ],
+   "size": [
+    1.2361773312091826,
+    0.7500169575214386,
+    1.2146921694278716
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   1.4543262720108032,
+   0.8157225847244263,
+   1.4290496110916138
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 70
+ },
+ "rock_medium_b": {
+  "collider": {
+   "center": [
+    -0.016835510730743408,
+    0.449701826274395,
+    0.03959858417510986
+   ],
+   "size": [
+    1.356229203939438,
+    0.89940365254879,
+    1.3798909902572631
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   1.5955637693405151,
+   0.9764332175254822,
+   1.623401165008545
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 42
+ },
+ "rock_pillar": {
+  "collider": {
+   "center": [
+    0,
+    3.0,
+    0
+   ],
+   "size": [
+    1.9,
+    6.0,
+    1.7
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   3.2573719024658203,
+   6.177824974060059,
+   3.1507577896118164
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 185
+ },
+ "rock_small_a": {
+  "collider": {
+   "center": [
+    -0.00802774727344513,
+    0.14456683918833732,
+    -0.00374661386013031
+   ],
+   "size": [
+    0.5938954651355743,
+    0.28913367837667464,
+    0.5450451850891113
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   0.6987005472183228,
+   0.3168051540851593,
+   0.6412296295166016
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 24
+ },
+ "rock_small_b": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   0.5276068449020386,
+   0.291938453912735,
+   0.5426120162010193
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 56
+ },
+ "rock_snow_a": {
+  "collider": {
+   "center": [
+    -0.08259814977645874,
+    0.7085221350193024,
+    0.09780126810073853
+   ],
+   "size": [
+    1.774173641204834,
+    1.4170442700386048,
+    1.2823845744132996
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   2.0872631072998047,
+   1.535356044769287,
+   1.5086877346038818
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 98
+ },
+ "stump": {
+  "collider": {
+   "center": [
+    0,
+    0.3,
+    0
+   ],
+   "size": [
+    0.85,
+    0.6,
+    0.85
+   ],
+   "type": "box"
+  },
+  "module": "props_nature",
+  "size": [
+   1.49867844581604,
+   0.737637460231781,
+   1.653562307357788
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [],
+  "tris": 115
+ },
+ "tall_grass_patch": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   2.194805860519409,
+   1.0909239053726196,
+   2.2309679985046387
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [
+   "fireflies"
+  ],
+  "tris": 216
+ },
+ "tree_cedar_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   4.061288356781006,
+   11.057610511779785,
+   4.221458911895752
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 224
+ },
+ "tree_cedar_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   3.69942045211792,
+   12.879600524902344,
+   3.908735752105713
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 256
+ },
+ "tree_dead_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   2.746950149536133,
+   5.12257719039917,
+   2.8097305297851562
+  ],
+  "slots": [
+   0
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 299
+ },
+ "tree_maple_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.359939098358154,
+   5.0948991775512695,
+   5.052672386169434
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 454
+ },
+ "tree_pine_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   3.820159912109375,
+   6.200742244720459,
+   4.811119079589844
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 530
+ },
+ "tree_pine_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   4.803455352783203,
+   7.7442450523376465,
+   6.174676895141602
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 624
+ },
+ "tree_pine_c": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   7.3048415184021,
+   9.229362487792969,
+   7.187026023864746
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 678
+ },
+ "tree_pine_snow_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   3.5711286067962646,
+   7.567135810852051,
+   3.636599063873291
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 280
+ },
+ "tree_pine_snow_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   4.716920852661133,
+   9.87819766998291,
+   4.745946407318115
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 328
+ },
+ "tree_round_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.177396774291992,
+   6.281949996948242,
+   4.419639587402344
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 458
+ },
+ "tree_round_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.273272514343262,
+   7.063954830169678,
+   5.561290740966797
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 458
+ },
+ "tree_sakura_a": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   5.626021385192871,
+   5.381606101989746,
+   5.687891006469727
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 417
+ },
+ "tree_sakura_b": {
+  "collider": {
+   "center": [
+    0,
+    1.5,
+    0
+   ],
+   "height": 3.0,
+   "radius": 0.35,
+   "type": "capsule"
+  },
+  "module": "props_nature",
+  "size": [
+   7.159514427185059,
+   6.6200971603393555,
+   6.479438781738281
+  ],
+  "slots": [
+   0,
+   2
+  ],
+  "tags": [
+   "occluder"
+  ],
+  "tris": 637
+ },
+ "wheat_patch": {
+  "collider": {
+   "type": "none"
+  },
+  "module": "props_nature",
+  "size": [
+   1.7904164791107178,
+   1.0193803310394287,
+   1.7361905574798584
+  ],
+  "slots": [
+   2
+  ],
+  "tags": [],
+  "tris": 288
+ }
+}

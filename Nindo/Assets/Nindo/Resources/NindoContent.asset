@@ -48,8 +48,247 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
     materialOverrides: []
-  zones: []
-  props: []
+  zones:
+  - {fileID: 919132149155446097, guid: 48325740ec032fec89b449ccce6bc26f, type: 3}
+  - {fileID: 919132149155446097, guid: 6425a65ff005d48864f10290b6d60d9c, type: 3}
+  - {fileID: 919132149155446097, guid: 7d4e5bd6012e6697d2abcfa8f3cbd973, type: 3}
+  - {fileID: 919132149155446097, guid: 44ba8469cefb0cd019beee1b4b81a3d6, type: 3}
+  - {fileID: 919132149155446097, guid: fbcf8fab91027750ef5a9e89ed8d3de1, type: 3}
+  - {fileID: 919132149155446097, guid: 19d0507062389c0bd7c9b7bb24173485, type: 3}
+  - {fileID: 919132149155446097, guid: 7815ad3c7cd282697ab4c85aaee96d03, type: 3}
+  - {fileID: 919132149155446097, guid: 071c2b178ff44a941132a85676da6fd6, type: 3}
+  - {fileID: 919132149155446097, guid: b1cd8a05219c4e88a88c5dfb5d8f5738, type: 3}
+  props:
+  - id: arch_bamboo_gate
+    model: {fileID: 919132149155446097, guid: df43f4b542fda366375dde7785b54100, type: 3}
+  - id: bamboo_cluster_a
+    model: {fileID: 919132149155446097, guid: 4bdd38b0b4e8f65d958bd49a98c373f1, type: 3}
+  - id: bamboo_cluster_b
+    model: {fileID: 919132149155446097, guid: 55d77e101b0550107a7f59100a215443, type: 3}
+  - id: bamboo_wall
+    model: {fileID: 919132149155446097, guid: 44ae746e3537c0438b160246a712912f, type: 3}
+  - id: bamboo_young
+    model: {fileID: 919132149155446097, guid: f07ac502a59ffea85622fd4103c911fe, type: 3}
+  - id: banner_nobori
+    model: {fileID: 919132149155446097, guid: 94eb5168c09b4e5d20ad2a8433105e29, type: 3}
+  - id: barrel
+    model: {fileID: 919132149155446097, guid: a9eac602bfe36fbb0a2c633229db97f9, type: 3}
+  - id: barrel_stack
+    model: {fileID: 919132149155446097, guid: a1d077188c10ddfa65158ed8fac7f954, type: 3}
+  - id: bench_wood
+    model: {fileID: 919132149155446097, guid: 8f4a07ee44990249a3da8c1eb1234b4b, type: 3}
+  - id: boardwalk_segment
+    model: {fileID: 919132149155446097, guid: 20e3899968403edef64add08c6dad3f2, type: 3}
+  - id: boat_small
+    model: {fileID: 919132149155446097, guid: 64b3710552530ede757df4da15fe33b5, type: 3}
+  - id: bridge_arch
+    model: {fileID: 919132149155446097, guid: 368eb7e4fcfd967b67f186b55454958a, type: 3}
+  - id: bridge_plank
+    model: {fileID: 919132149155446097, guid: e15bb4001a6995426e007afd0cc6a9e9, type: 3}
+  - id: bush_azalea_pink
+    model: {fileID: 919132149155446097, guid: 8722429506ff835576f2483701738248, type: 3}
+  - id: bush_azalea_white
+    model: {fileID: 919132149155446097, guid: a86b86741133c8fa1843d99a0ebc03df, type: 3}
+  - id: bush_round_a
+    model: {fileID: 919132149155446097, guid: ed0abda15b9af371b1ccdbcb13f10200, type: 3}
+  - id: bush_round_b
+    model: {fileID: 919132149155446097, guid: 083316b20e74262634005c289548802c, type: 3}
+  - id: bush_round_c
+    model: {fileID: 919132149155446097, guid: 768b42039c9fe8b166d36596e959bf90, type: 3}
+  - id: bush_snow
+    model: {fileID: 919132149155446097, guid: 4d2610048992e4a8b3f58e83b3f55075, type: 3}
+  - id: cabbage_row
+    model: {fileID: 919132149155446097, guid: d91a5d6ce8324da9e12e29e9f38c03ca, type: 3}
+  - id: campfire
+    model: {fileID: 919132149155446097, guid: 62e4f31d0e6cd41cf4f0e79aadb1f2d1, type: 3}
+  - id: cart_hand
+    model: {fileID: 919132149155446097, guid: 9fd3ca6de81f704bf67c9f60208bc474, type: 3}
+  - id: cliff_a
+    model: {fileID: 919132149155446097, guid: 9d18999b9739636b67ed8f15c50adaed, type: 3}
+  - id: cliff_b
+    model: {fileID: 919132149155446097, guid: db48632424c871a138d7fd29507ab7b7, type: 3}
+  - id: cliff_c
+    model: {fileID: 919132149155446097, guid: b5fe1709b88f29f1f380422c1a5704a3, type: 3}
+  - id: crate
+    model: {fileID: 919132149155446097, guid: 23b8b90ad2af9f4960aa56f25b9c9aa6, type: 3}
+  - id: crate_stack
+    model: {fileID: 919132149155446097, guid: 4e6375fde662544357c4b80d18df94d2, type: 3}
+  - id: dock_segment
+    model: {fileID: 919132149155446097, guid: f720290723a17f6b464fcb7c714042a1, type: 3}
+  - id: dojo_gate
+    model: {fileID: 919132149155446097, guid: 3ad9660348972ce4e632ffa17e2a02e2, type: 3}
+  - id: dojo_gate_door
+    model: {fileID: 919132149155446097, guid: 988f0c6802626a45c3832565088ec7fd, type: 3}
+  - id: dojo_main
+    model: {fileID: 919132149155446097, guid: 78e4a0fe9f07334178b72b199db40849, type: 3}
+  - id: fence_bamboo
+    model: {fileID: 919132149155446097, guid: 8d88e15b6b7febdb173b2d5276f74ee0, type: 3}
+  - id: fence_wood
+    model: {fileID: 919132149155446097, guid: a7a46156b680fcfcd34a527db0223c02, type: 3}
+  - id: firewood_stack
+    model: {fileID: 919132149155446097, guid: c27c037c001572d592be55f5f7077bdf, type: 3}
+  - id: flowers_blue
+    model: {fileID: 919132149155446097, guid: d99e4a32ec71051604898fe9b49c7b62, type: 3}
+  - id: flowers_pink
+    model: {fileID: 919132149155446097, guid: 71c2bd7e8d522e04e6dfcdfc61e01c96, type: 3}
+  - id: flowers_yellow
+    model: {fileID: 919132149155446097, guid: 2f3890aebaca33488d56367c91385e40, type: 3}
+  - id: grass_tuft_a
+    model: {fileID: 919132149155446097, guid: 3cad8d6c73e57e7be1959fd37db3737c, type: 3}
+  - id: grass_tuft_b
+    model: {fileID: 919132149155446097, guid: 88169cababfd3c21bd3c7a4182e0a446, type: 3}
+  - id: grave_stone
+    model: {fileID: 919132149155446097, guid: db7a9f41a2fc5d92339f5a4d3c035e67, type: 3}
+  - id: hay_bale
+    model: {fileID: 919132149155446097, guid: 1d52c95a4a958487ca00db90e29cf244, type: 3}
+  - id: house_farmer_a
+    model: {fileID: 919132149155446097, guid: b50d5884487372b566d1bcca5b49379c, type: 3}
+  - id: house_farmer_b
+    model: {fileID: 919132149155446097, guid: 4651f4190f5ea734a1ee1ef0e58bb21b, type: 3}
+  - id: house_fisher
+    model: {fileID: 919132149155446097, guid: e67c036720a0a74a44a6fbc0faa8415f, type: 3}
+  - id: house_kaito
+    model: {fileID: 919132149155446097, guid: 36f4f6fd3db72e60697185d1908cac95, type: 3}
+  - id: house_village_a
+    model: {fileID: 919132149155446097, guid: 27feedbc56d5e069cb88a1dcca15e296, type: 3}
+  - id: house_village_b
+    model: {fileID: 919132149155446097, guid: d6f08043f6b9c7e62c7602e31e03df3b, type: 3}
+  - id: key_seal_bamboo
+    model: {fileID: 919132149155446097, guid: 96a8969abcf7e91896c81858a9ec018b, type: 3}
+  - id: key_seal_lake
+    model: {fileID: 919132149155446097, guid: d28c8eb55bf39afe27ad96868b62f9f5, type: 3}
+  - id: key_seal_mountain
+    model: {fileID: 919132149155446097, guid: c97ee7ca20fc084c7316df8c6b0d08db, type: 3}
+  - id: lake_arena_platform
+    model: {fileID: 919132149155446097, guid: 209214373332efff2e169efff4f6f16e, type: 3}
+  - id: lantern_hanging
+    model: {fileID: 919132149155446097, guid: 42ded026fa3d78e4a53124556a7bddba, type: 3}
+  - id: lantern_post
+    model: {fileID: 919132149155446097, guid: c807df27ba7830a757d808917c92c169, type: 3}
+  - id: lantern_stone
+    model: {fileID: 919132149155446097, guid: 7de8781f4f67bc5254f3bcebd218743b, type: 3}
+  - id: lantern_stone_tall
+    model: {fileID: 919132149155446097, guid: 8c5587856b3ac474c3d958294d915d71, type: 3}
+  - id: lantern_string
+    model: {fileID: 919132149155446097, guid: 52b6d42fa65875461764a840b337ac4f, type: 3}
+  - id: lily_pads
+    model: {fileID: 919132149155446097, guid: 14421c3138c71d26431a1340d626f0ec, type: 3}
+  - id: log_fallen
+    model: {fileID: 919132149155446097, guid: 5484b25ce70472375717f074c61a41d7, type: 3}
+  - id: mountain_cabin
+    model: {fileID: 919132149155446097, guid: 11e34bdb1de50a6e380a292ccbc613ec, type: 3}
+  - id: mushroom_cluster
+    model: {fileID: 919132149155446097, guid: 73598b611e701212410d72f511a5e62c, type: 3}
+  - id: net_rack
+    model: {fileID: 919132149155446097, guid: 29f778be5a2d0fc420e60800a328717c, type: 3}
+  - id: pagoda_small
+    model: {fileID: 919132149155446097, guid: 78c08e4d5ad882cfab8124be20adf9cb, type: 3}
+  - id: pavilion_azumaya
+    model: {fileID: 919132149155446097, guid: f7eb13a8321b90dfc20bae40b962df9c, type: 3}
+  - id: portal_ring
+    model: {fileID: 919132149155446097, guid: 64d8685881e056fed42599674f973aa1, type: 3}
+  - id: pottery_jars
+    model: {fileID: 919132149155446097, guid: b08e4387747f3b2dd64134f129ed55d9, type: 3}
+  - id: reeds_patch
+    model: {fileID: 919132149155446097, guid: d4aca198c8a2e205a57490d6bd1ff87f, type: 3}
+  - id: rice_patch
+    model: {fileID: 919132149155446097, guid: 54d4cfc7d85fb5a0e9d7aca0ca1059de, type: 3}
+  - id: rock_large_a
+    model: {fileID: 919132149155446097, guid: 3743b8fcd94bcc6f8f6253fa9a35b733, type: 3}
+  - id: rock_large_b
+    model: {fileID: 919132149155446097, guid: 610a8c437b04ea187c0f728e7745e83c, type: 3}
+  - id: rock_medium_a
+    model: {fileID: 919132149155446097, guid: 41526654e7b1e56f8bd5787416b207ef, type: 3}
+  - id: rock_medium_b
+    model: {fileID: 919132149155446097, guid: 9c6999d40094abf3c298fb2d3f61c5e0, type: 3}
+  - id: rock_pillar
+    model: {fileID: 919132149155446097, guid: 3587f1c978864876a868649466849e63, type: 3}
+  - id: rock_small_a
+    model: {fileID: 919132149155446097, guid: f5bce798680fd64e96f82470215ed2de, type: 3}
+  - id: rock_small_b
+    model: {fileID: 919132149155446097, guid: 362ee538ac6207c92ce03ff02c9fcf8f, type: 3}
+  - id: rock_snow_a
+    model: {fileID: 919132149155446097, guid: 482bd004310e33cb460991c5f65c55d9, type: 3}
+  - id: rope_barrier
+    model: {fileID: 919132149155446097, guid: 882fe03e50de4a5cede301e22c35b5fd, type: 3}
+  - id: sack_pile
+    model: {fileID: 919132149155446097, guid: 743e5f9b89df8576e50dae20f27eccb7, type: 3}
+  - id: sake_table
+    model: {fileID: 919132149155446097, guid: 4330867fa41fb6bfe52dcb0f58e6ddcd, type: 3}
+  - id: scarecrow
+    model: {fileID: 919132149155446097, guid: 2a0b5ef25bf778b49ff461a9460e1d99, type: 3}
+  - id: scythe
+    model: {fileID: 919132149155446097, guid: 503bf80bd6ca43bb09989eb54b9dde8d, type: 3}
+  - id: seal_pedestal
+    model: {fileID: 919132149155446097, guid: ae56d6aada15671fbeb279e2afebd78b, type: 3}
+  - id: shrine_checkpoint
+    model: {fileID: 919132149155446097, guid: c9b057495da62196836bc7aa6df173ea, type: 3}
+  - id: shrine_small
+    model: {fileID: 919132149155446097, guid: a985ee58b15d9845a90ac8fab5c0794a, type: 3}
+  - id: signpost
+    model: {fileID: 919132149155446097, guid: 0e806f019f1e851b011438bb02bd1c68, type: 3}
+  - id: stairs_stone
+    model: {fileID: 919132149155446097, guid: 568eb16c74730c8d9b4399d206ef497d, type: 3}
+  - id: stairs_stone_large
+    model: {fileID: 919132149155446097, guid: 0e89fc5a9af2f7ab2c1ec997e8b3e752, type: 3}
+  - id: stepping_stones
+    model: {fileID: 919132149155446097, guid: e7120899de099096e8d2d80831910eff, type: 3}
+  - id: storehouse_kura
+    model: {fileID: 919132149155446097, guid: 8a333deeaf56321e121365ae66e1cac0, type: 3}
+  - id: stump
+    model: {fileID: 919132149155446097, guid: 3ef29ba3180e85cd9dee5636b759103d, type: 3}
+  - id: tall_grass_patch
+    model: {fileID: 919132149155446097, guid: daf5a56467e595adc8f49c0e55515dfe, type: 3}
+  - id: temple_bell
+    model: {fileID: 919132149155446097, guid: 3dccedd55bbde88c7c5e31fb33939772, type: 3}
+  - id: torch_brazier
+    model: {fileID: 919132149155446097, guid: 683c57dc8e6d2a5ddf5c94f3ac9ce20c, type: 3}
+  - id: torii_red
+    model: {fileID: 919132149155446097, guid: 5dadac80b167a49d7eddc7b8f358ef25, type: 3}
+  - id: torii_stone
+    model: {fileID: 919132149155446097, guid: d11bde57bed8eebae18fa5512bdfbf0c, type: 3}
+  - id: training_dummy
+    model: {fileID: 919132149155446097, guid: 2be23dd2d0c75365c43440dbd6af2d1d, type: 3}
+  - id: tree_cedar_a
+    model: {fileID: 919132149155446097, guid: dde756e7938b45073e854bcd45f9b298, type: 3}
+  - id: tree_cedar_b
+    model: {fileID: 919132149155446097, guid: 0d8aaac3aff710ecd77f7b5ddc32bcc3, type: 3}
+  - id: tree_dead_a
+    model: {fileID: 919132149155446097, guid: 645b161656758a7bc097109f6971ac4f, type: 3}
+  - id: tree_maple_a
+    model: {fileID: 919132149155446097, guid: bd0e4ac94ff860f3f4025a83d89df8f6, type: 3}
+  - id: tree_pine_a
+    model: {fileID: 919132149155446097, guid: 2639933cfdab94df5bb1ab15dc898d29, type: 3}
+  - id: tree_pine_b
+    model: {fileID: 919132149155446097, guid: cef57dbdbc9f8c0e7bf8f40fbc8afd72, type: 3}
+  - id: tree_pine_c
+    model: {fileID: 919132149155446097, guid: 0815405ee7f5d3ba4bad5097f9658c42, type: 3}
+  - id: tree_pine_snow_a
+    model: {fileID: 919132149155446097, guid: 110e51418f64c324fc461e7186cd2666, type: 3}
+  - id: tree_pine_snow_b
+    model: {fileID: 919132149155446097, guid: f3b32f10c3c0022b08f63153213b8eb8, type: 3}
+  - id: tree_round_a
+    model: {fileID: 919132149155446097, guid: 24541ea9c92dcb5a95d02c4373835b53, type: 3}
+  - id: tree_round_b
+    model: {fileID: 919132149155446097, guid: 24b889a14f97e3e583f846733e7b1fb2, type: 3}
+  - id: tree_sakura_a
+    model: {fileID: 919132149155446097, guid: 904c92ca2e633ba1acdc1746383ddca4, type: 3}
+  - id: tree_sakura_b
+    model: {fileID: 919132149155446097, guid: 2daab49a081bac2bc8ca676481eebab3, type: 3}
+  - id: wall_gate
+    model: {fileID: 919132149155446097, guid: 4110f8a12c3aef841cbd72891d9ecd11, type: 3}
+  - id: wall_gate_door
+    model: {fileID: 919132149155446097, guid: 08273e6ea2f8540c62b7e98a0e14e73e, type: 3}
+  - id: wall_post
+    model: {fileID: 919132149155446097, guid: 4b70e974b2ce95083ee20915f989d3bd, type: 3}
+  - id: wall_segment
+    model: {fileID: 919132149155446097, guid: 0209e85b0e7ecd2601d55b6692889221, type: 3}
+  - id: weapon_rack
+    model: {fileID: 919132149155446097, guid: a7302ce1b56641625d4b7d78b88bddf6, type: 3}
+  - id: well
+    model: {fileID: 919132149155446097, guid: 7cc2962ef042f43eef037e23c7b62eb6, type: 3}
+  - id: wheat_patch
+    model: {fileID: 919132149155446097, guid: 18e7f874939134c628ebe538aea9d61b, type: 3}
   propsManifest: {fileID: 4900000, guid: c7014727a41b93f32ac97ff0b2faf9b0, type: 3}
   worldData: {fileID: 0}
   paletteTexture: {fileID: 2800000, guid: ef78f26dd6b0d012fd9e6844be73ab79, type: 3}
@@ -72,33 +311,161 @@ MonoBehaviour:
   vfxLines: {fileID: 8926484042661614526, guid: 8a385481c95b8b44ea8c1278e0e36dd1, type: 3}
   vfxAura: {fileID: 8926484042661614526, guid: 0c48da95b202331448876216f4edf0da, type: 3}
   sfx:
+  - key: ability_charge
+    clips:
+    - {fileID: 8300000, guid: 619327d2162675d612d19dc1fbcdbca8, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: ability_whirl
+    clips:
+    - {fileID: 8300000, guid: a031c7d2b0d83670f4becf117ab18139, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: ability_wind
+    clips:
+    - {fileID: 8300000, guid: d237076de7e8a822e28ba00098c9abc8, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: alert
+    clips:
+    - {fileID: 8300000, guid: a72e2fdea37134b5016f5781ff976676, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: area_title
+    clips:
+    - {fileID: 8300000, guid: 808e8a92e51bd23c100ed5a64f76540d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: barrier
+    clips:
+    - {fileID: 8300000, guid: 5fb8c1e3693a57dfca9c95ef5dfd0a77, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: boss_defeat
+    clips:
+    - {fileID: 8300000, guid: ab4460773fbef36fa2ed6997f220ef93, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: boss_roar
+    clips:
+    - {fileID: 8300000, guid: 39dbb987b8dda93575d881bb7c4a40ba, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: checkpoint
+    clips:
+    - {fileID: 8300000, guid: 0b064ad68bbbc21c6f03c205684379aa, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: clang
     clips:
     - {fileID: 8300000, guid: 3996a0f0dbc6cce48be0e5ec2f1e88a3, type: 3}
+    - {fileID: 8300000, guid: 2289a6ee92042e453ce5c8a79e2b0377, type: 3}
+    - {fileID: 8300000, guid: 317f624b5fec37391168d0d2ec1de452, type: 3}
+    - {fileID: 8300000, guid: 2367ab108a61ecceded493e41e4c1910, type: 3}
+    - {fileID: 8300000, guid: 539534ecc7516d52a81b18b3656da882, type: 3}
+    volume: 0.85
+    pitchVariance: 0.06
+    spatial: 1
+  - key: danger
+    clips:
+    - {fileID: 8300000, guid: 9b03f4897382411e160b7b6dbfdaab1f, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: dash
     clips:
     - {fileID: 8300000, guid: a120d3f90dd82ec4bb4cdb8f11712754, type: 3}
+    - {fileID: 8300000, guid: 8ea575ac7211cf603552b39a6d97f8ed, type: 3}
+    - {fileID: 8300000, guid: ab09ffeec77ec81d7a120827798f1779, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: death
+    clips:
+    - {fileID: 8300000, guid: 07ae537da0db3b94778d6ffa824ebb17, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: denied
+    clips:
+    - {fileID: 8300000, guid: 96177074f83bdafbff33496c96a38980, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: dialogue
+    clips:
+    - {fileID: 8300000, guid: df9258b57502c5dc5be275c16b1636b1, type: 3}
+    - {fileID: 8300000, guid: 27d27d401536661ad2db84f1c7013cc7, type: 3}
+    - {fileID: 8300000, guid: 89f5310a2b80372da81f6370b245a1f4, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
   - key: enemy_swing
     clips:
     - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    - {fileID: 8300000, guid: 14f7ba3a4412b1f44b4cb47402cc1e77, type: 3}
+    - {fileID: 8300000, guid: 52b77f3fcf4fe98ba18b3d3a1cf88d65, type: 3}
+    - {fileID: 8300000, guid: e75dd510bf111361c27cb9df09877c39, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: enemy_swing_heavy
     clips:
     - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    - {fileID: 8300000, guid: 0ef9db20df93c001d1c070778c1ddc36, type: 3}
+    - {fileID: 8300000, guid: 29abea91c06239a4e3cb274bf06da5ad, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: exhausted
+    clips:
+    - {fileID: 8300000, guid: c039dfa0f640320fd303a193775f3813, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: finisher_hit
     clips:
     - {fileID: 8300000, guid: 20ad7977e4c6d6c45af26c677a05531b, type: 3}
+    - {fileID: 8300000, guid: d0fc636120442e9017d03469e270143c, type: 3}
+    - {fileID: 8300000, guid: b8441fd8f3f016fe0e87393a32293e0a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: finisher_start
+    clips:
+    - {fileID: 8300000, guid: 91615328d14b0df9a1855c0e4491f60e, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: gate_open
+    clips:
+    - {fileID: 8300000, guid: f5e6c7bd6ef6b9341c448f89472f2803, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: hit
+    clips:
+    - {fileID: 8300000, guid: 85b4d8f0ec9df02f93ea05fdbad0ea6c, type: 3}
+    - {fileID: 8300000, guid: 35b0bbfe6f9f0eb316101346862a2741, type: 3}
+    - {fileID: 8300000, guid: 02be1b639195c741034aebf2ad0f0dc6, type: 3}
+    - {fileID: 8300000, guid: acce1c4d2d7f4270e88de3b0df319a48, type: 3}
+    volume: 0.9
+    pitchVariance: 0.06
+    spatial: 1
+  - key: hit_heavy
+    clips:
+    - {fileID: 8300000, guid: b62d327fe5f6724e70955e3acc833f78, type: 3}
+    - {fileID: 8300000, guid: c1949c043e983dbcdca2ef69ce1cdd0a, type: 3}
+    - {fileID: 8300000, guid: fb25f06f4332c9135f63fafe04630712, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
@@ -108,44 +475,290 @@ MonoBehaviour:
     volume: 0.9
     pitchVariance: 0.06
     spatial: 1
+  - key: kill
+    clips:
+    - {fileID: 8300000, guid: e9efd4e82f31a5a4edd2cf6e7511a5d6, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: lock
+    clips:
+    - {fileID: 8300000, guid: 9f7eb6e0495e0979b11f707648f13f04, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
   - key: parry
     clips:
     - {fileID: 8300000, guid: 3996a0f0dbc6cce48be0e5ec2f1e88a3, type: 3}
+    - {fileID: 8300000, guid: c4efc81de30f899c1327069f9b3001c7, type: 3}
+    - {fileID: 8300000, guid: 108a311c11b06e894864de0ba9fee7b6, type: 3}
+    - {fileID: 8300000, guid: c10a2c474e9b420dc130e053a0647ed7, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: parry_perfect
+    clips:
+    - {fileID: 8300000, guid: d1e73d77cb4c87a2865de42d338c6f3e, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: parry_ready
+    clips:
+    - {fileID: 8300000, guid: 2931c95d4ab289cd2965aa5a3f24ae31, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: perfect_dodge
+    clips:
+    - {fileID: 8300000, guid: 2029dd5fb31957dc698e4f9fceee4f0d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: portal
+    clips:
+    - {fileID: 8300000, guid: 7ad0fb559a464614fead38f4ac6d9a0f, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: posture_break
+    clips:
+    - {fileID: 8300000, guid: b5a78ebbed9085a5d61175cc22463192, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: rage_on
+    clips:
+    - {fileID: 8300000, guid: 0ffb8ef18721cf2e4a3d9e0012b77e20, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: seal
+    clips:
+    - {fileID: 8300000, guid: 1e3a8903f35ae18a0f1d2d19f6e0dccf, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: slam
+    clips:
+    - {fileID: 8300000, guid: 08ec9399fe8c59bfcebccdea91ce1bf9, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: step
     clips:
-    - {fileID: 8300000, guid: 8cfbe4d1e8d7d0e47b929d1130fa26c1, type: 3}
-    volume: 0.35
+    - {fileID: 8300000, guid: 5b996a9a4db8e5e88459e886e861ec16, type: 3}
+    - {fileID: 8300000, guid: def641df75ad7733556767a205a110a4, type: 3}
+    - {fileID: 8300000, guid: 41c81bf6fbd56c9828f4d9ffcde3773c, type: 3}
+    - {fileID: 8300000, guid: 271262409cf65b51bd1d10aa162e682a, type: 3}
+    - {fileID: 8300000, guid: 0b06af4774b5acbceb148a5c42770969, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: step_snow
+    clips:
+    - {fileID: 8300000, guid: 8f3508b53063026b1b19583e1a26abc7, type: 3}
+    - {fileID: 8300000, guid: 4cc3ebcb5dbc20418f9b7cbd7fe940c1, type: 3}
+    - {fileID: 8300000, guid: 01b8baac72e2c6419ecc80ad5c91130c, type: 3}
+    - {fileID: 8300000, guid: 1133227a2a37bc619df385ea50bb2eda, type: 3}
+    - {fileID: 8300000, guid: 0e12beea87a48727f6d2dca5eb7294f4, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: step_stone
+    clips:
+    - {fileID: 8300000, guid: 2c0721023272d7ea2c829f757007b87a, type: 3}
+    - {fileID: 8300000, guid: f2a440c6f238eff740b78abf4c50babc, type: 3}
+    - {fileID: 8300000, guid: 9b0bb4726f425dad5d13e5987ed44e18, type: 3}
+    - {fileID: 8300000, guid: ac4c82f639054095601342e67076a65b, type: 3}
+    - {fileID: 8300000, guid: 665d8af6e0891702483988470f301b14, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: step_wood
+    clips:
+    - {fileID: 8300000, guid: ea380a6ae9af851996eb6e0a8ee4051e, type: 3}
+    - {fileID: 8300000, guid: 98178abb13859493661cddeb9d4bb2cd, type: 3}
+    - {fileID: 8300000, guid: aa9ca9efe1ea863f34f1dc6e3d62e905, type: 3}
+    - {fileID: 8300000, guid: 922aaba4c8c67005d1e81d72d2f60b19, type: 3}
+    - {fileID: 8300000, guid: e7a7b914135bb7ba632385a42e9f449c, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: summon
+    clips:
+    - {fileID: 8300000, guid: 3afe54c08544912c02312e73df1ab6ec, type: 3}
+    volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: swing
     clips:
     - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
+    - {fileID: 8300000, guid: 2551063a02711e7835d91e6fa8c33079, type: 3}
+    - {fileID: 8300000, guid: ca807b8e5714ec436d16e12a10e3ae2a, type: 3}
+    - {fileID: 8300000, guid: d7074b5dbe56a5f1708763dbe8957710, type: 3}
+    - {fileID: 8300000, guid: 9d7cf2cb49accea18efdcda9269b3b2f, type: 3}
     volume: 0.8
     pitchVariance: 0.06
     spatial: 1
+  - key: teleport
+    clips:
+    - {fileID: 8300000, guid: f2d1d8523a1b2aaa667645c549630a8d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: ui_close
+    clips:
+    - {fileID: 8300000, guid: ddf15ec8951dd545fb1067c508f1d5d5, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: ui_move
+    clips:
+    - {fileID: 8300000, guid: 08d408a84c2519c7e3ae4eb2852a70c6, type: 3}
+    - {fileID: 8300000, guid: b0a90cb15202193ed985d496a2fae09a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: ui_open
+    clips:
+    - {fileID: 8300000, guid: c0269373f81b3448173c301c2cde38ae, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
   - key: ui_select
     clips:
     - {fileID: 8300000, guid: dd0b5ce734f746c41906b9db5418419d, type: 3}
     volume: 0.6
     pitchVariance: 0.06
     spatial: 0
+  - key: ui_start
+    clips:
+    - {fileID: 8300000, guid: d95efcfe291b507aa43c46df17f6acbe, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 0
+  - key: wave
+    clips:
+    - {fileID: 8300000, guid: 811701bd674c64672da32085fb85084e, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   music:
+  - key: boss
+    clips:
+    - {fileID: 8300000, guid: 286142a90318a69de40973072a7e8326, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: boss_final
+    clips:
+    - {fileID: 8300000, guid: 8d8bc8f6cdb29c63ea162ba4c9716418, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: combat
+    clips:
+    - {fileID: 8300000, guid: 92862fc816fbc4edebe719901498257a, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: ending
+    clips:
+    - {fileID: 8300000, guid: e59cceb560c13cd268d9943ef6bb35ef, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
   - key: explore
     clips:
-    - {fileID: 8300000, guid: 8810fa0368d6ae54889b51c5b79dab2f, type: 3}
+    - {fileID: 8300000, guid: 26c6545a3e8bb321460fb61f80e35512, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_dojo
+    clips:
+    - {fileID: 8300000, guid: 9ac317c2ff5fd369e2026d23a208983c, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_forest
+    clips:
+    - {fileID: 8300000, guid: 58fa030bc957cba529071c69773980bc, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_garden
+    clips:
+    - {fileID: 8300000, guid: 26c6545a3e8bb321460fb61f80e35512, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_home
+    clips:
+    - {fileID: 8300000, guid: 2d9f66b035cac47aba2418dc08fa61b4, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_lake
+    clips:
+    - {fileID: 8300000, guid: b8a69a6d74a230ea9cad753242f31ff5, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: explore_mountain
+    clips:
+    - {fileID: 8300000, guid: 453c8e9dab92eabbd8e8f11d80e86db1, type: 3}
+    volume: 0.8
+    pitchVariance: 0
+    spatial: 0
+  - key: gameover
+    clips:
+    - {fileID: 8300000, guid: b25bd26c62f93aaa8b5fb1d875e53b97, type: 3}
     volume: 0.8
     pitchVariance: 0
     spatial: 0
   - key: menu
     clips:
-    - {fileID: 8300000, guid: 5a88bb5b7b682ab40b249fcea77a1f6f, type: 3}
+    - {fileID: 8300000, guid: e1e350c33bb3e28da34aaaf3e38ce2b7, type: 3}
     volume: 0.7
     pitchVariance: 0
     spatial: 0
-  ambience: []
+  ambience:
+  - key: bamboo
+    clips:
+    - {fileID: 8300000, guid: e31fa3abc3748acb6824439032d3b8f3, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
+  - key: forest
+    clips:
+    - {fileID: 8300000, guid: 1d877ce0235543a85399a83d045d94f3, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
+  - key: garden
+    clips:
+    - {fileID: 8300000, guid: ac15d73418fda098070bdb3789ae9ed8, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
+  - key: night
+    clips:
+    - {fileID: 8300000, guid: 2462414392528ecf45e419e333c39bee, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
+  - key: water
+    clips:
+    - {fileID: 8300000, guid: 94c5edef2c88d8c0236e0a3aeb0ac644, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
+  - key: wind
+    clips:
+    - {fileID: 8300000, guid: 017e0ae0d2be538961d06f57044a8081, type: 3}
+    volume: 0.45
+    pitchVariance: 0
+    spatial: 0
   healthFill: {fileID: 21300000, guid: 21dbc76a291d055ac12d4fc3628e5bd9, type: 3}
   healthFrame: {fileID: 21300000, guid: 710800330b66c8cbd828ca3fdd6b6992, type: 3}
   spiritFill: {fileID: 21300000, guid: 8b1681006527a595a64aed22cf0a1904, type: 3}

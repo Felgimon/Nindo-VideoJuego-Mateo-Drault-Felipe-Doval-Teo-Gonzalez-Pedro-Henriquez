@@ -177,7 +177,7 @@ namespace Nindo
             if (speed01 > 0.3f && IsGrounded)
             {
                 stepTimer -= dt * speed01;
-                if (stepTimer <= 0f) { stepTimer = 0.32f; Game.Audio?.Play("step", transform.position, 0.35f, 0.15f); }
+                if (stepTimer <= 0f) { stepTimer = 0.32f; Game.Audio?.Play(StepSound(), transform.position, 0.35f, 0.15f); }
             }
 
             if (input == null || Game.InCutscene) return;
@@ -214,6 +214,20 @@ namespace Nindo
         }
 
         bool IsGrounded => cc != null && cc.isGrounded;
+
+        /// <summary>Sonido de paso según la superficie: madera (pasarelas, puentes), piedra (escaleras,
+        /// patio del dojo), nieve (zona nevada) o tierra/pasto.</summary>
+        string StepSound()
+        {
+            if (Physics.Raycast(transform.position + Vector3.up * 0.3f, Vector3.down, out var hit, 0.8f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                string n = hit.collider.name;
+                if (n.StartsWith("boardwalk") || n.StartsWith("dock") || n.StartsWith("bridge") || n.StartsWith("lake_arena") || n.StartsWith("house_fisher")) return "step_wood";
+                if (n.StartsWith("stairs") || n.StartsWith("dojo") || n.StartsWith("stepping")) return "step_stone";
+            }
+            if (Zone.Current != null && Zone.Current.snow) return "step_snow";
+            return "step";
+        }
 
         void ApplyMovement(float dt)
         {

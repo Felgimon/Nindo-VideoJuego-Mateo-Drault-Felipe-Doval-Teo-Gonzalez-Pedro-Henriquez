@@ -45,7 +45,7 @@ namespace Nindo
                     break;
                 case "campos":
                     z.title = "Campos de Inaba"; z.subtitle = "Aldea de granjeros"; z.kanji = "田";
-                    z.music = "explore"; z.ambience = "night";
+                    z.music = "explore_home"; z.ambience = "night";
                     z.fogColor = new Color(0.08f, 0.11f, 0.17f); z.fogDensity = 0.010f; z.ambientSky = new Color(0.24f, 0.3f, 0.44f);
                     break;
                 case "bosque":

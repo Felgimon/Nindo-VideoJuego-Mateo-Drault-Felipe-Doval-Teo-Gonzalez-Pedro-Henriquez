@@ -21,13 +21,13 @@ namespace Nindo
         public enum AbilityShot { OverShoulder, LowOrbit }
 
         [Header("Exploración")]
-        public float exploreDistance = 21f;
+        public float exploreDistance = 24f;
         public float explorePitch = 52f;
         public float fov = 30f;
         public float lookAhead = 0.35f;
         [Header("Combate")]
-        public float combatDistanceMin = 17f;
-        public float combatDistanceMax = 27f;
+        public float combatDistanceMin = 18f;
+        public float combatDistanceMax = 28f;
         public float combatPitch = 47f;
         public float bossExtraDistance = 3f;
         [Header("Suavizado")]
