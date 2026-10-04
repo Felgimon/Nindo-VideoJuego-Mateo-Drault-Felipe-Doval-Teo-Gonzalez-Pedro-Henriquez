@@ -165,6 +165,12 @@ modelos se revisaron con renders de Blender y el audio con análisis de nivel/es
 1. Que `NindoContent` tenga todo asignado (Consola: avisos `[Nindo] Falta…`).
 2. Escala/orientación de props y del mundo (los FBX usan `bake_space_transform`).
 3. Materiales URP (paleta, emisivo, follaje con viento, agua) y el skybox `Nindo/Night Sky`.
+   El agua (`Nindo/Water Lowpoly`) y el follaje (`Nindo/Foliage Wind`) son shaders propios
+   revisados contra el código de URP 17.3 pero nunca compilados en Unity: si alguno queda rosa,
+   apagar `useAnimatedWater` / `useFoliageWind` en `NindoContent` vuelve a los materiales Lit.
+   El agua se ajusta a ojo en `Nindo_WaterLowpoly` (olas, crestas, facetas, espuma, destellos);
+   copiar los valores finales a `Tools/Unity/generate_assets.py` para que no se pisen.
+   Los renderers usan Forward+ para que los faroles iluminen terreno y lago sin límite por objeto.
    El agua (`Nindo_WaterLowpoly`, shader `Nindo/Water Lowpoly`) mueve la malla con olas,
    aclara las crestas y suma facetas finas animadas que titilan; se ajusta con
    `_WaveHeight` (los botes lo leen del material), `_CrestContrast`, `_FacetBoost` y
