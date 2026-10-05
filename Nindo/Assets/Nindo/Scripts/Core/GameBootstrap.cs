@@ -54,7 +54,11 @@ namespace Nindo
             Vector3 pos = world.StartPoint; Quaternion rot = world.StartRotation;
             string cpId = !string.IsNullOrEmpty(debugStartCheckpoint) ? debugStartCheckpoint : Game.Save.checkpoint;
             var cp = Checkpoint.Get(cpId);
-            if (cp != null && Game.Save.HasFlag(Flags.IntroDone)) { pos = cp.spawnPoint.position; rot = cp.spawnPoint.rotation; }
+            if (cp != null && Game.Save.HasFlag(Flags.IntroDone))
+            {
+                pos = cp.spawnPoint.position; rot = cp.spawnPoint.rotation;
+                if (!string.IsNullOrEmpty(debugStartCheckpoint)) Game.Save.checkpoint = cp.id;   // y reaparecer ahí al morir
+            }
             // el prólogo arranca en negro: sin título de zona en el frame intermedio (Intro lo vuelve a poner igual)
             if (!Game.Save.HasFlag(Flags.IntroDone)) Game.InCutscene = true;
             var player = CharacterFactory.BuildPlayer(pos + Vector3.up * 0.1f, rot);
@@ -62,10 +66,11 @@ namespace Nindo
             yield return null;
             Game.Camera.Snap();
 
-            // la zona ya eligió su música en el frame intermedio (antes se pisaba con "explore" genérico)
-            Game.Audio.PlayMusic(Zone.Current != null ? Zone.Current.music : "explore", 2f);
+            // la zona ya eligió su música y su ambiente en el frame intermedio (antes se pisaban con los genéricos);
+            // si en ese frame arrancó una pelea (se continúa dentro del radio de un encuentro) queda la de combate
+            if (Game.Combat == null || !Game.Combat.InCombat) Game.Audio.PlayMusic(Zone.Current != null ? Zone.Current.music : "explore", 2f);
             Game.Story.Begin(SceneFlow.NewGameRequested);
-            Game.Audio.PlayAmbience("night");
+            if (Zone.Current == null) Game.Audio.PlayAmbience("night");
         }
 
         void Update()

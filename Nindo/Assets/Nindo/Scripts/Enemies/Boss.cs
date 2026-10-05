@@ -128,6 +128,21 @@ namespace Nindo
             spinTick = 0f;
         }
 
+        protected override float ComputeStrikeEta(AttackDef a, float holdEnd)
+        {
+            switch (a.special)
+            {
+                // nada pega en activeStart (la onda pega cuando llega; el AutoPilot la tendría que mirar aparte)
+                case "teleport": case "summon": case "clones": case "wave": return float.PositiveInfinity;
+                case "charge":
+                    if (stepHit || stepNorm > a.activeEnd || target == null) return float.PositiveInfinity;
+                    float pre = stepNorm < a.activeStart ? EstimateStrikeEta(a, holdEnd) : 0f;
+                    float room = Mathf.Max(0f, DistToTarget - Radius - target.Radius - 0.6f);
+                    return pre + room / (a.specialParam > 0f ? a.specialParam : 14f);
+                default: return base.ComputeStrikeEta(a, holdEnd);
+            }
+        }
+
         protected override void TickSpecial(AttackDef a, float dt)
         {
             bool active = stepNorm >= a.activeStart && stepNorm <= a.activeEnd;

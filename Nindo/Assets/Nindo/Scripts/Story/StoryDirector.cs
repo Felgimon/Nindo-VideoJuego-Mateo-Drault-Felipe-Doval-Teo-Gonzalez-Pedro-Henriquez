@@ -250,8 +250,9 @@ namespace Nindo
                 var enc = Encounter.Get("intro");
                 if (enc != null)
                     foreach (var e in enc.Members)
-                        // 7 m: la estocada sale desde hasta 5.5 m y llega con la embestida
-                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < 7f)
+                        // alcance real del golpe (arco + lo que le queda de embestida): si no, la cámara lenta
+                        // podía pedir el parry con un golpe que no iba a llegar
+                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < e.StrikeReach + P.Radius + 0.3f)
                         {
                             waitingParry = true;
                             tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
@@ -369,7 +370,7 @@ namespace Nindo
         {
             var enc = Encounter.Get("sumo");
             Enemy sumo = null;
-            if (enc != null) foreach (var m in enc.Members) if (m != null && m.config.id.StartsWith("sumo")) sumo = m;
+            if (enc != null) foreach (var m in enc.Members) if (m != null && m.IsAlive && m.config.id.StartsWith("sumo")) sumo = m;
             int shot = -1;
             if (sumo != null)
             {

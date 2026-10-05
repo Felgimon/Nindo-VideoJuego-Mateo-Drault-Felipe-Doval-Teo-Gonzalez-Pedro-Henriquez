@@ -243,6 +243,12 @@ namespace Nindo
         {
             angle = IsOpen ? openAngle : 0f;
             transform.localRotation = closed * Quaternion.Euler(0f, angle, 0f);
+            // una puerta que carga abierta no pasa por Update (ya está en su ángulo): sin esto sus
+            // colliders quedaban prendidos y bloqueaban el paso
+            bool solid = !IsOpen || Mathf.Abs(angle) < 20f;
+            if (cols != null) foreach (var c in cols) c.enabled = solid;
+            if (obstacle == null) obstacle = GetComponent<UnityEngine.AI.NavMeshObstacle>();
+            if (obstacle != null) obstacle.enabled = solid;
         }
     }
 

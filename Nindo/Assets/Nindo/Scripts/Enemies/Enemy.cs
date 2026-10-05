@@ -41,7 +41,10 @@ namespace Nindo
         /// el golpe cae dentro de su ventana de parry (PlayerConfig.parryWindow).</remarks>
         public bool AboutToStrike => State == EnemyState.Attack && StrikeEta <= StrikeWarning;
         /// <summary>Segundos de juego que faltan para que salga el golpe actual (infinito si no hay uno por salir).</summary>
-        public float StrikeEta { get; private set; } = float.PositiveInfinity;
+        public float StrikeEta => State == EnemyState.Attack ? strikeEta : float.PositiveInfinity;
+        float strikeEta = float.PositiveInfinity;
+        /// <summary>Alcance del golpe en curso: arco del ataque más lo que le queda de embestida.</summary>
+        public float StrikeReach { get; private set; }
         public const float StrikeWarning = 0.18f;
         public float LastHitTime { get; private set; } = -99f;
         public Transform katanaTip, katanaBase;
@@ -420,7 +423,7 @@ namespace Nindo
             stepNorm = 0f;
             stepHit = false;
             telegraphed = false;
-            StrikeEta = float.PositiveInfinity;
+            strikeEta = float.PositiveInfinity;
             IsTelegraphingUnblockable = a.kind == AttackKind.Unblockable;
             stateTime = 0f;
             anim.Play(a.state, 0.08f);
@@ -447,7 +450,10 @@ namespace Nindo
             if (holding) timing *= 0.15f;
             anim.SetSpeed(timing);
             if (!anim.Frozen) stepNorm += dt * timing / Mathf.Max(0.05f, stepLen * a.speed);
-            StrikeEta = stepHit || stepNorm >= a.activeStart ? float.PositiveInfinity : EstimateStrikeEta(a, holdEnd);
+            strikeEta = ComputeStrikeEta(a, holdEnd);
+            float lungeLeft = a.lunge > 0f && stepNorm < a.lungeEnd
+                ? a.lunge * Mathf.Clamp01((a.lungeEnd - Mathf.Max(stepNorm, a.lungeStart)) / Mathf.Max(0.01f, a.lungeEnd - a.lungeStart)) : 0f;
+            StrikeReach = a.range * Mathf.Max(1f, config.scale * 0.85f) + lungeLeft;
 
             if (a.tracking && stepNorm < a.activeStart) Face(target.transform.position, 1.3f, dt);
 
@@ -474,15 +480,24 @@ namespace Nindo
             if (stepNorm >= 1f) NextStep();
         }
 
-        /// <summary>Segundos hasta activeStart al ritmo actual, contando la pausa del telegraph (presente o por venir).</summary>
-        float EstimateStrikeEta(AttackDef a, float holdEnd)
+        /// <summary>Segundos hasta que el golpe del paso actual pega (infinito si ya pegó o no hace daño). Los jefes lo
+        /// cambian para sus especiales (una embestida pega al alcanzar a Kaito, no en activeStart).</summary>
+        protected virtual float ComputeStrikeEta(AttackDef a, float holdEnd) =>
+            stepHit || stepNorm >= a.activeStart || a.damage <= 0f ? float.PositiveInfinity : EstimateStrikeEta(a, holdEnd);
+
+        /// <summary>Segundos hasta activeStart al ritmo actual, contando la pausa del telegraph (presente o por venir).
+        /// Dentro de la pausa el clip sigue avanzando al 15%, así que el golpe puede salir antes de que termine.</summary>
+        protected float EstimateStrikeEta(AttackDef a, float holdEnd)
         {
             float rate = a.Timing(stepNorm) / Mathf.Max(0.05f, stepLen);   // tiempo normalizado por segundo
-            if (a.telegraph <= 0f || stateTime >= holdEnd) return (a.activeStart - stepNorm) / rate;
-            float zone = a.activeStart - 0.12f;
-            float toZone = Mathf.Max(0f, zone - stepNorm) / rate;
-            float tail = Mathf.Min(0.12f, a.activeStart - stepNorm) / rate;
-            return Mathf.Max(toZone, holdEnd - stateTime) + tail;
+            float left = a.activeStart - stepNorm;
+            if (a.telegraph <= 0f || stateTime >= holdEnd) return left / rate;
+            float toZone = Mathf.Max(0f, a.activeStart - 0.12f - stepNorm) / rate;
+            float holdLeft = holdEnd - stateTime - toZone;                   // pausa que queda al llegar a la zona
+            if (holdLeft <= 0f) return left / rate;
+            float tail = Mathf.Min(0.12f, left), slow = 0.15f * rate;
+            if (tail <= slow * holdLeft) return toZone + tail / slow;
+            return toZone + holdLeft + (tail - slow * holdLeft) / rate;
         }
 
         /// <summary>Movimientos especiales (jefes). Por defecto, golpe normal.</summary>
@@ -755,6 +770,7 @@ namespace Nindo
         // ---------------------------------------------------------------- guion
         public void EnterScripted()
         {
+            if (!IsAlive) return;   // un muerto en Scripted cuenta como vivo y el encuentro no termina nunca
             ReleaseToken(); Stop();
             SetState(EnemyState.Scripted);
             anim.Play(config.animLocomotion, 0.15f);
@@ -762,6 +778,7 @@ namespace Nindo
 
         public void ExitScripted(bool aggro)
         {
+            if (State != EnemyState.Scripted) return;
             SetState(EnemyState.Idle);
             // si ya estaba en aggro antes de la cinemática, Alert() no hacía nada y quedaba quieto en Idle
             if (aggro) { IsAggro = false; Alert(); }
