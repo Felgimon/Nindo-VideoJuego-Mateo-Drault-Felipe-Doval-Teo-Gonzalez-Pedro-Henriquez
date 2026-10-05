@@ -36,8 +36,13 @@ namespace Nindo
         public bool IsTelegraphingUnblockable { get; private set; }
         public bool IsExhausted => State == EnemyState.Exhausted;
         /// <summary>El golpe actual está por salir (para tutoriales en cámara lenta).</summary>
-        public bool AboutToStrike => State == EnemyState.Attack && pattern != null && step < pattern.steps.Length &&
-                                     !stepHit && stepNorm >= pattern.steps[step].activeStart - 0.14f && stepNorm < pattern.steps[step].activeStart;
+        /// <remarks>Se mide en segundos de juego (no en tiempo normalizado del clip): a cualquier framerate
+        /// hay al menos un frame dentro de la ventana, y si el jugador aprieta parry en ese momento
+        /// el golpe cae dentro de su ventana de parry (PlayerConfig.parryWindow).</remarks>
+        public bool AboutToStrike => State == EnemyState.Attack && StrikeEta <= StrikeWarning;
+        /// <summary>Segundos de juego que faltan para que salga el golpe actual (infinito si no hay uno por salir).</summary>
+        public float StrikeEta { get; private set; } = float.PositiveInfinity;
+        public const float StrikeWarning = 0.18f;
         public float LastHitTime { get; private set; } = -99f;
         public Transform katanaTip, katanaBase;
 
@@ -410,6 +415,7 @@ namespace Nindo
             stepNorm = 0f;
             stepHit = false;
             telegraphed = false;
+            StrikeEta = float.PositiveInfinity;
             IsTelegraphingUnblockable = a.kind == AttackKind.Unblockable;
             stateTime = 0f;
             anim.Play(a.state, 0.08f);
@@ -431,10 +437,12 @@ namespace Nindo
             var a = pattern.steps[step];
             // telegrafía extra: el golpe espera un instante más antes de salir
             float timing = a.Timing(stepNorm) * a.speed;
-            if (a.telegraph > 0f && stepNorm >= a.activeStart - 0.12f && stateTime < a.telegraph + (a.activeStart - 0.12f) * stepLen)
-                timing *= 0.15f;
+            float holdEnd = a.telegraph + (a.activeStart - 0.12f) * stepLen;
+            bool holding = a.telegraph > 0f && stepNorm >= a.activeStart - 0.12f && stateTime < holdEnd;
+            if (holding) timing *= 0.15f;
             anim.SetSpeed(timing);
             if (!anim.Frozen) stepNorm += dt * timing / Mathf.Max(0.05f, stepLen * a.speed);
+            StrikeEta = stepHit || stepNorm >= a.activeStart ? float.PositiveInfinity : EstimateStrikeEta(a, holdEnd);
 
             if (a.tracking && stepNorm < a.activeStart) Face(target.transform.position, 1.3f, dt);
 
@@ -459,6 +467,17 @@ namespace Nindo
 
             if (stepNorm > a.activeEnd + 0.05f) trail?.Stop();
             if (stepNorm >= 1f) NextStep();
+        }
+
+        /// <summary>Segundos hasta activeStart al ritmo actual, contando la pausa del telegraph (presente o por venir).</summary>
+        float EstimateStrikeEta(AttackDef a, float holdEnd)
+        {
+            float rate = a.Timing(stepNorm) / Mathf.Max(0.05f, stepLen);   // tiempo normalizado por segundo
+            if (a.telegraph <= 0f || stateTime >= holdEnd) return (a.activeStart - stepNorm) / rate;
+            float zone = a.activeStart - 0.12f;
+            float toZone = Mathf.Max(0f, zone - stepNorm) / rate;
+            float tail = Mathf.Min(0.12f, a.activeStart - stepNorm) / rate;
+            return Mathf.Max(toZone, holdEnd - stateTime) + tail;
         }
 
         /// <summary>Movimientos especiales (jefes). Por defecto, golpe normal.</summary>

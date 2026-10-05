@@ -250,7 +250,8 @@ namespace Nindo
                 var enc = Encounter.Get("intro");
                 if (enc != null)
                     foreach (var e in enc.Members)
-                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < 4f)
+                        // 7 m: la estocada sale desde hasta 5.5 m y llega con la embestida
+                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < 7f)
                         {
                             waitingParry = true;
                             tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);

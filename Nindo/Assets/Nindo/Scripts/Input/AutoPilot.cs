@@ -15,6 +15,8 @@ namespace Nindo
     ///   down ACT / up ACT      dejar mantenida / soltar
     ///   move X Y [seg]         mover con el "stick" (x derecha, y adelante); sin seg queda puesto
     ///   wait seg               esperar (tiempo real: no le afecta la cámara lenta)
+    ///   bot on|off             peleador automático: parry a los golpes que llegan, dash a los
+    ///                          imparables, remata a los desequilibrados y si no, ataca/se acerca
     /// ACT = nombre de <see cref="Act"/> (Attack, Parry, Dash, Lock, Finisher, Interact, Ability1,
     /// Ability2, Pause, LockNext, LockPrev, Submit, Cancel).
     /// Ej.: AutoPilot.Run("tap Submit x4 0.5; move 0 1 1.5; tap Attack x3 0.3; hold Parry 0.4")
@@ -60,6 +62,56 @@ namespace Nindo
             InputReader.ClearVirtual();
         }
 
+        // ---------------------------------------------------------------- bot de combate
+        /// <summary>Peleador automático (ver "bot on"). También se puede prender desde código.</summary>
+        public static bool Bot
+        {
+            get => inst != null && inst.bot;
+            set { if (inst == null) Run(""); inst.bot = value; }
+        }
+        /// <summary>Contadores del bot para los informes de prueba.</summary>
+        public static int BotParries, BotDashes, BotFinishers, BotAttacks;
+        bool bot;
+        float nextBotAction;
+        Enemy lastParried;
+
+        void Update()
+        {
+            if (!bot || Game.Player == null || !Game.Player.IsAlive || Game.Combat == null) return;
+            var p = Game.Player;
+            Enemy nearest = null, striking = null;
+            float best = float.MaxValue;
+            foreach (var e in Game.Combat.Engaged)
+            {
+                if (e == null || !e.IsAlive) continue;
+                float d = CombatMath.FlatDistance(e.transform.position, p.transform.position);
+                if (d < best) { best = d; nearest = e; }
+                if (e.AboutToStrike && d < 7f) striking = e;
+            }
+            // defensa: no depende del cooldown de acciones
+            if (striking != null && striking != lastParried)
+            {
+                lastParried = striking;
+                if (striking.IsTelegraphingUnblockable) { InputReader.VirtualTap(Act.Dash); BotDashes++; }
+                else { InputReader.VirtualTap(Act.Parry); BotParries++; }
+                nextBotAction = Time.unscaledTime + 0.25f;
+                return;
+            }
+            if (striking == null) lastParried = null;
+            if (nearest == null) { InputReader.VirtualMove = Vector2.zero; return; }
+
+            // acercarse en espacio de cámara (el "stick" es relativo a la cámara)
+            Vector3 to = nearest.transform.position - p.transform.position; to.y = 0f;
+            var cam = Camera.main != null ? Camera.main.transform : null;
+            Vector3 f = cam != null ? Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized : Vector3.forward;
+            Vector3 r = cam != null ? Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized : Vector3.right;
+            InputReader.VirtualMove = best > 2.2f ? new Vector2(Vector3.Dot(to.normalized, r), Vector3.Dot(to.normalized, f)) : Vector2.zero;
+
+            if (Time.unscaledTime < nextBotAction) return;
+            if (p.FinisherCandidate() != null) { InputReader.VirtualTap(Act.Finisher); BotFinishers++; nextBotAction = Time.unscaledTime + 1.2f; }
+            else if (best < 2.6f) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
+        }
+
         IEnumerator Loop()
         {
             while (steps.Count > 0)
@@ -86,6 +138,10 @@ namespace Nindo
                 case "hold": return Hold(ParseAct(t[1]), F(t, 2, 0.5f));
                 case "down": InputReader.VirtualHold(ParseAct(t[1]), true); return null;
                 case "up": InputReader.VirtualHold(ParseAct(t[1]), false); return null;
+                case "bot":
+                    Bot = t.Length < 2 || t[1].ToLowerInvariant() != "off";
+                    if (!Bot) InputReader.VirtualMove = Vector2.zero;
+                    return null;
                 case "move":
                 {
                     InputReader.VirtualMove = new Vector2(F(t, 1, 0f), F(t, 2, 0f));
