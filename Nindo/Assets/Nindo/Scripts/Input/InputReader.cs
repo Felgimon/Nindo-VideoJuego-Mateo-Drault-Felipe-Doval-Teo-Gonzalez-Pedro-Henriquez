@@ -136,6 +136,19 @@ namespace Nindo
             attackHeld = Input.GetKey(KeyCode.J) || Input.GetMouseButton(0);
             lockHeld = Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.Tab) || Input.GetMouseButton(2);
 #endif
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // entrada virtual del AutoPilot (pruebas automáticas): se suma a la real
+            for (int i = 0; i < ActCount; i++)
+            {
+                if (virtualTaps[i] > 0) { virtualTaps[i]--; Press((Act)i, false); }
+                else if (virtualHeld[i] && !virtualPrev[i]) Press((Act)i, false);
+                virtualPrev[i] = virtualHeld[i];
+            }
+            move += VirtualMove;
+            parryHeld |= virtualHeld[(int)Act.Parry];
+            attackHeld |= virtualHeld[(int)Act.Attack];
+            lockHeld |= virtualHeld[(int)Act.Lock];
+#endif
             Move = Vector2.ClampMagnitude(move, 1f);
             ParryHeld = parryHeld;
             AttackHeld = attackHeld;
@@ -146,6 +159,23 @@ namespace Nindo
 
 #if ENABLE_INPUT_SYSTEM
         bool stickFlicked;
+#endif
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // ---------------------------------------------------------------- entrada virtual (AutoPilot)
+        static readonly int[] virtualTaps = new int[ActCount];
+        static readonly bool[] virtualHeld = new bool[ActCount];
+        static readonly bool[] virtualPrev = new bool[ActCount];
+        /// <summary>Movimiento virtual (mismo espacio que el stick: x derecha, y adelante).</summary>
+        public static Vector2 VirtualMove;
+        /// <summary>Una pulsación que se registra en el próximo Update, sin importar el framerate.</summary>
+        public static void VirtualTap(Act a) => virtualTaps[(int)a]++;
+        public static void VirtualHold(Act a, bool held) => virtualHeld[(int)a] = held;
+        public static void ClearVirtual()
+        {
+            for (int i = 0; i < ActCount; i++) { virtualTaps[i] = 0; virtualHeld[i] = false; virtualPrev[i] = false; }
+            VirtualMove = Vector2.zero;
+        }
 #endif
 
         void Press(Act a, bool gamepad)
