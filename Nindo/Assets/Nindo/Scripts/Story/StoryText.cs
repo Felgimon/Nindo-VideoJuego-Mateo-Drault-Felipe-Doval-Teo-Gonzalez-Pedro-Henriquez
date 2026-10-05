@@ -51,12 +51,12 @@ namespace Nindo
                 case "bosque":
                     z.title = "Linde del Bosque"; z.subtitle = "Donde la luna no llega";
                     z.music = "explore_forest"; z.ambience = "forest";
-                    z.fogColor = new Color(0.04f, 0.07f, 0.08f); z.fogDensity = 0.022f; z.ambientSky = new Color(0.16f, 0.22f, 0.28f);
+                    z.fogColor = new Color(0.06f, 0.09f, 0.11f); z.fogDensity = 0.012f; z.ambientSky = new Color(0.2f, 0.27f, 0.34f);
                     break;
                 case "muralla":
                     z.title = "La Muralla Kurokage"; z.subtitle = "Territorio del clan";
                     z.music = "explore_forest"; z.ambience = "forest";
-                    z.fogColor = new Color(0.06f, 0.08f, 0.12f); z.fogDensity = 0.016f; z.ambientSky = new Color(0.2f, 0.25f, 0.36f);
+                    z.fogColor = new Color(0.07f, 0.09f, 0.14f); z.fogDensity = 0.011f; z.ambientSky = new Color(0.22f, 0.27f, 0.38f);
                     break;
                 case "jardin":
                     z.title = "Jardín del Clan"; z.subtitle = "La aldea de las luciérnagas";
@@ -71,7 +71,7 @@ namespace Nindo
                 case "montana":
                     z.title = "Montaña Kodoyama"; z.subtitle = "Rocas, nieve y silencio";
                     z.music = "explore_mountain"; z.ambience = "wind"; z.snow = true;
-                    z.fogColor = new Color(0.16f, 0.19f, 0.26f); z.fogDensity = 0.016f; z.ambientSky = new Color(0.32f, 0.38f, 0.52f);
+                    z.fogColor = new Color(0.16f, 0.19f, 0.26f); z.fogDensity = 0.012f; z.ambientSky = new Color(0.32f, 0.38f, 0.52f);
                     break;
                 case "lago":
                     z.title = "Aldea del Lago Kohan"; z.subtitle = "Pescadores bajo la luna";
@@ -81,7 +81,7 @@ namespace Nindo
                 case "bambu":
                     z.title = "Bosque de Bambú"; z.subtitle = "El susurro del viento";
                     z.music = "explore_forest"; z.ambience = "bamboo";
-                    z.fogColor = new Color(0.06f, 0.11f, 0.09f); z.fogDensity = 0.018f; z.ambientSky = new Color(0.2f, 0.3f, 0.28f);
+                    z.fogColor = new Color(0.08f, 0.13f, 0.11f); z.fogDensity = 0.011f; z.ambientSky = new Color(0.23f, 0.33f, 0.31f);
                     break;
                 default:
                     z.title = z.id; break;

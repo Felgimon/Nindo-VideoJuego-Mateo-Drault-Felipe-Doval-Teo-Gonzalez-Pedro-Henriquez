@@ -27,9 +27,12 @@ namespace Nindo
         float lowHealth;
         Color baseFilter = Color.white;
 
-        public float BaseVignette = 0.28f;
+        // visibilidad de noche: con 12 de contraste, viñeta 0.28 y exposición 0.15 los ninjas negros
+        // desaparecían sobre el suelo oscuro (70-87 % de los píxeles casi en negro en combate)
+        public float BaseVignette = 0.2f;
         public float BaseSaturation = 8f;
-        public float BaseContrast = 12f;
+        public float BaseContrast = 6f;
+        public float BaseExposure = 0.4f;
         public bool DiormaDof = true;
 
         void Awake()
@@ -63,7 +66,12 @@ namespace Nindo
             color = profile.Add<ColorAdjustments>(true);
             color.saturation.value = BaseSaturation;
             color.contrast.value = BaseContrast;
-            color.postExposure.value = 0.15f;
+            color.postExposure.value = BaseExposure;
+            // sombras apenas levantadas y frías: se ve la forma de lo que está en la sombra sin perder la noche
+            var smh = profile.Add<ShadowsMidtonesHighlights>(true);
+            smh.shadows.value = new Vector4(0.98f, 1.0f, 1.08f, 0.06f);
+            smh.shadowsStart.value = 0f;
+            smh.shadowsEnd.value = 0.28f;
             color.colorFilter.value = baseFilter;
 
             white = profile.Add<WhiteBalance>(true);

@@ -201,6 +201,15 @@ namespace Nindo
             pc.animator = anim;
             pc.model = anim != null ? anim.transform : null;
             root.AddComponent<ProceduralMotion>();
+            // "luz de luna" que acompaña a Kaito: de noche los enemigos negros a su alrededor se
+            // leían como agujeros; en combate sube un poco (MoonLantern)
+            var moon = new GameObject("MoonLantern");
+            moon.transform.SetParent(root.transform, false);
+            moon.transform.localPosition = new Vector3(0f, 3.4f, -0.8f);
+            var ml = moon.AddComponent<Light>();
+            ml.type = LightType.Point; ml.range = 9f; ml.intensity = 1.1f; ml.color = new Color(0.72f, 0.82f, 1f);
+            ml.shadows = LightShadows.None; ml.renderMode = LightRenderMode.ForcePixel;
+            moon.AddComponent<MoonLantern>();
             return pc;
         }
     }
