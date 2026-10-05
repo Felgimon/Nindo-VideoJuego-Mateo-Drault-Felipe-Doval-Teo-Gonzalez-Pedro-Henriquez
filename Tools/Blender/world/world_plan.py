@@ -181,7 +181,7 @@ LANDMARKS = [
     ("lake_arena_platform", 184, 72, 225, 1.0),
     ("shrine_small", 189.1, 77.1, 225, 0.75),        # al fondo de la plataforma de la arena
     ("lantern_post", 110, 20, 180, 1.0), ("lantern_post", 98, -2, 180, 1.0),
-    ("reeds_patch", 103.5, -18, 0, 1.2), ("reeds_patch", 119, 30, 40, 1.0),   # en la línea del agua (más atrás quedaban en el barranco)
+    ("reeds_patch", 104.5, -18, 0, 1.2), ("reeds_patch", 119, 30, 40, 1.0),   # en la línea del agua (más atrás quedaban en el barranco)
     # ---------------- Bambú
     ("arch_bamboo_gate", 64, 102, 215, 1.0),
     ("arch_bamboo_gate", 116, 148, 215, 1.0),

@@ -487,7 +487,9 @@ def place_landmarks():
             ms = [m for m in ms if m is not None]
             place("wall_segment", x, W.WALL_Z, 0, 1.0, y=min(ms) - 0.2, ground=False)
         x += 8
-    for wx in (-6.0, 6.0, W.WALL_X_RANGE[0] - 4, W.WALL_X_RANGE[1] + 4):
+    # postes a ±4.6 / ±6 / ±7.4: entre la torre del portón (±4.0) y el primer tramo (±8) quedaban
+    # ranuras de 1.4 m por las que Kaito se salteaba el portón cerrado y la pelea de la muralla
+    for wx in (-7.4, -6.0, -4.6, 4.6, 6.0, 7.4, W.WALL_X_RANGE[0] - 4, W.WALL_X_RANGE[1] + 4):
         place("wall_post", wx, W.WALL_Z, 0, 1.0)
     # pasarela del lago: tablones desde 2 m antes de que empiece el agua hasta el borde de la arena
     for name, pts, width, ph in W.PATHS:

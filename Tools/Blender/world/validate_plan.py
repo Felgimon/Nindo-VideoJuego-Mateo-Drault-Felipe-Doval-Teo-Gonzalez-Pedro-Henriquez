@@ -1,7 +1,7 @@
 """Chequeos del plan del mundo (sin Blender): python3 Tools/Blender/world/validate_plan.py
 Cada marcador de gameplay tiene que quedar sobre suelo transitable, fuera del agua (salvo sobre
 props flotantes) y lejos de los bordes; los edificios no pueden tapar caminos ni marcadores."""
-import math, sys, os
+import glob, json, math, sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import world_plan as W
 import world_terrain as T
@@ -103,18 +103,32 @@ for name, pts, width, ph in W.PATHS:
         problems.append(f"Camino {name}: pendiente {math.degrees(math.atan(worst[0])):.0f}° en {worst[1]}")
 
 # caminos que cruzan el estanque o un arroyo: cada cruce necesita un puente (si no, Kaito vadea medio metro de agua)
-BRIDGES = [(x, z) for pid, x, z, yaw, sc in W.LANDMARKS if pid.split("@")[0].startswith("bridge")]
+# tablero de cada puente según su tamaño en el manifest (largo en +z local con yaw 0): un radio fijo
+# daba por buenos un puente girado a lo largo del arroyo o un tablón a 4 m del cruce
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "out")
+SIZES = {pid: m["size"] for mf in glob.glob(os.path.join(OUT, "manifest_*.json"))
+         for pid, m in json.load(open(mf, encoding="utf-8")).items()}
+BRIDGES = [(x, z, math.sin(math.radians(yaw)), math.cos(math.radians(yaw)), SIZES[b][2] * 0.5 * sc, SIZES[b][0] * 0.5 * sc)
+           for pid, x, z, yaw, sc in W.LANDMARKS for b in [pid.split("@")[0]] if b.startswith("bridge") and b in SIZES]
+
+
+def on_bridge(px, pz, dx, dz):
+    """(px, pz) cae sobre el tablero de un puente orientado como el camino (dx, dz unitario)."""
+    return any(abs((px - bx) * sa + (pz - bz) * ca) <= hl - 0.3 and abs((px - bx) * ca - (pz - bz) * sa) <= hw
+               and abs(dx * sa + dz * ca) >= 0.7 for bx, bz, sa, ca, hl, hw in BRIDGES)
 for name, pts, width, ph in W.PATHS:
     if name in ("pasarela_lago", "dojo_subida"):
         continue
     seen = set()
     for i in range(len(pts) - 1):
         (ax, az), (bx, bz) = pts[i], pts[i + 1]
-        n = max(1, int(math.hypot(bx - ax, bz - az) / 0.5))
+        L = math.hypot(bx - ax, bz - az)
+        n = max(1, int(L / 0.5))
+        ux, uz = (bx - ax) / max(L, 1e-6), (bz - az) / max(L, 1e-6)
         for k in range(n + 1):
             x, z = ax + (bx - ax) * k / n, az + (bz - az) * k / n
             key = (round(x / 4), round(z / 4))
-            if T.stream_dist(x, z) < 0 and key not in seen and not any(math.hypot(x - a, z - b) < 5 for a, b in BRIDGES):
+            if T.stream_dist(x, z) < 0 and key not in seen and not on_bridge(x, z, ux, uz):
                 seen.add(key)
                 problems.append(f"Camino {name}: cruza agua sin puente en ({x:.1f}, {z:.1f})")
 
