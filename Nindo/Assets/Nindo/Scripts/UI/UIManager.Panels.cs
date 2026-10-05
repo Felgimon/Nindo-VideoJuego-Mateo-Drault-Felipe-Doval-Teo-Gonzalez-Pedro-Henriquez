@@ -36,6 +36,7 @@ namespace Nindo
         Button pauseFirst, optionsFirst;
         bool optionsFromPause;
         GameObject selectedBeforeOptions;
+        CanvasGroup optionsBehind;
 
         void BuildPanels()
         {
@@ -217,10 +218,14 @@ namespace Nindo
         static string FullLabel(bool? v = null) => "Pantalla completa: " + ((v ?? Screen.fullScreen) ? "Sí" : "No");
         static string QualityLabel() => "Calidad: " + QualitySettings.names[QualitySettings.GetQualityLevel()];
 
-        public void OpenOptions(bool fromPause)
+        /// <param name="behind">Botones que quedan detrás (menú principal): se desactivan mientras está abierto,
+        /// si no la navegación con teclado/mando saltaba a ellos (ocultos) y Enter podía salir o pisar la partida.</param>
+        public void OpenOptions(bool fromPause, CanvasGroup behind = null)
         {
             selectedBeforeOptions = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             optionsFromPause = fromPause;
+            optionsBehind = behind;
+            if (behind != null) behind.interactable = false;
             pausePanel.SetActive(false);
             optionsPanel.SetActive(true);
             EventSystem.current?.SetSelectedGameObject(optionsFirst.gameObject);
@@ -230,6 +235,7 @@ namespace Nindo
         {
             Settings.Save();
             optionsPanel.SetActive(false);
+            if (optionsBehind != null) { optionsBehind.interactable = true; optionsBehind = null; }
             if (optionsFromPause) { pausePanel.SetActive(true); EventSystem.current?.SetSelectedGameObject(pauseFirst.gameObject); }
             // desde el menú: volver a seleccionar el botón de antes (si no, teclado/mando quedan sin foco)
             else if (selectedBeforeOptions != null && selectedBeforeOptions.activeInHierarchy) EventSystem.current?.SetSelectedGameObject(selectedBeforeOptions);
@@ -239,7 +245,9 @@ namespace Nindo
 
         public void SetPaused(bool p)
         {
-            if (p && (DialogueOpen || deathPanel.activeSelf || endPanel.activeSelf)) return;
+            // en cinemáticas no se pausa: sus esperas y planos corren en tiempo real y el diálogo
+            // podía abrirse detrás del panel y avanzar con los clics del menú de pausa
+            if (p && (DialogueOpen || Game.InCutscene || deathPanel.activeSelf || endPanel.activeSelf)) return;
             pausePanel.SetActive(p);
             optionsPanel.SetActive(false);
             Game.Time?.SetPaused(p);

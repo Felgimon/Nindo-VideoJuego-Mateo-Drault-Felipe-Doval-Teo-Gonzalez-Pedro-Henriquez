@@ -52,11 +52,15 @@ namespace Nindo
         /// <summary>Corta el guion y suelta todo.</summary>
         public static void Stop()
         {
+            if (inst != null)
+            {
+                inst.steps.Clear();
+                // StopAllCoroutines corta también el paso en curso (goto/talk corren como corrutina hija)
+                inst.StopAllCoroutines();
+                inst.loop = null;
+                inst.bot = false;
+            }
             InputReader.ClearVirtual();
-            if (inst == null) return;
-            inst.steps.Clear();
-            if (inst.loop != null) inst.StopCoroutine(inst.loop);
-            inst.loop = null;
         }
 
         void OnDestroy()
@@ -92,16 +96,19 @@ namespace Nindo
             GameEvents.Parry += OnParry;
             GameEvents.PlayerDamaged += OnDamaged;
             GameEvents.EnemyFinished += OnFinished;
+            GameEvents.EnemyKilled += OnKilled;
         }
         void OnDisable()
         {
             GameEvents.Parry -= OnParry;
             GameEvents.PlayerDamaged -= OnDamaged;
             GameEvents.EnemyFinished -= OnFinished;
+            GameEvents.EnemyKilled -= OnKilled;
         }
         static void OnParry(bool perfect) { ParryOk++; if (perfect) ParryPerfect++; }
         static void OnDamaged(float d) { HitsTaken++; DamageTaken += d; }
-        static void OnFinished(Enemy e, bool finisher) { Kills++; if (finisher) Executions++; }
+        static void OnFinished(Enemy e, bool finisher) { if (finisher) Executions++; }
+        static void OnKilled(Enemy e) { Kills++; }
 
         bool bot;
         float nextBotAction;

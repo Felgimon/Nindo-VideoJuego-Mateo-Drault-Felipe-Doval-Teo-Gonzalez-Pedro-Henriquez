@@ -36,6 +36,9 @@ namespace Nindo
             }
 
             var canvas = UIFactory.CreateCanvas("Menu", 5);
+            // Expand: el recuadro 16:9 del arte mide siempre 1920x1080 unidades, así el título y los
+            // botones (de tamaño fijo) quedan sobre la bandana y debajo de la máscara en 4:3, 21:9, 32:9...
+            canvas.GetComponent<CanvasScaler>().screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             var root = (RectTransform)canvas.transform;
             var bg = UIFactory.Image("Bg", root, new Color(0.03f, 0.03f, 0.06f, 1f));
             bg.rectTransform.Fill(Vector2.zero, Vector2.zero);
@@ -62,7 +65,7 @@ namespace Nindo
 
             // el título va escrito con tinta sobre la bandana amarilla (como un hachimaki): en dorado,
             // amarillo sobre amarillo, no se leía
-            var ink = new Color(0.1f, 0.06f, 0.05f, 0.95f);
+            var ink = content.menuEyesClosed != null ? new Color(0.1f, 0.06f, 0.05f, 0.95f) : UIFactory.Gold;
             var titleRt = UIFactory.Rect("Title", art, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -28), new Vector2(1200, 290));
             title = titleRt.gameObject.AddComponent<CanvasGroup>();
             UIFactory.Text("Kanji", titleRt, "忍道", 150, ink, new Vector2(0.5f, 1f), new Vector2(0, -6), new Vector2(700, 180), TextAlignmentOptions.Center, true);
@@ -74,7 +77,7 @@ namespace Nindo
             var list = new System.Collections.Generic.List<Button>();
             if (SaveSystem.HasSave) list.Add(UIFactory.Button("Continue", brt, "Continuar", new Vector2(330, 74), () => Play(false)));
             list.Add(UIFactory.Button("New", brt, "Nueva partida", new Vector2(330, 74), () => Play(true)));
-            list.Add(UIFactory.Button("Options", brt, "Opciones", new Vector2(330, 74), () => Game.UI.OpenOptions(false)));
+            list.Add(UIFactory.Button("Options", brt, "Opciones", new Vector2(330, 74), () => Game.UI.OpenOptions(false, buttons)));
             list.Add(UIFactory.Button("Quit", brt, "Salir", new Vector2(330, 74), Application.Quit));
             const float w = 330f, gap = 26f;
             float x0 = -(list.Count * w + (list.Count - 1) * gap) * 0.5f + w * 0.5f;

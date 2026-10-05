@@ -60,6 +60,7 @@ namespace Nindo
         void Awake()
         {
             Game.UI = this;
+            gameObject.AddComponent<WorldMarkersLate>().ui = this;
             UIFactory.EnsureEventSystem();
             canvas = UIFactory.CreateCanvas("Nindo UI", 10);
             canvas.transform.SetParent(transform, false);
@@ -271,7 +272,8 @@ namespace Nindo
             return w;
         }
 
-        void UpdateWorldMarkers(float dt)
+        // la llama WorldMarkersLate, después de que la cámara fija su pose
+        internal void UpdateWorldMarkers(float dt)
         {
             var cam = Game.Camera != null ? Game.Camera.Cam : null;
             var p = Game.Player;
@@ -347,7 +349,13 @@ namespace Nindo
             {
                 var m = markers[i];
                 m.t += dt;
-                if (m.e == null || m.t > m.life || !m.e.gameObject.activeInHierarchy) { Destroy(m.rt.gameObject); markers.RemoveAt(i); continue; }
+                if (m.e == null || m.t > m.life || !m.e.gameObject.activeInHierarchy)
+                {
+                    // el contorno usa una instancia de material propia que TMP no destruye
+                    var mat = m.text != null ? m.text.fontSharedMaterial : null;
+                    if (mat != null && m.text.font != null && mat != m.text.font.material) Destroy(mat);
+                    Destroy(m.rt.gameObject); markers.RemoveAt(i); continue;
+                }
                 Vector3 sp = cam.WorldToScreenPoint(m.e.transform.position + m.offset);
                 m.rt.gameObject.SetActive(sp.z > 0f);
                 m.rt.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
@@ -427,7 +435,6 @@ namespace Nindo
             float dt = Time.unscaledDeltaTime;
             UpdateHUD(dt);
             UpdateBossBar(dt);
-            UpdateWorldMarkers(dt);
             UpdateOverlay(dt);
             UpdatePanels(dt);
         }
