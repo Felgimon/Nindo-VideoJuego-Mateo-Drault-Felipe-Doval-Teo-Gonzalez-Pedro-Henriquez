@@ -17,6 +17,9 @@ namespace Nindo
     ///   wait seg               esperar (tiempo real: no le afecta la cámara lenta)
     ///   bot on|off             peleador automático: parry a los golpes que llegan, dash a los
     ///                          imparables, remata a los desequilibrados y si no, ataca/se acerca
+    ///   talk [max]             espera un diálogo (hasta 'max' s) y lo avanza hasta que no quede ninguno
+    ///   waitcontrol [max]      espera a que no haya cinemática ni diálogo
+    ///   goto X Z [max]         camina hasta el punto (x, z) del mundo (o hasta 'max' s)
     /// ACT = nombre de <see cref="Act"/> (Attack, Parry, Dash, Lock, Finisher, Interact, Ability1,
     /// Ability2, Pause, LockNext, LockPrev, Submit, Cancel).
     /// Ej.: AutoPilot.Run("tap Submit x4 0.5; move 0 1 1.5; tap Attack x3 0.3; hold Parry 0.4")
@@ -169,6 +172,9 @@ namespace Nindo
                 case "hold": return Hold(ParseAct(t[1]), F(t, 2, 0.5f));
                 case "down": InputReader.VirtualHold(ParseAct(t[1]), true); return null;
                 case "up": InputReader.VirtualHold(ParseAct(t[1]), false); return null;
+                case "talk": return Talk(F(t, 1, 15f));
+                case "waitcontrol": return WaitControl(F(t, 1, 30f));
+                case "goto": return GoTo(F(t, 1, 0f), F(t, 2, 0f), F(t, 3, 20f));
                 case "bot":
                     Bot = t.Length < 2 || t[1].ToLowerInvariant() != "off";
                     if (!Bot) InputReader.VirtualMove = Vector2.zero;
@@ -203,6 +209,43 @@ namespace Nindo
         IEnumerator MoveFor(float s)
         {
             yield return new WaitForSecondsRealtime(s);
+            InputReader.VirtualMove = Vector2.zero;
+        }
+
+        static bool DialogueOpen => Game.UI != null && Game.UI.DialogueOpen;
+
+        IEnumerator Talk(float max)
+        {
+            float t = 0f;
+            while (!DialogueOpen && t < max) { t += Time.unscaledDeltaTime; yield return null; }
+            float quiet = 0f;
+            while (quiet < 1.2f && t < max + 120f)
+            {
+                if (DialogueOpen) { quiet = 0f; InputReader.VirtualTap(Act.Submit); yield return new WaitForSecondsRealtime(0.35f); t += 0.35f; }
+                else { quiet += Time.unscaledDeltaTime; t += Time.unscaledDeltaTime; yield return null; }
+            }
+        }
+
+        IEnumerator WaitControl(float max)
+        {
+            float t = 0f;
+            while ((Game.InCutscene || DialogueOpen || Game.Player == null) && t < max) { t += Time.unscaledDeltaTime; yield return null; }
+        }
+
+        IEnumerator GoTo(float x, float z, float max)
+        {
+            float t = 0f;
+            while (t < max && Game.Player != null)
+            {
+                Vector3 to = new Vector3(x, 0f, z) - Game.Player.transform.position; to.y = 0f;
+                if (to.magnitude < 1.2f) break;
+                var cam = Camera.main != null ? Camera.main.transform : null;
+                Vector3 f = cam != null ? Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized : Vector3.forward;
+                Vector3 r = cam != null ? Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized : Vector3.right;
+                InputReader.VirtualMove = new Vector2(Vector3.Dot(to.normalized, r), Vector3.Dot(to.normalized, f));
+                t += Time.unscaledDeltaTime;
+                yield return null;
+            }
             InputReader.VirtualMove = Vector2.zero;
         }
 
