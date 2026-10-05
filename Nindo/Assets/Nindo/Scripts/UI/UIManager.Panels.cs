@@ -295,7 +295,9 @@ namespace Nindo
             UIFactory.Text("Title", bg.transform, "忍道  NINDŌ", 120, UIFactory.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 240), new Vector2(1600, 180), TextAlignmentOptions.Center, true);
             UIFactory.Text("Body", bg.transform,
                 "Kaito rescató a su abuelo.\nEl verdadero poder nace del lazo que nos une a los nuestros.\n\n" +
-                "<size=30><color=#e8c870>Un juego de</color></size>\nFelipe Doval  ·  Teo González  ·  Mateo Drault  ·  Pedro Henríquez\n\n<size=26>Gracias por jugar.</size>",
+                "<size=30><color=#e8c870>Un juego de</color></size>\nFelipe Doval  ·  Teo González  ·  Mateo Drault  ·  Pedro Henríquez\n\n<size=26>Gracias por jugar.</size>\n" +
+                // la OFL pide nombrar las fuentes (modificadas) y su licencia en lo que se distribuye
+                "<size=20><color=#8a8070>Fuentes: Shippori Mincho B1 y Zen Maru Gothic (con macrones agregados) · SIL Open Font License 1.1</color></size>",
                 40, UIFactory.Paper, new Vector2(0.5f, 0.5f), new Vector2(0, -80), new Vector2(1600, 420), TextAlignmentOptions.Center);
             var b = UIFactory.Button("Menu", bg.transform, "Volver al menú", new Vector2(460, 74), () => SceneFlow.LoadMenu());
             b.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -400);
@@ -317,6 +319,8 @@ namespace Nindo
             float a = toastT < 0.15f ? toastT / 0.15f : (toastT > toastLife - 0.4f ? (toastLife - toastT) / 0.4f : 1f);
             toast.alpha = Mathf.Clamp01(a);
             toast.transform.localScale = Vector3.one * (toastT < 0.15f ? Mathf.Lerp(1.4f, 1f, toastT / 0.15f) : 1f);
+            // con un título de zona en pantalla (y 130..390) el aviso sube por encima: si no, "¡FILO DE IRA!" pisaba el subtítulo
+            toast.rectTransform.anchoredPosition = new Vector2(0f, titleGroup.alpha > 0.01f ? 440f : 220f);
             tutorialGroup.alpha = Mathf.MoveTowards(tutorialGroup.alpha, tutorialVisible ? 1f : 0f, dt * 5f);
             dialogueGroup.alpha = Mathf.MoveTowards(dialogueGroup.alpha, DialogueOpen ? 1f : 0f, dt * 6f);
             dialogueHint.alpha = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);

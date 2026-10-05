@@ -150,6 +150,8 @@ $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]
 # metas, materiales, controllers, NindoContent, escenas  (correr después de cualquiera de los anteriores)
 python3 Tools/Unity/generate_assets.py
+# vocales con macrón en las fuentes (lo llama también generate_assets.py; necesita fontTools)
+python3 Tools/Fonts/add_macrons.py
 ```
 
 Convenciones de Blender en `Tools/Blender/STYLE.md`. Los GUIDs de Unity se generan de forma
@@ -175,14 +177,20 @@ luces puntuales con un pool (solo se encienden las más cercanas).
 
 Probado de punta a punta en el editor: menú → nueva partida → prólogo completo (secuestro,
 bandana, tutorial de parry en cámara lenta, remate), viaje por los 12 santuarios con peleas
-(bot de pruebas) sin errores en consola, subida al dojo y presentación de jefes. La consola
-queda limpia salvo el aviso de cuenta del paquete AI Assistant.
+(bot de pruebas) sin errores en consola, subida al dojo, los tres jefes de los sellos (Gorō,
+Mizuchi, Ōzeki: fases, tutorial del dash, remates, sellos y portales), el portón de los sellos,
+Kage y el final con créditos. Guardar/continuar conserva sellos y santuario. La consola queda
+limpia salvo los avisos del paquete AI Assistant.
 
 Se corrigió en la primera abierta (ver el historial de git): materiales que Unity no leía,
 barras de vida/espíritu invisibles, enemigos que se deslizaban congelados, el abuelo que salía
 volando, el santuario del jardín dentro del estanque, la escalera del dojo intransitable,
 árboles flotando, el tutorial de parry que no salía, contornos de texto invisibles, URP que
-rechazaba los builds, y los personajes negros que de noche eran siluetas planas.
+rechazaba los builds, y los personajes negros que de noche eran siluetas planas. Después, con
+dos rondas de revisión del código verificadas jugando: el abuelo mirando al revés, la Ō en otra
+tipografía (las fuentes ahora traen las vocales con macrón), Opciones del menú que dejaba el
+foco en los botones ocultos, barras sobre los enemigos un cuadro atrasadas, un puente que
+faltaba en el camino al dojo, el sumo que "revivía" en su cinemática y trababa el encuentro.
 
 Shaders propios: el agua (`Nindo/Water Lowpoly`) y el follaje (`Nindo/Foliage Wind`) compilan
 y se ven bien en URP 17.3. El agua se ajusta en `Nindo_WaterLowpoly` (`_WaveHeight`,
@@ -206,4 +214,6 @@ Pendiente / para decidir:
 Código, diseño y modelos originales de personajes/enemigos: el equipo de Nindō.
 Entornos low‑poly, terreno y efectos sintetizados: generados con los scripts de `Tools/`.
 Música y efectos de terceros: todo CC0, detallado en `Nindo/Assets/Nindo/Audio/CREDITS.md`.
-Fuentes: Shippori Mincho B1 y Zen Maru Gothic (SIL Open Font License).
+Fuentes: Shippori Mincho B1 y Zen Maru Gothic (SIL Open Font License 1.1), con las vocales con
+macrón agregadas por `Tools/Fonts/add_macrons.py`; copyright y licencia en
+`Nindo/Assets/Nindo/Art/Fonts/OFL.txt`.

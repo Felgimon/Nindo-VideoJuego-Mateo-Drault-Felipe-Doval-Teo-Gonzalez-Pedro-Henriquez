@@ -60,6 +60,9 @@ namespace Nindo
         // ================================================================== cinemáticas
         IEnumerator Cutscene(IEnumerator body, bool letterbox = true)
         {
+            // si justo estaba en pausa (p. ej. Esc durante la cámara lenta de la muerte de un jefe) la
+            // cinemática espera: si no, corría detrás del panel y el diálogo avanzaba con los clics del menú
+            while (Game.IsPaused) yield return null;
             Game.InCutscene = true;
             if (Game.Input != null) Game.Input.GameplayBlocked = true;
             if (letterbox) Game.UI?.Letterbox(true);
@@ -86,6 +89,7 @@ namespace Nindo
         // ================================================================== PRÓLOGO
         IEnumerator Intro()
         {
+            while (Game.IsPaused) yield return null;   // pausa abierta durante la carga
             Game.InCutscene = true;
             if (Game.Input != null) Game.Input.GameplayBlocked = true;
             Game.UI.SetFade(1f);
@@ -326,7 +330,17 @@ namespace Nindo
                     break;
                 case "enc_done_wall": StartCoroutine(Cutscene(WallOpens())); break;
                 case "garden": StartCoroutine(Cutscene(Say("garden"), false)); break;
-                case "sumo_intro": StartCoroutine(Cutscene(SumoIntro())); break;
+                case "sumo_intro":
+                {
+                    // si el sumo ya cayó (se entró por el costado y se peleó antes del disparador) no hay
+                    // provocación que mostrar: solo se asegura que el encuentro esté activo
+                    var enc = Encounter.Get("sumo");
+                    bool liveSumo = false;
+                    if (enc != null) foreach (var m in enc.Members) if (m != null && m.IsAlive && m.config.id.StartsWith("sumo")) liveSumo = true;
+                    if (liveSumo) StartCoroutine(Cutscene(SumoIntro()));
+                    else enc?.Activate();
+                    break;
+                }
                 case "enc_done_sumo": StartCoroutine(Cutscene(AbilitiesUnlock())); break;
                 case "dojo_gate":
                     Game.Save.SetFlag(Flags.DojoGateSeen);

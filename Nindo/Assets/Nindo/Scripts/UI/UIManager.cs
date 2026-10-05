@@ -63,6 +63,9 @@ namespace Nindo
             gameObject.AddComponent<WorldMarkersLate>().ui = this;
             UIFactory.EnsureEventSystem();
             canvas = UIFactory.CreateCanvas("Nindo UI", 10);
+            // Expand: siempre al menos 1920x1080 unidades; en 32:9 el "Volver" de Opciones y el del final
+            // quedaban cortados abajo (las marcas sobre el mundo ya dividen por la escala del canvas)
+            canvas.GetComponent<CanvasScaler>().screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             canvas.transform.SetParent(transform, false);
             root = (RectTransform)canvas.transform;
             world = UIFactory.Stretch("World", root);

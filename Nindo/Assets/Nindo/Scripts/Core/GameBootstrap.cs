@@ -69,8 +69,9 @@ namespace Nindo
             // la zona ya eligió su música y su ambiente en el frame intermedio (antes se pisaban con los genéricos);
             // si en ese frame arrancó una pelea (se continúa dentro del radio de un encuentro) queda la de combate
             if (Game.Combat == null || !Game.Combat.InCombat) Game.Audio.PlayMusic(Zone.Current != null ? Zone.Current.music : "explore", 2f);
-            Game.Story.Begin(SceneFlow.NewGameRequested);
+            // antes de Begin: al continuar, Begin hace Zone.ForceRefresh (Current = null) y "night" pisaba el ambiente
             if (Zone.Current == null) Game.Audio.PlayAmbience("night");
+            Game.Story.Begin(SceneFlow.NewGameRequested);
         }
 
         void Update()
