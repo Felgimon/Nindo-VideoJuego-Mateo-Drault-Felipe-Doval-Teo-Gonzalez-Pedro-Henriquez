@@ -132,6 +132,7 @@ LANDMARKS = [
     ("pagoda_small", -12, 36, 160, 1.0),
     ("pavilion_azumaya", 22, 36, 200, 1.0),
     ("bridge_arch@0", -2.2, 9.6, -12.5, 1.0),  # centrado en el cruce camino/arroyo (antes terminaba en medio del agua)
+    ("bridge_arch@0", 0, 40, 0, 1.0),          # segundo arroyo sobre el camino al dojo (se vadeaba medio metro de agua)
     # (el puente del este, en 40,2, se quitó: el arroyo ahí no tiene orillas transitables a los dos lados)
     ("bridge_plank", -46, 4, 0, 1.0),
     ("house_village_a", -47, 21, 110, 1.0), ("house_village_b", -50, 0, 70, 1.0),
@@ -180,7 +181,7 @@ LANDMARKS = [
     ("lake_arena_platform", 184, 72, 225, 1.0),
     ("shrine_small", 189.1, 77.1, 225, 0.75),        # al fondo de la plataforma de la arena
     ("lantern_post", 110, 20, 180, 1.0), ("lantern_post", 98, -2, 180, 1.0),
-    ("reeds_patch", 102, -18, 0, 1.2), ("reeds_patch", 118, 30, 40, 1.0),
+    ("reeds_patch", 103.5, -18, 0, 1.2), ("reeds_patch", 119, 30, 40, 1.0),   # en la línea del agua (más atrás quedaban en el barranco)
     # ---------------- Bambú
     ("arch_bamboo_gate", 64, 102, 215, 1.0),
     ("arch_bamboo_gate", 116, 148, 215, 1.0),

@@ -102,5 +102,21 @@ for name, pts, width, ph in W.PATHS:
     if worst[0] > 0.75:
         problems.append(f"Camino {name}: pendiente {math.degrees(math.atan(worst[0])):.0f}° en {worst[1]}")
 
+# caminos que cruzan el estanque o un arroyo: cada cruce necesita un puente (si no, Kaito vadea medio metro de agua)
+BRIDGES = [(x, z) for pid, x, z, yaw, sc in W.LANDMARKS if pid.split("@")[0].startswith("bridge")]
+for name, pts, width, ph in W.PATHS:
+    if name in ("pasarela_lago", "dojo_subida"):
+        continue
+    seen = set()
+    for i in range(len(pts) - 1):
+        (ax, az), (bx, bz) = pts[i], pts[i + 1]
+        n = max(1, int(math.hypot(bx - ax, bz - az) / 0.5))
+        for k in range(n + 1):
+            x, z = ax + (bx - ax) * k / n, az + (bz - az) * k / n
+            key = (round(x / 4), round(z / 4))
+            if T.stream_dist(x, z) < 0 and key not in seen and not any(math.hypot(x - a, z - b) < 5 for a, b in BRIDGES):
+                seen.add(key)
+                problems.append(f"Camino {name}: cruza agua sin puente en ({x:.1f}, {z:.1f})")
+
 print("\n".join(problems) if problems else "OK: sin problemas")
 print(f"{len(problems)} problemas")

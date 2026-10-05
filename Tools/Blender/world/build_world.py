@@ -66,12 +66,15 @@ for entry in W.LANDMARKS:
         PADS.append((x, z, r + 1.0, T.height(x, z)))
 
 
-STAIRS = [(0, 96, 104, 0.0, 4.0, 4.7), (0, 104, 112, 4.0, 8.0, 4.7)]   # x, z0, z1, h0, h1, media anchura
+# x, z0, z1, h0, h1, media anchura, hundimiento al pie (el del tramo de abajo es mayor: la malla de 2.5 m
+# interpolaba el salto del arranque y asomaba por el primer escalón; el de arriba queda en 0.25 para no
+# agrandar el escalón hacia el umbral del portón del dojo, que tiene que seguir < stepOffset 0.4)
+STAIRS = [(0, 96, 104, 0.0, 4.0, 4.7, 0.75), (0, 104, 112, 4.0, 8.0, 4.7, 0.25)]
 
 
 def H(x, z):
     h = T.height(x, z)
-    for sx, z0, z1, h0, h1, hw in STAIRS:
+    for sx, z0, z1, h0, h1, hw, sink0 in STAIRS:
         # el terreno queda por debajo de la escalera (su malla es el suelo)
         if abs(x - sx) < hw + 0.6 and z0 - 0.5 < z < z1 + 0.5:
             if z < z0:
@@ -82,7 +85,9 @@ def H(x, z):
                 # bajo la escalera: línea de las narices - 0.25 (el escalón real siempre queda por encima;
                 # con 0.45 la malla de 2.5 m interpolaba una zanja delante del primer escalón y el primer
                 # escalón quedaba de 0.46-0.70 m, más que el stepOffset 0.4 de Kaito)
-                h = min(h, h0 + (h1 - h0) * (z - z0) / (z1 - z0) - 0.25)
+                t = (z - z0) / (z1 - z0)
+                sink = sink0 + (0.25 - sink0) * t
+                h = min(h, max(h0, h0 + (h1 - h0) * t - sink))
     for px, pz, pr, ph in PADS:
         d = math.hypot(x - px, z - pz)
         if d < pr + 3:
@@ -476,7 +481,11 @@ def place_landmarks():
     x = W.WALL_X_RANGE[0]
     while x <= W.WALL_X_RANGE[1]:
         if abs(x) > 6:
-            place("wall_segment", x, W.WALL_Z, 0, 1.0, y=min(H(x, W.WALL_Z), H(x, W.WALL_Z - 1), H(x, W.WALL_Z + 1)) - 0.2)
+            # base 0.2 m bajo el punto más bajo de la malla real a lo largo de los 8 m del tramo
+            # (con 3 muestras al centro, el extremo que da al portón flotaba 1.5 m)
+            ms = [mesh_H(x + dx, W.WALL_Z + dz) for dx in (-4, -3, -2, -1, 0, 1, 2, 3, 4) for dz in (-0.45, 0, 0.45)]
+            ms = [m for m in ms if m is not None]
+            place("wall_segment", x, W.WALL_Z, 0, 1.0, y=min(ms) - 0.2, ground=False)
         x += 8
     for wx in (-6.0, 6.0, W.WALL_X_RANGE[0] - 4, W.WALL_X_RANGE[1] + 4):
         place("wall_post", wx, W.WALL_Z, 0, 1.0)
