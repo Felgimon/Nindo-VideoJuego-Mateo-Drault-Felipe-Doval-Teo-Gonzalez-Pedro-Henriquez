@@ -325,11 +325,13 @@ namespace Nindo
             var cand = p.FinisherCandidate();
             if (cand != null && p.State != PlayerState.Finisher)
             {
-                Vector3 sp = cam.WorldToScreenPoint(cand.transform.position + Vector3.up * (cand.config.height * cand.config.scale + 1.0f));
+                // mismo punto que la barra del enemigo y corrido en unidades de canvas, encima del
+                // "¡DESEQUILIBRADO!" (antes iba 1 m más arriba en el mundo: con la cámara alta eran ~40 px y se pisaban)
+                Vector3 sp = cam.WorldToScreenPoint(cand.transform.position + Vector3.up * (cand.config.height * cand.config.scale + 0.35f));
                 finisherPrompt.gameObject.SetActive(sp.z > 0f);
                 bool afford = p.Spirit >= p.config.finisherCost;
                 finisherPrompt.text = afford ? $"[{Game.Input?.Glyph(Act.Finisher)}] 処刑 Ejecutar" : "<color=#888>Ejecutar (falta Espíritu)</color>";
-                finisherPrompt.rectTransform.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
+                finisherPrompt.rectTransform.anchoredPosition = new Vector2(sp.x, sp.y) / scale + new Vector2(0f, 96f);
                 finisherPrompt.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 9f));
             }
             else finisherPrompt.gameObject.SetActive(false);

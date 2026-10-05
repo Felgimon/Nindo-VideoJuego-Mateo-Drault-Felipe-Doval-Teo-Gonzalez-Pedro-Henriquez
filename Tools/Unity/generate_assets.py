@@ -692,7 +692,9 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
         if "grandpa" in ctrls:
             # export_grandpa.py usa axis_forward='-Z': el abuelo mira a -Z en Unity (los demás a +Z)
             defs.append(("grandpa", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 180))
-            defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 180))
+            # el secuestro NO se gira: las escenas ponen el transform de espaldas a la salida y lo deslizan
+            # hacia ella; con la orientación original el ninja va adelante tirando de las piernas del abuelo
+            defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 0))
         for cid, mg, (cg, lens), h, yaw in defs:
             # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
             names = "".join(f"\n    - {n}" for n in lens) or " []"
