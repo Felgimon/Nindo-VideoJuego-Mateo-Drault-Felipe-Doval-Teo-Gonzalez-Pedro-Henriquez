@@ -69,8 +69,37 @@ namespace Nindo
             get => inst != null && inst.bot;
             set { if (inst == null) Run(""); inst.bot = value; }
         }
-        /// <summary>Contadores del bot para los informes de prueba.</summary>
+        /// <summary>Contadores del bot (pulsaciones) para los informes de prueba.</summary>
         public static int BotParries, BotDashes, BotFinishers, BotAttacks;
+        /// <summary>Resultados reales (por eventos del juego), con o sin bot.</summary>
+        public static int ParryOk, ParryPerfect, HitsTaken, Kills, Executions;
+        public static float DamageTaken;
+        public static void ResetStats()
+        {
+            BotParries = BotDashes = BotFinishers = BotAttacks = 0;
+            ParryOk = ParryPerfect = HitsTaken = Kills = Executions = 0;
+            DamageTaken = 0f;
+        }
+        public static string Stats =>
+            $"bot: parry {BotParries} dash {BotDashes} remate {BotFinishers} ataque {BotAttacks} | " +
+            $"juego: parry ok {ParryOk} (perfectos {ParryPerfect}) golpes recibidos {HitsTaken} ({DamageTaken:0} daño) muertes {Kills} ejecuciones {Executions}";
+
+        void OnEnable()
+        {
+            GameEvents.Parry += OnParry;
+            GameEvents.PlayerDamaged += OnDamaged;
+            GameEvents.EnemyFinished += OnFinished;
+        }
+        void OnDisable()
+        {
+            GameEvents.Parry -= OnParry;
+            GameEvents.PlayerDamaged -= OnDamaged;
+            GameEvents.EnemyFinished -= OnFinished;
+        }
+        static void OnParry(bool perfect) { ParryOk++; if (perfect) ParryPerfect++; }
+        static void OnDamaged(float d) { HitsTaken++; DamageTaken += d; }
+        static void OnFinished(Enemy e, bool finisher) { Kills++; if (finisher) Executions++; }
+
         bool bot;
         float nextBotAction;
         Enemy lastParried;
@@ -80,13 +109,14 @@ namespace Nindo
             if (!bot || Game.Player == null || !Game.Player.IsAlive || Game.Combat == null) return;
             var p = Game.Player;
             Enemy nearest = null, striking = null;
-            float best = float.MaxValue;
+            float best = float.MaxValue, soonest = float.PositiveInfinity;
             foreach (var e in Game.Combat.Engaged)
             {
                 if (e == null || !e.IsAlive) continue;
                 float d = CombatMath.FlatDistance(e.transform.position, p.transform.position);
                 if (d < best) { best = d; nearest = e; }
                 if (e.AboutToStrike && d < 7f) striking = e;
+                if (d < 7f) soonest = Mathf.Min(soonest, e.StrikeEta);
             }
             // defensa: no depende del cooldown de acciones
             if (striking != null && striking != lastParried)
@@ -109,7 +139,8 @@ namespace Nindo
 
             if (Time.unscaledTime < nextBotAction) return;
             if (p.FinisherCandidate() != null) { InputReader.VirtualTap(Act.Finisher); BotFinishers++; nextBotAction = Time.unscaledTime + 1.2f; }
-            else if (best < 2.6f) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
+            // no empezar un ataque si alguien está por pegar: el parry no cancela el golpe a mitad
+            else if (best < 2.6f && soonest > 0.6f) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
         }
 
         IEnumerator Loop()
