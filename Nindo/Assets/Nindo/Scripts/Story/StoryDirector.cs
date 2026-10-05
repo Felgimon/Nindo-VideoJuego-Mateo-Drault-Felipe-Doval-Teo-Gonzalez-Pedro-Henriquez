@@ -496,6 +496,19 @@ namespace Nindo
             var gp = Game.World.Point("npc_grandpa_dojo");
             NPC grandpa = gp != null ? gp.GetComponent<NPC>() : null;
             if (grandpa == null) grandpa = NPC.Spawn("grandpa", P.transform.position + P.transform.forward * 3f, Quaternion.identity, null);
+            // la pelea con Kage puede terminar en cualquier punto del patio (36 m): si Kaito quedó lejos
+            // del abuelo el plano del final mostraba el patio vacío. Se lo acerca en negro.
+            if (CombatMath.FlatDistance(P.transform.position, grandpa.transform.position) > 4f)
+            {
+                yield return Game.UI.Fade(1f, 0.6f);
+                Vector3 toP = (P.transform.position - grandpa.transform.position).Flat();
+                Vector3 dir = toP.sqrMagnitude > 0.01f ? toP.normalized : grandpa.transform.forward;
+                Vector3 spot = grandpa.transform.position + dir * 2.4f;
+                if (UnityEngine.AI.NavMesh.SamplePosition(spot, out var hit, 2f, UnityEngine.AI.NavMesh.AllAreas)) spot = hit.position;
+                P.Teleport(spot, Quaternion.LookRotation(-dir));
+                Game.Camera?.Snap();
+                yield return Game.UI.Fade(0f, 0.8f);
+            }
             grandpa.FaceTo(P.transform.position);
             P.ScriptedFace(grandpa.transform.position);
             Vector3 mid = (P.transform.position + grandpa.transform.position) * 0.5f;
