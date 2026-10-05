@@ -255,7 +255,7 @@ def materials(tex):
     m["sky"] = material(os.path.join(P_MAT, "Nindo_NightSky.mat"), "Nindo_NightSky", sky_shader, {},
                         {"_MoonSize": 0.045, "_MoonGlow": 0.6, "_StarDensity": 0.9965, "_StarBrightness": 1.6, "_CloudAmount": 0.35, "_Exposure": 1},
                         {"_ZenithColor": (0.015, 0.028, 0.08, 1), "_MidColor": (0.045, 0.08, 0.16, 1), "_HorizonColor": (0.13, 0.19, 0.27, 1),
-                         "_GroundColor": (0.04, 0.055, 0.09, 1), "_MoonColor": (1, 0.97, 0.88, 1), "_MoonDir": (0.3, 0.42, 0.85, 0),
+                         "_GroundColor": (0.04, 0.055, 0.09, 1), "_MoonColor": (1, 0.97, 0.88, 1), "_MoonDir": (0.412, 0.743, -0.527, 0),
                          "_CloudColor": (0.1, 0.13, 0.2, 1)}, version_block=False)
     return m
 

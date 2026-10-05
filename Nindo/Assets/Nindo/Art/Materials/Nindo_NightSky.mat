@@ -38,7 +38,7 @@ Material:
     - _HorizonColor: {r: 0.13, g: 0.19, b: 0.27, a: 1}
     - _GroundColor: {r: 0.04, g: 0.055, b: 0.09, a: 1}
     - _MoonColor: {r: 1, g: 0.97, b: 0.88, a: 1}
-    - _MoonDir: {r: 0.3, g: 0.42, b: 0.85, a: 0}
+    - _MoonDir: {r: 0.412, g: 0.743, b: -0.527, a: 0}
     - _CloudColor: {r: 0.1, g: 0.13, b: 0.2, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -13,6 +13,9 @@ namespace Nindo
         Vector3 basePos;
         Quaternion baseRot;
         float waveHeight = 0.26f, waveSpeed = 1f, phase;
+        Material waterMat;
+        static readonly int WaveHeightId = Shader.PropertyToID("_WaveHeight");
+        static readonly int WaveSpeedId = Shader.PropertyToID("_WaveSpeed");
 
         void Start()
         {
@@ -26,8 +29,9 @@ namespace Nindo
                 waveHeight = 0f;
             else
             {
-                if (mat.HasProperty("_WaveHeight")) waveHeight = mat.GetFloat("_WaveHeight");
-                if (mat.HasProperty("_WaveSpeed")) waveSpeed = mat.GetFloat("_WaveSpeed");
+                waterMat = mat;
+                if (mat.HasProperty(WaveHeightId)) waveHeight = mat.GetFloat(WaveHeightId);
+                if (mat.HasProperty(WaveSpeedId)) waveSpeed = mat.GetFloat(WaveSpeedId);
             }
         }
 
@@ -42,6 +46,10 @@ namespace Nindo
 
         void Update()
         {
+#if UNITY_EDITOR
+            // afinando Nindo_WaterLowpoly en Play: mismos valores que lee el shader en cada frame
+            if (waterMat != null) { waveHeight = waterMat.GetFloat(WaveHeightId); waveSpeed = waterMat.GetFloat(WaveSpeedId); }
+#endif
             // _Time.y de URP = Time.time (ScriptableRenderer.SetShaderTimeValues), no el tiempo desde que cargó la escena
             float t = Time.time * waveSpeed;
             float y = Wave(basePos.x, basePos.z, t, waveHeight) * amplitude;

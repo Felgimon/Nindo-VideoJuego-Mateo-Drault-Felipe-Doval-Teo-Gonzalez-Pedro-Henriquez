@@ -9,7 +9,7 @@ Shader "Nindo/Night Sky"
         _HorizonColor ("Horizon", Color) = (0.13, 0.19, 0.27, 1)
         _GroundColor ("Ground", Color) = (0.04, 0.055, 0.09, 1)
         _MoonColor ("Moon", Color) = (1.0, 0.97, 0.88, 1)
-        _MoonDir ("Moon Direction", Vector) = (0.3, 0.42, 0.85, 0)
+        _MoonDir ("Moon Direction", Vector) = (0.412, 0.743, -0.527, 0)
         _MoonSize ("Moon Size", Range(0.005, 0.15)) = 0.045
         _MoonGlow ("Moon Glow", Range(0, 2)) = 0.6
         _StarDensity ("Star Density", Range(0.9, 0.9999)) = 0.9965

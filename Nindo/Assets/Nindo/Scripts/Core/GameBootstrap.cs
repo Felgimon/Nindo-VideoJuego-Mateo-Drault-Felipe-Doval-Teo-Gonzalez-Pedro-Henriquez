@@ -29,7 +29,8 @@ namespace Nindo
             Game.LoadContent();
             // si se le da Play directo a esta escena (sin pasar por el menú) se continúa la partida
             if (!SceneFlow.CameFromMenu) { if (SaveSystem.HasSave) SaveSystem.Load(); else SaveSystem.NewGame(); }
-            if (debugSkipIntro) { Game.Save.SetFlag(Flags.IntroDone); Game.Save.SetFlag(Flags.KatanaObtained); Game.Save.SetFlag("enc_intro"); }
+            // arrancar en un santuario implica saltear el prólogo (si no, el checkpoint se ignoraba sin aviso)
+            if (debugSkipIntro || !string.IsNullOrEmpty(debugStartCheckpoint)) { Game.Save.SetFlag(Flags.IntroDone); Game.Save.SetFlag(Flags.KatanaObtained); Game.Save.SetFlag("enc_intro"); }
 
             // ---------------------------------------------------------- sistemas
             var systems = new GameObject("[Nindo Systems]");
