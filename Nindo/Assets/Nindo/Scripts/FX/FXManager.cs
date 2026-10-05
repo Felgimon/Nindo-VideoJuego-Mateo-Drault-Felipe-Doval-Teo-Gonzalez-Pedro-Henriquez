@@ -334,7 +334,9 @@ namespace Nindo
 
     public class FlashLightFade : MonoBehaviour
     {
-        Light l; float start, dur, t;
+        Light l; float start, dur = 1f, t;
+        // arranca apagado: Update solo corre entre Begin() y el final del fundido
+        void Awake() { l = GetComponent<Light>(); enabled = false; }
         public void Begin(float intensity, float duration) { if (l == null) l = GetComponent<Light>(); start = intensity; dur = Mathf.Max(0.01f, duration); t = 0f; enabled = true; }
         void Update()
         {
