@@ -161,7 +161,7 @@ LANDMARKS = [
     ("lantern_stone_tall", -8, 148, 180, 1.0), ("lantern_stone_tall", 8, 148, 180, 1.0),
     ("tree_pine_a", -24, 150, 0, 1.2), ("tree_pine_b", 24, 152, 0, 1.2),
     # ---------------- Montaña
-    ("torii_stone", -96, 50, 250, 1.0),
+    ("torii_stone", -96, 50, 292, 1.0),   # perpendicular al camino_oeste (rumbo -68°)
     ("tree_dead_a", -126, 56, 0, 1.0), ("tree_dead_a", -150, 82, 70, 0.9),
     ("rock_pillar", -150, 58, 0, 1.0), ("rock_pillar", -128, 82, 40, 0.8),
     ("torch_brazier", -134, 60, 0, 1.0), ("torch_brazier", -146, 80, 0, 1.0),
@@ -210,7 +210,7 @@ CHECKPOINTS = [
     ("cp_fields", 16, -96, 180),
     ("cp_forest", 10, -60, 200),
     ("cp_wall", 8, -16, 180),
-    ("cp_garden", 10, 28, 200),
+    ("cp_garden", 1, 22, 200),     # al sur del estanque (antes en 10,28: caía adentro del agua)
     ("cp_dojo_gate", 5, 93, 180),
     ("cp_mountain", -98, 56, 120),
     ("cp_mountain_top", -189, 112, 120),

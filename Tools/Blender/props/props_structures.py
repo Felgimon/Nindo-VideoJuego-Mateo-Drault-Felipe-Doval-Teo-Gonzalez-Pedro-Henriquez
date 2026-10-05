@@ -1847,6 +1847,7 @@ def build_torii_red(seed):
     bx(mb, -0.34, 0.34, -0.12, 0.12, 3.62, 4.16, "black")
     bx(mb, -0.27, 0.27, -0.16, 0.16, 3.68, 4.1, "gold_dark")
     bx(mb, -0.22, 0.22, -0.18, 0.18, 3.73, 4.05, "black")
+    mb.tag("occluder")   # se pasa por debajo: la cámara lo vuelve "solo sombra" si tapa a Kaito
     mb.collider_mesh()
     return mb.finish()
 
@@ -1865,6 +1866,7 @@ def build_torii_stone(seed):
     k = tube(mb, kasagi_path(2.7, 3.64, 0.18), [(-0.26, 0.0), (0.26, 0.0), (0.22, 0.38), (-0.22, 0.38)], "stone")
     k.color_faces(lambda f: "stone_moss" if f.normal.z > 0.5 and rng.random() < 0.35 else None)
     bx(mb, -0.14, 0.14, -0.11, 0.11, 2.98, 3.46, "stone")
+    mb.tag("occluder")   # se pasa por debajo: la cámara lo vuelve "solo sombra" si tapa a Kaito
     mb.collider_mesh()
     return mb.finish()
 
@@ -2316,6 +2318,7 @@ def build_arch_bamboo_gate(seed):
     mb.prism((-2.65, 0.0, 3.12), 0.07, 5.3, 6, "bamboo_dark", rot=(0, 90, 0))
     for x in (-1.6, 0.0, 1.6):
         bx(mb, x - 0.05, x + 0.05, -0.5, 0.5, 2.98, 3.12, "cloth_black").transform(loc=(0, 0, 0))
+    mb.tag("occluder")   # se pasa por debajo: la cámara lo vuelve "solo sombra" si tapa a Kaito
     mb.collider_mesh()
     return mb.finish()
 

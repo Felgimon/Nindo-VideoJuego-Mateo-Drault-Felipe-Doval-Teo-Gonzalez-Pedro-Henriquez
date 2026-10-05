@@ -26,6 +26,10 @@ def check(kind, name, x, z, margin=0.8):
         problems.append(f"{kind} {name} ({x},{z}) está a {-wd:.1f} m del borde transitable (wd={wd:.2f})")
     if T.in_lake(x, z) and not on_platform(x, z):
         problems.append(f"{kind} {name} ({x},{z}) cae en el agua")
+    # estanque y arroyos (stream_dist < 0 = adentro del agua)
+    sd = T.stream_dist(x, z)
+    if sd < margin and not on_platform(x, z) and T.path_info(x, z)[0] >= -0.3:
+        problems.append(f"{kind} {name} ({x},{z}) cae en el estanque/arroyo (borde a {sd:.1f} m)")
     # pendiente
     h = T.height(x, z)
     sl = max(abs(T.height(x + 1, z) - h), abs(T.height(x, z + 1) - h))
