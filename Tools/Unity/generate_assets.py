@@ -11,6 +11,8 @@ from unity_yaml import *
 
 sys.path.insert(0, os.path.join(REPO, "Tools", "Blender"))
 import nindo_palette as PAL
+sys.path.insert(0, os.path.join(REPO, "Tools", "Fonts"))
+from add_macrons import add_macrons
 
 N = os.path.join(ASSETS, "Nindo")
 ART = os.path.join(N, "Art")
@@ -104,11 +106,27 @@ def fonts():
         if os.path.exists(src) and not os.path.exists(dst):
             shutil.copy(src, dst)
         if os.path.exists(dst):
+            add_macrons(dst)            # Ā ā Ē ē Ī ī Ō ō Ū ū (idempotente)
             write_meta(dst, font_meta(fam))
             res[name] = ensure_guid(dst)
     lic = os.path.join(P_FONTS, "OFL-README.txt")
-    write(lic, "Shippori Mincho B1 y Zen Maru Gothic: SIL Open Font License 1.1 (Google Fonts).\nSe pueden usar y distribuir libremente con el juego.\n")
+    write(lic, "Shippori Mincho B1 y Zen Maru Gothic: SIL Open Font License 1.1 (Google Fonts).\n"
+               "Son versiones modificadas: Tools/Fonts/add_macrons.py les agrega Ā ā Ē ē Ī ī Ō ō Ū ū.\n"
+               "Copyright y licencia completa en OFL.txt (la OFL pide que viajen con las fuentes).\n")
     write_meta(lic, TEXT_META)
+    # la OFL exige el copyright y la licencia junto a cada copia (también las modificadas)
+    tmp_ofl = os.path.join(ASSETS, "TextMesh Pro", "Fonts", "LiberationSans - OFL.txt")
+    if os.path.exists(tmp_ofl):
+        body = open(tmp_ofl, encoding="utf-8").read()
+        body = body[body.index("-----"):]
+        ofl = os.path.join(P_FONTS, "OFL.txt")
+        write(ofl, "Copyright 2021 The Shippori Mincho Project Authors (https://github.com/fontdasu/ShipporiMincho)\n"
+                   "Copyright 2021 The Zen Maru Gothic Authors (https://github.com/googlefonts/zen-marugothic)\n\n"
+                   "Modified Versions for Nindo: composite glyphs U+0100 U+0101 U+0112 U+0113 U+012A U+012B U+014C\n"
+                   "U+014D U+016A U+016B added by Tools/Fonts/add_macrons.py. No Reserved Font Names are declared.\n\n"
+                   "This Font Software is licensed under the SIL Open Font License, Version 1.1.\n"
+                   "This license is copied below, and is also available with a FAQ at: https://openfontlicense.org\n\n" + body)
+        write_meta(ofl, TEXT_META)
     return res
 
 
