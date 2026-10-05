@@ -13,9 +13,50 @@ namespace Nindo
     public static class CharacterFactory
     {
         static readonly Dictionary<string, Material[]> tintCache = new Dictionary<string, Material[]>();
+        static readonly Dictionary<Material, Material> liftCache = new Dictionary<Material, Material>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { tintCache.Clear(); }
+        static void Reset() { tintCache.Clear(); liftCache.Clear(); }
+
+        /// <summary>Piso de brillo (canal más alto, sRGB) del color base de los personajes. Los trajes del
+        /// equipo usan negro puro o casi (Negro = 0,0,0; GrisOscuro = 0.04): de noche no reciben luz y desde
+        /// la cámara alta se ven como siluetas planas. Con este piso siguen leyéndose negros pero toman el
+        /// sombreado de la luna y las antorchas.</summary>
+        public const float BlackFloor = 0.13f;
+
+        static void LiftBlacks(GameObject inst)
+        {
+            foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || !m.HasProperty("_BaseColor")) continue;
+                    if (!liftCache.TryGetValue(m, out var lifted))
+                    {
+                        lifted = m;
+                        Color c = m.GetColor("_BaseColor");
+                        bool textured = m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null;
+                        float max = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+                        if (!textured && max < BlackFloor)
+                        {
+                            // conserva el matiz; el negro puro pasa a un carbón apenas azulado (luz de luna)
+                            Color hue = max > 0.005f ? c / max : new Color(0.85f, 0.9f, 1f);
+                            Color nc = hue * BlackFloor; nc.a = c.a;
+                            lifted = new Material(m) { name = m.name + "_lift" };
+                            lifted.SetColor("_BaseColor", nc);
+                            if (lifted.HasProperty("_Color")) lifted.SetColor("_Color", nc);
+                        }
+                        liftCache[m] = lifted;
+                    }
+                    if (lifted != m) { mats[i] = lifted; changed = true; }
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
 
         /// <summary>Instancia el modelo de un personaje como hijo de 'parent'.</summary>
         public static Animator BuildModel(string characterId, Transform parent, float scaleMul = 1f)
@@ -58,6 +99,7 @@ namespace Nindo
                         if (entry.materialOverrides[i] != null) mats[i] = entry.materialOverrides[i];
                     r.sharedMaterials = mats;
                 }
+            LiftBlacks(inst);
 
             float targetHeight = (entry != null ? entry.height : 1.6f) * scaleMul;
             NormalizeHeight(inst.transform, targetHeight);

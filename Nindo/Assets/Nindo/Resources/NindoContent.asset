@@ -885,8 +885,18 @@ MonoBehaviour:
   healthFrame: {fileID: 21300000, guid: 710800330b66c8cbd828ca3fdd6b6992, type: 3}
   spiritFill: {fileID: 21300000, guid: 8b1681006527a595a64aed22cf0a1904, type: 3}
   spiritFrame: {fileID: 21300000, guid: 4b801baa2137a184ab941ac4452019c2, type: 3}
-  healthFillArea: {x: 0.11720867208672087, y: 0, width: 0.8306233062330624, height: 1}
-  spiritFillArea: {x: 0.009389671361502348, y: 0, width: 0.9818913480885312, height: 1}
+  healthFillArea:
+    serializedVersion: 2
+    x: 0.11720867208672087
+    y: 0
+    width: 0.8306233062330624
+    height: 1
+  spiritFillArea:
+    serializedVersion: 2
+    x: 0.009389671361502348
+    y: 0
+    width: 0.9818913480885312
+    height: 1
   menuEyesClosed: {fileID: 21300000, guid: 191465844bd02434b82d46feb96d73c4, type: 3}
   menuEyesOpen: {fileID: 21300000, guid: 329e1b1292002c345978a06237d2d013, type: 3}
   logo: {fileID: 0}

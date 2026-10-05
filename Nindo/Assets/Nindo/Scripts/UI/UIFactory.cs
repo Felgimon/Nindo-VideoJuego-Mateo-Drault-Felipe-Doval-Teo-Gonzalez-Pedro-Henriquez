@@ -163,8 +163,10 @@ namespace Nindo
 
         public static void Outline(TextMeshProUGUI t, float width = 0.2f)
         {
-            t.outlineWidth = width;
+            t.outlineWidth = width;   // crea la instancia de material propia del texto
             t.outlineColor = new Color32(10, 8, 12, 255);
+            // TMP_SDF-Mobile solo dibuja el borde con este keyword (nada lo activa en runtime)
+            t.fontSharedMaterial.EnableKeyword(ShaderUtilities.Keyword_Outline);
         }
 
         public static Button Button(string name, Transform parent, string label, Vector2 size, UnityAction onClick)

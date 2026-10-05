@@ -54,13 +54,16 @@ namespace Nindo
             string cpId = !string.IsNullOrEmpty(debugStartCheckpoint) ? debugStartCheckpoint : Game.Save.checkpoint;
             var cp = Checkpoint.Get(cpId);
             if (cp != null && Game.Save.HasFlag(Flags.IntroDone)) { pos = cp.spawnPoint.position; rot = cp.spawnPoint.rotation; }
+            // el prólogo arranca en negro: sin título de zona en el frame intermedio (Intro lo vuelve a poner igual)
+            if (!Game.Save.HasFlag(Flags.IntroDone)) Game.InCutscene = true;
             var player = CharacterFactory.BuildPlayer(pos + Vector3.up * 0.1f, rot);
             player.debugUnlockAll = debugUnlockAll;
             yield return null;
             Game.Camera.Snap();
 
+            // la zona ya eligió su música en el frame intermedio (antes se pisaba con "explore" genérico)
+            Game.Audio.PlayMusic(Zone.Current != null ? Zone.Current.music : "explore", 2f);
             Game.Story.Begin(SceneFlow.NewGameRequested);
-            Game.Audio.PlayMusic("explore", 2f);
             Game.Audio.PlayAmbience("night");
         }
 

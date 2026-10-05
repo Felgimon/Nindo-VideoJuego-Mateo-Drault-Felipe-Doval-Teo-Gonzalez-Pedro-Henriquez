@@ -197,6 +197,11 @@ namespace Nindo
                 case EnemyState.Exhausted: TickExhausted(dt); break;
                 case EnemyState.Stagger: TickTimed(dt, () => SetState(EnemyState.Chase)); break;
             }
+            // los controllers no tienen transiciones (todo es CrossFade por código): al volver a moverse
+            // hay que reentrar al blend tree de locomoción, si no se desliza congelado en la última pose
+            // (fin de Spotted, Guard, Hit, Counter, intro de jefe...)
+            if ((State == EnemyState.Chase || State == EnemyState.Strafe || State == EnemyState.Idle) && stateTime > 0.02f && anim.Current != config.animLocomotion)
+                anim.Play(config.animLocomotion, 0.15f);
 
             if (knock.sqrMagnitude > 0.0001f)
             {
@@ -758,7 +763,8 @@ namespace Nindo
         public void ExitScripted(bool aggro)
         {
             SetState(EnemyState.Idle);
-            if (aggro) Alert();
+            // si ya estaba en aggro antes de la cinemática, Alert() no hacía nada y quedaba quieto en Idle
+            if (aggro) { IsAggro = false; Alert(); }
         }
 
         public void ScriptedPlay(string state, float fade = 0.1f) => anim.Play(state, fade);

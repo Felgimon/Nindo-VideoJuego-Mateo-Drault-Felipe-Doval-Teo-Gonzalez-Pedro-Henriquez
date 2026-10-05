@@ -155,7 +155,9 @@ namespace Nindo
 
         public void ResetEncounter()
         {
-            if (completed) return;
+            // los encuentros que solo arranca la historia (prólogo) no se tocan antes de empezar: rezar en el
+            // santuario liberaba al ninja congelado mientras Kaito todavía no tiene katana
+            if (completed || (manualActivation && !active)) return;
             active = false;
             if (barrier != null) { Destroy(barrier); barrier = null; }
             foreach (var m in members) if (m != null) m.ResetEnemy();

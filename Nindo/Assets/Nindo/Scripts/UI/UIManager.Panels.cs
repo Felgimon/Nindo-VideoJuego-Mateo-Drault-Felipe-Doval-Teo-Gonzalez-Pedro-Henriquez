@@ -35,6 +35,7 @@ namespace Nindo
         CanvasGroup deathGroup;
         Button pauseFirst, optionsFirst;
         bool optionsFromPause;
+        GameObject selectedBeforeOptions;
 
         void BuildPanels()
         {
@@ -218,6 +219,7 @@ namespace Nindo
 
         public void OpenOptions(bool fromPause)
         {
+            selectedBeforeOptions = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
             optionsFromPause = fromPause;
             pausePanel.SetActive(false);
             optionsPanel.SetActive(true);
@@ -229,6 +231,8 @@ namespace Nindo
             Settings.Save();
             optionsPanel.SetActive(false);
             if (optionsFromPause) { pausePanel.SetActive(true); EventSystem.current?.SetSelectedGameObject(pauseFirst.gameObject); }
+            // desde el menú: volver a seleccionar el botón de antes (si no, teclado/mando quedan sin foco)
+            else if (selectedBeforeOptions != null && selectedBeforeOptions.activeInHierarchy) EventSystem.current?.SetSelectedGameObject(selectedBeforeOptions);
         }
 
         public bool PauseOpen => pausePanel.activeSelf || optionsPanel.activeSelf;

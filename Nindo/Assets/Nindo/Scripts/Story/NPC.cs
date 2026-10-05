@@ -13,7 +13,9 @@ namespace Nindo
 
         public static NPC Spawn(string characterId, Vector3 pos, Quaternion rot, Transform parent)
         {
-            var go = new GameObject("NPC_" + characterId);
+            // capa Ignore Raycast: el rayo de suelo (máscara Default), el de los enemigos y el NavMesh
+            // en runtime no tienen que ver la cápsula (si no, el NPC "pisa" su propia cabeza y sale volando)
+            var go = new GameObject("NPC_" + characterId) { layer = 2 };
             go.transform.SetParent(parent, false);
             go.transform.SetPositionAndRotation(pos, rot);
             var a = CharacterFactory.BuildModel(characterId, go.transform);

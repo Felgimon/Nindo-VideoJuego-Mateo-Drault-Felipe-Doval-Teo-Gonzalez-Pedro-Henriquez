@@ -762,8 +762,18 @@ MonoBehaviour:
   healthFrame: {sprite(sprites['Health'][0])}
   spiritFill: {sprite(sprites['Spirit'][1])}
   spiritFrame: {sprite(sprites['Spirit'][0])}
-  healthFillArea: {{x: {sprites['Health'][2][0]}, y: 0, width: {sprites['Health'][2][2]}, height: 1}}
-  spiritFillArea: {{x: {sprites['Spirit'][2][0]}, y: 0, width: {sprites['Spirit'][2][2]}, height: 1}}
+  healthFillArea:
+    serializedVersion: 2
+    x: {sprites['Health'][2][0]}
+    y: 0
+    width: {sprites['Health'][2][2]}
+    height: 1
+  spiritFillArea:
+    serializedVersion: 2
+    x: {sprites['Spirit'][2][0]}
+    y: 0
+    width: {sprites['Spirit'][2][2]}
+    height: 1
   menuEyesClosed: {sprite(eyes_closed)}
   menuEyesOpen: {sprite(eyes_open)}
   logo: {{fileID: 0}}
