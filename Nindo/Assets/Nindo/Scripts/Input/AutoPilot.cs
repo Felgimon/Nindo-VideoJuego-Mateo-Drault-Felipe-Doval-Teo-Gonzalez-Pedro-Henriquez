@@ -106,6 +106,7 @@ namespace Nindo
         bool bot;
         float nextBotAction;
         Enemy lastParried;
+        readonly List<Enemy> botTargets = new List<Enemy>();
 
         void Update()
         {
@@ -113,7 +114,11 @@ namespace Nindo
             var p = Game.Player;
             Enemy nearest = null, striking = null;
             float best = float.MaxValue, soonest = float.PositiveInfinity;
-            foreach (var e in Game.Combat.Engaged)
+            botTargets.Clear();
+            foreach (var e in Game.Combat.Engaged) botTargets.Add(e);
+            // el jefe activo no siempre está en Engaged (lo maneja la arena)
+            if (Game.Combat.ActiveBoss != null && !botTargets.Contains(Game.Combat.ActiveBoss)) botTargets.Add(Game.Combat.ActiveBoss);
+            foreach (var e in botTargets)
             {
                 if (e == null || !e.IsAlive) continue;
                 float d = CombatMath.FlatDistance(e.transform.position, p.transform.position);

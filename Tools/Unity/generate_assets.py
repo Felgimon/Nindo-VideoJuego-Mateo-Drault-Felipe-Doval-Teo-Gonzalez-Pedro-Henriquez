@@ -574,9 +574,12 @@ def controllers():
 def character_fbx_metas():
     gp = os.path.join(P_CHARS, "Grandpa.fbx")
     if os.path.exists(gp):
-        info = json.load(open(gp + ".json")) if os.path.exists(gp + ".json") else {"frames": 75}
-        clips = [dict(name="Idle", take="Armature|inicio", id=stable_id("grandpa", "Idle"), first=0, last=1, loop=True),
-                 dict(name="Kidnap", take="Armature|inicio", id=stable_id("grandpa", "Kidnap"), first=0, last=info["frames"] - 1, loop=False)]
+        info = json.load(open(gp + ".json")) if os.path.exists(gp + ".json") else {"frames": 75, "first": 1, "take": "Scene"}
+        # Blender (bake_anim_use_all_actions=False) exporta una sola toma con el nombre de la escena,
+        # empezando en el primer frame de la acción ("Armature|inicio" no existía: Idle salía vacío)
+        take, f0 = info.get("take", "Scene"), int(info.get("first", 1))
+        clips = [dict(name="Idle", take=take, id=stable_id("grandpa", "Idle"), first=f0, last=f0 + 1, loop=True),
+                 dict(name="Kidnap", take=take, id=stable_id("grandpa", "Kidnap"), first=f0, last=f0 + info["frames"] - 1, loop=False)]
         write_meta(gp, model_meta(anim_type=2, import_anim=True, clips=clips, readable=False), force=True)
     write_meta(os.path.join(P_CHARS, "Grandpa.fbx.json"), TEXT_META)
 

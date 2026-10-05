@@ -90,5 +90,5 @@ bpy.ops.export_scene.fbx(filepath=out, use_selection=True, object_types={'ARMATU
                          mesh_smooth_type='FACE', add_leaf_bones=False, bake_anim=True, bake_anim_use_all_actions=False,
                          bake_anim_use_nla_strips=False, bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.5,
                          path_mode='STRIP', embed_textures=False, primary_bone_axis='Y', secondary_bone_axis='X')
-json.dump({"frames": f1 - f0 + 1, "take": "Armature|inicio"}, open(out + ".json", "w"))
+json.dump({"frames": f1 - f0 + 1, "first": f0, "take": "Scene"}, open(out + ".json", "w"))
 print("EXPORTED", out, f0, f1)

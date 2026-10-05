@@ -34,10 +34,10 @@ ModelImporter:
     clipAnimations:
     - serializedVersion: 16
       name: Idle
-      takeName: Armature|inicio
+      takeName: Scene
       internalID: 822969091852476841
-      firstFrame: 0
-      lastFrame: 1
+      firstFrame: 1
+      lastFrame: 2
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -63,10 +63,10 @@ ModelImporter:
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Kidnap
-      takeName: Armature|inicio
+      takeName: Scene
       internalID: 584443975994723956
-      firstFrame: 0
-      lastFrame: 74
+      firstFrame: 1
+      lastFrame: 75
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
