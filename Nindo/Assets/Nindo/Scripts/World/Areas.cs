@@ -13,7 +13,6 @@ namespace Nindo
         public string id = "zone";
         public string title = "Zona";
         public string subtitle = "";
-        public string kanji = "";
         public float radius = 40f;
         public int priority;
         public string music = "explore";
@@ -59,7 +58,7 @@ namespace Nindo
             if (!Game.Save.HasFlag(flag) && !Game.InCutscene)
             {
                 Game.Save.SetFlag(flag);
-                Game.UI?.ShowAreaTitle(z.title, z.subtitle, z.kanji);
+                Game.UI?.ShowAreaTitle(z.title, z.subtitle);
             }
             GameEvents.RaiseZoneEntered(z);
         }

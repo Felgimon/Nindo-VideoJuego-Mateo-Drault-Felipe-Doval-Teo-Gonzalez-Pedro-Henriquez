@@ -39,47 +39,47 @@ namespace Nindo
             switch (z.id)
             {
                 case "hogar":
-                    z.title = "Hogar de Kaito"; z.subtitle = "La colina del abuelo"; z.kanji = "家";
+                    z.title = "Hogar de Kaito"; z.subtitle = "La colina del abuelo";
                     z.music = "explore_home"; z.ambience = "night";
                     z.fogColor = new Color(0.07f, 0.1f, 0.17f); z.fogDensity = 0.010f; z.ambientSky = new Color(0.24f, 0.3f, 0.45f);
                     break;
                 case "campos":
-                    z.title = "Campos de Inaba"; z.subtitle = "Aldea de granjeros"; z.kanji = "田";
+                    z.title = "Campos de Inaba"; z.subtitle = "Aldea de granjeros";
                     z.music = "explore_home"; z.ambience = "night";
                     z.fogColor = new Color(0.08f, 0.11f, 0.17f); z.fogDensity = 0.010f; z.ambientSky = new Color(0.24f, 0.3f, 0.44f);
                     break;
                 case "bosque":
-                    z.title = "Linde del Bosque"; z.subtitle = "Donde la luna no llega"; z.kanji = "森";
+                    z.title = "Linde del Bosque"; z.subtitle = "Donde la luna no llega";
                     z.music = "explore_forest"; z.ambience = "forest";
                     z.fogColor = new Color(0.04f, 0.07f, 0.08f); z.fogDensity = 0.022f; z.ambientSky = new Color(0.16f, 0.22f, 0.28f);
                     break;
                 case "muralla":
-                    z.title = "La Muralla Kurokage"; z.subtitle = "Territorio del clan"; z.kanji = "壁";
+                    z.title = "La Muralla Kurokage"; z.subtitle = "Territorio del clan";
                     z.music = "explore_forest"; z.ambience = "forest";
                     z.fogColor = new Color(0.06f, 0.08f, 0.12f); z.fogDensity = 0.016f; z.ambientSky = new Color(0.2f, 0.25f, 0.36f);
                     break;
                 case "jardin":
-                    z.title = "Jardín del Clan"; z.subtitle = "La aldea de las luciérnagas"; z.kanji = "庭";
+                    z.title = "Jardín del Clan"; z.subtitle = "La aldea de las luciérnagas";
                     z.music = "explore_garden"; z.ambience = "garden";
                     z.fogColor = new Color(0.07f, 0.09f, 0.16f); z.fogDensity = 0.008f; z.ambientSky = new Color(0.26f, 0.3f, 0.48f);
                     break;
                 case "dojo":
-                    z.title = "Dojo Kurokage"; z.subtitle = "El final del camino"; z.kanji = "道";
+                    z.title = "Dojo Kurokage"; z.subtitle = "El final del camino";
                     z.music = "explore_dojo"; z.ambience = "wind";
                     z.fogColor = new Color(0.1f, 0.06f, 0.1f); z.fogDensity = 0.010f; z.ambientSky = new Color(0.3f, 0.22f, 0.36f);
                     break;
                 case "montana":
-                    z.title = "Montaña Kodoyama"; z.subtitle = "Rocas, nieve y silencio"; z.kanji = "山";
+                    z.title = "Montaña Kodoyama"; z.subtitle = "Rocas, nieve y silencio";
                     z.music = "explore_mountain"; z.ambience = "wind"; z.snow = true;
                     z.fogColor = new Color(0.16f, 0.19f, 0.26f); z.fogDensity = 0.016f; z.ambientSky = new Color(0.32f, 0.38f, 0.52f);
                     break;
                 case "lago":
-                    z.title = "Aldea del Lago Kohan"; z.subtitle = "Pescadores bajo la luna"; z.kanji = "湖";
+                    z.title = "Aldea del Lago Kohan"; z.subtitle = "Pescadores bajo la luna";
                     z.music = "explore_lake"; z.ambience = "water";
                     z.fogColor = new Color(0.06f, 0.12f, 0.16f); z.fogDensity = 0.012f; z.ambientSky = new Color(0.22f, 0.32f, 0.45f);
                     break;
                 case "bambu":
-                    z.title = "Bosque de Bambú"; z.subtitle = "El susurro del viento"; z.kanji = "竹";
+                    z.title = "Bosque de Bambú"; z.subtitle = "El susurro del viento";
                     z.music = "explore_forest"; z.ambience = "bamboo";
                     z.fogColor = new Color(0.06f, 0.11f, 0.09f); z.fogDensity = 0.018f; z.ambientSky = new Color(0.2f, 0.3f, 0.28f);
                     break;

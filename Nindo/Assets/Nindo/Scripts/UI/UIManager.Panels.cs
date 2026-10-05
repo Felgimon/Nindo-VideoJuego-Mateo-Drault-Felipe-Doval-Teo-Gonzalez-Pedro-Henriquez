@@ -21,7 +21,7 @@ namespace Nindo
         TextMeshProUGUI toast;
         float toastT, toastLife;
         CanvasGroup titleGroup;
-        TextMeshProUGUI titleText, titleSub, titleKanji;
+        TextMeshProUGUI titleText, titleSub;
         Coroutine titleRoutine;
         CanvasGroup tutorialGroup;
         TextMeshProUGUI tutorialText;
@@ -48,7 +48,6 @@ namespace Nindo
             var tr = UIFactory.Rect("AreaTitle", overlay, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 260), new Vector2(1400, 260));
             titleGroup = tr.gameObject.AddComponent<CanvasGroup>(); titleGroup.alpha = 0f;
             var stroke = UIFactory.Image("Stroke", tr, new Color(0.04f, 0.03f, 0.05f, 0.65f), new Vector2(0.5f, 0.5f), new Vector2(0, -10), new Vector2(1100, 120));
-            titleKanji = UIFactory.Text("Kanji", tr, "", 110, new Color(0.75f, 0.15f, 0.12f, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(-470, 0), new Vector2(240, 240), TextAlignmentOptions.Center, true);
             titleText = UIFactory.Text("Title", tr, "", 76, UIFactory.Paper, new Vector2(0.5f, 0.5f), new Vector2(0, 0), new Vector2(1200, 100), TextAlignmentOptions.Center, true);
             UIFactory.Outline(titleText, 0.2f);
             titleSub = UIFactory.Text("Sub", tr, "", 30, UIFactory.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(1200, 50), TextAlignmentOptions.Center);
@@ -81,15 +80,15 @@ namespace Nindo
             toast.text = text; toast.color = c; toastT = 0f; toastLife = life;
         }
 
-        public void ShowAreaTitle(string title, string subtitle, string kanji = "")
+        public void ShowAreaTitle(string title, string subtitle)
         {
             if (titleRoutine != null) StopCoroutine(titleRoutine);
-            titleRoutine = StartCoroutine(AreaTitle(title, subtitle, kanji));
+            titleRoutine = StartCoroutine(AreaTitle(title, subtitle));
         }
 
-        IEnumerator AreaTitle(string title, string subtitle, string kanji)
+        IEnumerator AreaTitle(string title, string subtitle)
         {
-            titleText.text = title; titleSub.text = subtitle; titleKanji.text = kanji;
+            titleText.text = title; titleSub.text = subtitle;
             Game.Audio?.Play("area_title", null, 0.7f);
             float t = 0f;
             while (t < 4.2f)
@@ -155,7 +154,7 @@ namespace Nindo
             bg.rectTransform.Fill(Vector2.zero, Vector2.zero);
             bg.raycastTarget = true;
             pausePanel = bg.gameObject;
-            var title = UIFactory.Text("Title", bg.transform, "忍道  Pausa", 80, UIFactory.Paper, new Vector2(0.5f, 0.5f), new Vector2(0, 290), new Vector2(1000, 120), TextAlignmentOptions.Center, true);
+            var title = UIFactory.Text("Title", bg.transform, "Pausa", 80, UIFactory.Paper, new Vector2(0.5f, 0.5f), new Vector2(0, 290), new Vector2(1000, 120), TextAlignmentOptions.Center, true);
             UIFactory.Outline(title);
             string[] labels = { "Continuar", "Opciones", "Volver al menú", "Salir del juego" };
             UnityEngine.Events.UnityAction[] actions = { () => SetPaused(false), () => OpenOptions(true), () => { SetPaused(false); SaveSystem.Save(); SceneFlow.LoadMenu(); }, Application.Quit };
@@ -270,7 +269,7 @@ namespace Nindo
             bg.rectTransform.Fill(Vector2.zero, Vector2.zero);
             deathPanel = bg.gameObject;
             deathGroup = deathPanel.AddComponent<CanvasGroup>();
-            var t = UIFactory.Text("Text", bg.transform, "死  Caíste", 110, new Color(0.85f, 0.15f, 0.12f), new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(1400, 160), TextAlignmentOptions.Center, true);
+            var t = UIFactory.Text("Text", bg.transform, "Caíste", 110, new Color(0.85f, 0.15f, 0.12f), new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(1400, 160), TextAlignmentOptions.Center, true);
             UIFactory.Outline(t, 0.25f);
             UIFactory.Text("Sub", bg.transform, "El camino ninja continúa desde el último santuario...", 34, UIFactory.Paper, new Vector2(0.5f, 0.5f), new Vector2(0, -70), new Vector2(1400, 60), TextAlignmentOptions.Center);
             deathPanel.SetActive(false);
@@ -292,7 +291,7 @@ namespace Nindo
             bg.rectTransform.Fill(Vector2.zero, Vector2.zero);
             bg.raycastTarget = true;
             endPanel = bg.gameObject;
-            UIFactory.Text("Title", bg.transform, "忍道  NINDŌ", 120, UIFactory.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 240), new Vector2(1600, 180), TextAlignmentOptions.Center, true);
+            UIFactory.Text("Title", bg.transform, "NINDŌ", 120, UIFactory.Gold, new Vector2(0.5f, 0.5f), new Vector2(0, 240), new Vector2(1600, 180), TextAlignmentOptions.Center, true);
             UIFactory.Text("Body", bg.transform,
                 "Kaito rescató a su abuelo.\nEl verdadero poder nace del lazo que nos une a los nuestros.\n\n" +
                 "<size=30><color=#e8c870>Un juego de</color></size>\nFelipe Doval  ·  Teo González  ·  Mateo Drault  ·  Pedro Henríquez\n\n<size=26>Gracias por jugar.</size>\n" +

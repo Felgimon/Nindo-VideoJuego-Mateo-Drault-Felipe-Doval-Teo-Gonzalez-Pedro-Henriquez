@@ -144,7 +144,8 @@ def audio_meta(stream=False, mono=False):
 """
 
 
-def texture_meta(sprite=False, point=False, mips=True, srgb=True, max_size=2048, compress=True, readable=False, wrap_clamp=True, alpha_transparency=True):
+def texture_meta(sprite=False, point=False, mips=True, srgb=True, max_size=2048, compress=True, readable=False, wrap_clamp=True, alpha_transparency=True, border=(0, 0, 0, 0)):
+    """border = 9-slice del sprite en píxeles (izquierda, abajo, derecha, arriba)."""
     plat = ""
     for target in ("DefaultTexturePlatform", "Standalone"):
         plat += f"""  - serializedVersion: 3
@@ -210,7 +211,7 @@ def texture_meta(sprite=False, point=False, mips=True, srgb=True, max_size=2048,
   alignment: 0
   spritePivot: {{x: 0.5, y: 0.5}}
   spritePixelsToUnits: 100
-  spriteBorder: {{x: 0, y: 0, z: 0, w: 0}}
+  spriteBorder: {{x: {border[0]}, y: {border[1]}, z: {border[2]}, w: {border[3]}}}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: {1 if alpha_transparency else 0}

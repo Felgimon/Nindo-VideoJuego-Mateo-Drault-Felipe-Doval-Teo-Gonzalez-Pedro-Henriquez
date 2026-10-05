@@ -68,8 +68,9 @@ namespace Nindo
             var ink = content.menuEyesClosed != null ? new Color(0.1f, 0.06f, 0.05f, 0.95f) : UIFactory.Gold;
             var titleRt = UIFactory.Rect("Title", art, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -28), new Vector2(1200, 290));
             title = titleRt.gameObject.AddComponent<CanvasGroup>();
-            UIFactory.Text("Kanji", titleRt, "忍道", 150, ink, new Vector2(0.5f, 1f), new Vector2(0, -6), new Vector2(700, 180), TextAlignmentOptions.Center, true);
-            UIFactory.Text("Name", titleRt, "N I N D Ō", 46, ink, new Vector2(0.5f, 1f), new Vector2(0, -190), new Vector2(800, 64), TextAlignmentOptions.Center, true);
+            // sin kanji (nadie los entendía): el nombre grande y el lema chico, en tinta sobre la bandana
+            UIFactory.Text("Name", titleRt, "NINDŌ", 132, ink, new Vector2(0.5f, 1f), new Vector2(0, -20), new Vector2(900, 160), TextAlignmentOptions.Center, true);
+            UIFactory.Text("Motto", titleRt, "El camino ninja", 38, ink, new Vector2(0.5f, 1f), new Vector2(0, -178), new Vector2(800, 56), TextAlignmentOptions.Center, true);
 
             // botones en fila, debajo de la máscara (antes tapaban los ojos, que son la gracia del menú)
             var brt = UIFactory.Rect("Buttons", art, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 34), new Vector2(1600, 90));

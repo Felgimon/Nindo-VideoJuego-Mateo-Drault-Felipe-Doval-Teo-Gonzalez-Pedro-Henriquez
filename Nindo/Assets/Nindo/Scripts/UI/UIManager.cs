@@ -15,13 +15,7 @@ namespace Nindo
         Canvas canvas;
         RectTransform root, hud, world, overlay;
 
-        // HUD
-        Image healthFill, healthGhost, spiritFill, rageFill, rageGlow;
-        RectTransform spiritRoot, healthRoot;
-        TextMeshProUGUI objectiveText;
-        Image[] sealIcons = new Image[3];
-        float healthGhostValue = 1f, spiritShake;
-        CanvasGroup hudGroup;
+        // HUD: campos y lógica en UIManager.HUD.cs
 
         // jefe
         CanvasGroup bossGroup;
@@ -48,7 +42,7 @@ namespace Nindo
         TextMeshProUGUI interactPrompt;
         Interactable interactTarget;
 
-        class Marker { public RectTransform rt; public TextMeshProUGUI text; public Enemy e; public float t, life; public Vector3 offset; }
+        class Marker { public RectTransform rt; public TextMeshProUGUI text; public Image icon; public Enemy e; public float t, life; public Vector3 offset; }
         readonly List<Marker> markers = new List<Marker>();
 
         Image fadeImage, flashImage;
@@ -80,113 +74,6 @@ namespace Nindo
         }
 
         void OnDestroy() { if (Game.UI == this) Game.UI = null; }
-
-        // ================================================================== HUD
-        void BuildHUD()
-        {
-            var c = Game.LoadContent();
-            // --- vida (bandana) ---
-            healthRoot = UIFactory.Rect("Health", hud, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -22), new Vector2(560, 92));
-            if (c.healthFrame != null)
-            {
-                var frame = UIFactory.Image("Frame", healthRoot, Color.white, c.healthFrame);
-                Fill(frame.rectTransform);
-                frame.preserveAspect = false;
-            }
-            else UIFactory.Image("Back", healthRoot, new Color(0.25f, 0.04f, 0.04f, 0.9f)).rectTransform.Fill(new Vector2(70, 22), new Vector2(-10, -22));
-            healthGhost = MakeFill("Ghost", healthRoot, new Color(1f, 0.92f, 0.8f, 0.85f), c.healthFill, c.healthFillArea);
-            healthFill = MakeFill("Fill", healthRoot, c.healthFill != null ? Color.white : UIFactory.Red, c.healthFill, c.healthFillArea);
-            var hpLabel = UIFactory.Text("HP", healthRoot, "命", 30, UIFactory.Paper, new Vector2(0, 0.5f), new Vector2(-6, 0), new Vector2(60, 60), TextAlignmentOptions.Center, true);
-            UIFactory.Outline(hpLabel);
-
-            // --- espíritu (dragón) ---
-            spiritRoot = UIFactory.Rect("Spirit", hud, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(18, -112), new Vector2(560, 84));
-            if (c.spiritFrame != null)
-            {
-                var frame = UIFactory.Image("Frame", spiritRoot, Color.white, c.spiritFrame);
-                Fill(frame.rectTransform);
-            }
-            else UIFactory.Image("Back", spiritRoot, new Color(0.25f, 0.18f, 0.04f, 0.9f)).rectTransform.Fill(new Vector2(70, 26), new Vector2(-10, -26));
-            spiritFill = MakeFill("Fill", spiritRoot, c.spiritFill != null ? Color.white : UIFactory.Gold, c.spiritFill, c.spiritFillArea);
-            var spLabel = UIFactory.Text("SP", spiritRoot, "魂", 28, UIFactory.Gold, new Vector2(0, 0.5f), new Vector2(-6, 0), new Vector2(60, 60), TextAlignmentOptions.Center, true);
-            UIFactory.Outline(spLabel);
-
-            // --- furia ---
-            var rageRoot = UIFactory.Rect("Rage", hud, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, 1), new Vector2(98, -198), new Vector2(380, 14));
-            UIFactory.Image("Back", rageRoot, new Color(0.08f, 0.04f, 0.03f, 0.85f)).rectTransform.Fill(Vector2.zero, Vector2.zero);
-            rageGlow = UIFactory.Image("Glow", rageRoot, new Color(1f, 0.45f, 0.1f, 0f));
-            rageGlow.rectTransform.Fill(new Vector2(-8, -8), new Vector2(8, 8));
-            rageFill = UIFactory.Image("Fill", rageRoot, new Color(1f, 0.45f, 0.15f), UIFactory.White);
-            rageFill.type = Image.Type.Filled; rageFill.fillMethod = Image.FillMethod.Horizontal; rageFill.fillAmount = 0f;
-            rageFill.rectTransform.Fill(new Vector2(2, 2), new Vector2(-2, -2));
-            var rl = UIFactory.Text("RageLabel", rageRoot, "怒", 22, new Color(1f, 0.6f, 0.3f), new Vector2(0, 0.5f), new Vector2(-34, 0), new Vector2(30, 30), TextAlignmentOptions.Center, true);
-            UIFactory.Outline(rl);
-
-            // --- sellos (llaves) ---
-            var seals = UIFactory.Rect("Seals", hud, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(-30, -26), new Vector2(260, 84));
-            string[] kanji = { "山", "水", "竹" };
-            for (int i = 0; i < 3; i++)
-            {
-                var bg = UIFactory.Image("Seal" + i, seals, new Color(0.08f, 0.08f, 0.1f, 0.8f), new Vector2(0, 0.5f), new Vector2(i * 86, 0), new Vector2(72, 72));
-                var t = UIFactory.Text("K", bg.transform, kanji[i], 40, new Color(1, 1, 1, 0.25f), TextAlignmentOptions.Center, true);
-                t.rectTransform.Fill(Vector2.zero, Vector2.zero);
-                sealIcons[i] = bg;
-            }
-            objectiveText = UIFactory.Text("Objective", hud, "", 26, UIFactory.Paper, new Vector2(1, 1), new Vector2(-30, -118), new Vector2(620, 80), TextAlignmentOptions.TopRight);
-            UIFactory.Outline(objectiveText, 0.18f);
-        }
-
-        Image MakeFill(string name, RectTransform parent, Color c, Sprite sprite, Rect area)
-        {
-            var img = UIFactory.Image(name, parent, c, sprite != null ? sprite : UIFactory.White);
-            img.type = Image.Type.Filled;
-            img.fillMethod = Image.FillMethod.Horizontal;
-            img.fillOrigin = 0;
-            img.fillAmount = 1f;
-            if (sprite != null)
-            {
-                var rt = img.rectTransform;
-                rt.anchorMin = new Vector2(area.x, area.y);
-                rt.anchorMax = new Vector2(area.x + area.width, area.y + area.height);
-                rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-            }
-            else img.rectTransform.Fill(new Vector2(70, 24), new Vector2(-12, -24));
-            return img;
-        }
-
-        static void Fill(RectTransform rt) { rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero; }
-
-        public void SetObjective(string text)
-        {
-            objectiveText.text = string.IsNullOrEmpty(text) ? "" : "<size=20><color=#e8c870>OBJETIVO</color></size>\n" + text;
-        }
-
-        public void DenySpirit() => spiritShake = 0.35f;
-
-        void UpdateHUD(float dt)
-        {
-            var p = Game.Player;
-            if (p == null) { hudGroup.alpha = 0f; return; }
-            hudGroup.alpha = Mathf.MoveTowards(hudGroup.alpha, Game.InCutscene ? 0f : 1f, dt * 3f);
-            float hp = p.Health01;
-            healthFill.fillAmount = Mathf.MoveTowards(healthFill.fillAmount, hp, dt * 2.5f);
-            if (hp < healthGhostValue) healthGhostValue = Mathf.MoveTowards(healthGhostValue, hp, dt * 0.45f); else healthGhostValue = hp;
-            healthGhost.fillAmount = healthGhostValue;
-            spiritFill.fillAmount = Mathf.MoveTowards(spiritFill.fillAmount, p.Spirit01, dt * 2f);
-            spiritShake = Mathf.MoveTowards(spiritShake, 0f, dt);
-            spiritRoot.anchoredPosition = new Vector2(18 + Mathf.Sin(Time.unscaledTime * 70f) * 10f * spiritShake, -112);
-            spiritFill.color = spiritShake > 0f ? Color.Lerp(Color.white, new Color(1f, 0.3f, 0.3f), spiritShake * 2f) : Color.white;
-            rageFill.fillAmount = p.Rage01;
-            float glow = p.RageActive ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 10f) : (p.Rage01 > 0.85f ? 0.3f : 0f);
-            rageGlow.color = new Color(1f, 0.45f, 0.1f, glow * 0.7f);
-            for (int i = 0; i < 3; i++)
-            {
-                bool has = Game.Save.HasSeal((SealId)i);
-                sealIcons[i].color = has ? new Color(0.85f, 0.65f, 0.2f, 0.95f) : new Color(0.08f, 0.08f, 0.1f, 0.8f);
-                var t = sealIcons[i].GetComponentInChildren<TextMeshProUGUI>();
-                if (t != null) t.color = has ? new Color(0.15f, 0.08f, 0.02f, 1f) : new Color(1, 1, 1, 0.25f);
-            }
-        }
 
         // ================================================================== jefe
         void BuildBossBar()
@@ -320,7 +207,7 @@ namespace Nindo
                         w.pips[i].color = filled ? (e.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f)) : UIFactory.Gold) : new Color(1, 1, 1, 0.18f);
                     }
                 }
-                w.status.text = e.IsExhausted ? "¡DESEQUILIBRADO!" : (e.State == EnemyState.Guard ? "<color=#9fc8ff>防</color>" : "");
+                w.status.text = e.IsExhausted ? "¡DESEQUILIBRADO!" : (e.State == EnemyState.Guard ? "<color=#9fc8ff>EN GUARDIA</color>" : "");
             }
 
             // fijado
@@ -344,7 +231,7 @@ namespace Nindo
                 Vector3 sp = cam.WorldToScreenPoint(cand.transform.position + Vector3.up * (cand.config.height * cand.config.scale + 0.35f));
                 finisherPrompt.gameObject.SetActive(sp.z > 0f);
                 bool afford = p.Spirit >= p.config.finisherCost;
-                finisherPrompt.text = afford ? $"[{Game.Input?.Glyph(Act.Finisher)}] 処刑 Ejecutar" : "<color=#888>Ejecutar (falta Espíritu)</color>";
+                finisherPrompt.text = afford ? $"[{Game.Input?.Glyph(Act.Finisher)}] Ejecutar" : "<color=#888>Ejecutar (falta Espíritu)</color>";
                 finisherPrompt.rectTransform.anchoredPosition = new Vector2(sp.x, sp.y) / scale + new Vector2(0f, 96f);
                 finisherPrompt.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 9f));
             }
@@ -360,7 +247,7 @@ namespace Nindo
             }
             else interactPrompt.gameObject.SetActive(false);
 
-            // marcadores temporales (!, 危, 防)
+            // marcadores temporales (alerta "!", ataque imparable, guardia)
             for (int i = markers.Count - 1; i >= 0; i--)
             {
                 var m = markers[i];
@@ -378,7 +265,9 @@ namespace Nindo
                 float k = m.t / m.life;
                 float pop = k < 0.15f ? Mathf.Lerp(0.3f, 1.25f, k / 0.15f) : Mathf.Lerp(1.25f, 1f, Mathf.Clamp01((k - 0.15f) / 0.15f));
                 m.rt.localScale = Vector3.one * pop;
-                var c = m.text.color; c.a = k > 0.75f ? 1f - (k - 0.75f) / 0.25f : 1f; m.text.color = c;
+                float fade = k > 0.75f ? 1f - (k - 0.75f) / 0.25f : 1f;
+                if (m.text != null) { var c = m.text.color; c.a = fade; m.text.color = c; }
+                if (m.icon != null) { var c = m.icon.color; c.a = fade; m.icon.color = c; m.rt.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(m.t * 30f) * 6f * (1f - k)); }
             }
         }
 
@@ -391,9 +280,22 @@ namespace Nindo
             markers.Add(new Marker { rt = t.rectTransform, text = t, e = e, life = life, offset = Vector3.up * (e.config.height * e.config.scale + 1.1f) });
         }
 
+        /// <summary>Marcador con ícono dibujado (antes eran kanji que nadie entendía: 危 y 防).</summary>
+        void AddIconMarker(Enemy e, Sprite icon, Color c, float size, float life)
+        {
+            if (e == null) return;
+            if (icon == null) { AddMarker(e, "!", c, size, life); return; }
+            var img = UIFactory.Image("Marker", world, c, Vector2.zero, Vector2.zero, new Vector2(size, size), icon);
+            img.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            // sombra oscura detrás para que se lea sobre cualquier fondo
+            var sh = UIFactory.Image("Shadow", img.transform, new Color(0, 0, 0, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(3, -3), new Vector2(size * 1.06f, size * 1.06f), icon);
+            sh.transform.SetAsFirstSibling();
+            markers.Add(new Marker { rt = img.rectTransform, icon = img, e = e, life = life, offset = Vector3.up * (e.config.height * e.config.scale + 1.2f) });
+        }
+
         public void ShowAlertMark(Enemy e) => AddMarker(e, "!", new Color(1f, 0.85f, 0.3f), 90, 1.1f);
-        public void ShowDanger(Enemy e) => AddMarker(e, "危", new Color(1f, 0.15f, 0.1f), 86, 1.0f);
-        public void ShowGuardMark(Enemy e) => AddMarker(e, "防", new Color(0.65f, 0.85f, 1f), 60, 0.7f);
+        public void ShowDanger(Enemy e) => AddIconMarker(e, UISprites.Danger, new Color(1f, 0.18f, 0.1f), 92, 1.0f);
+        public void ShowGuardMark(Enemy e) => AddIconMarker(e, UISprites.Guard, new Color(0.65f, 0.85f, 1f), 58, 0.7f);
         public void PulseImbalance(Enemy e) { if (e != null && !(e is Boss)) GetWidget(e).visibleUntil = Time.time + 3f; }
         public void SetLockTarget(Enemy e) => lockTarget = e;
         public void SetInteractPrompt(Interactable i) => interactTarget = i;

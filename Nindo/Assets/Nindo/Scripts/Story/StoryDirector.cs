@@ -126,9 +126,9 @@ namespace Nindo
 
             // texto de apertura sobre negro
             yield return new WaitForSecondsRealtime(0.6f);
-            Game.UI.ShowAreaTitle("Una noche de luna llena", "Kaito y su abuelo escucharon un ruido en los cultivos...", "忍");
+            Game.UI.ShowAreaTitle("Una noche de luna llena", "Kaito y su abuelo escucharon un ruido en los cultivos...");
             yield return new WaitForSecondsRealtime(4.4f);
-            Game.UI.ShowAreaTitle("...", "Kaito salió con la guadaña. De un arbusto salió un golpe.", "");
+            Game.UI.ShowAreaTitle("...", "Kaito salió con la guadaña. De un arbusto salió un golpe.");
             Game.Audio?.Play("hit_heavy", null, 1f);
             Game.Camera?.Shake(0.6f);
             yield return new WaitForSecondsRealtime(4.2f);
@@ -282,7 +282,7 @@ namespace Nindo
                         waitingDash = true;
                         Game.Save.SetFlag(Flags.DashUnlocked);
                         tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
-                        Game.UI.ShowTutorial($"¡Golpe imparable (危)! No se puede desviar: presioná [{Game.Input.Glyph(Act.Dash)}] para el DASH MÁGICO (usa Espíritu)");
+                        Game.UI.ShowTutorial($"¡Golpe imparable (estallido rojo)! No se puede desviar: presioná [{Game.Input.Glyph(Act.Dash)}] para el DASH MÁGICO (usa Espíritu)");
                         P.AddSpirit(40f);
                         break;
                     }
@@ -442,7 +442,7 @@ namespace Nindo
             b.ScriptedPlay(b.introAnim, 0.2f);
             Game.Audio?.Play("boss_roar", b.transform.position, 1f);
             Game.Camera.Shake(0.35f);
-            Game.UI.ShowAreaTitle(b.title, b.subtitle, "鬼");
+            Game.UI.ShowAreaTitle(b.title, b.subtitle);
             yield return new WaitForSecondsRealtime(2.6f);
             yield return Say(b.bossId + "_intro");
             Game.Camera.CancelShot(shot);
