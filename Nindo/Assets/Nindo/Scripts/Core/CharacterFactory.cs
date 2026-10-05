@@ -79,7 +79,7 @@ namespace Nindo
                 inst.name = "Model";
             }
             inst.transform.localPosition = Vector3.zero;
-            inst.transform.localRotation = Quaternion.identity;
+            inst.transform.localRotation = Quaternion.Euler(0f, entry != null ? entry.modelYaw : 0f, 0f);
             inst.transform.localScale = Vector3.one;
 
             // quitar cualquier collider/script viejo que traiga el modelo

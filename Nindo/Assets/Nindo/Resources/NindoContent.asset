@@ -148,6 +148,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
+    modelYaw: 180
     materialOverrides: []
     stateNames:
     - Idle
@@ -159,6 +160,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 1b406ff4438a21ba4c45f9adbb20ea7d, type: 3}
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
+    modelYaw: 180
     materialOverrides: []
     stateNames:
     - Idle

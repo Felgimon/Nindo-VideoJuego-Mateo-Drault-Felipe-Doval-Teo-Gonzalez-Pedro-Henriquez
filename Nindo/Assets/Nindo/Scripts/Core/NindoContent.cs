@@ -20,6 +20,7 @@ namespace Nindo
             public GameObject model;
             public RuntimeAnimatorController controller;
             [Tooltip("Altura final en metros (el modelo se escala solo)")] public float height = 1.6f;
+            [Tooltip("Giro del modelo en grados si su frente no es +Z (el abuelo, exportado de Blender, mira a -Z)")] public float modelYaw;
             public Material[] materialOverrides;
             [Tooltip("Estados del controller y la duración (s, a velocidad 1) de su clip. Los calcula Tools/Unity/generate_assets.py")]
             public string[] stateNames = new string[0];

@@ -497,12 +497,13 @@ namespace Nindo
             NPC grandpa = gp != null ? gp.GetComponent<NPC>() : null;
             if (grandpa == null) grandpa = NPC.Spawn("grandpa", P.transform.position + P.transform.forward * 3f, Quaternion.identity, null);
             // la pelea con Kage puede terminar en cualquier punto del patio (36 m): si Kaito quedó lejos
-            // del abuelo el plano del final mostraba el patio vacío. Se lo acerca en negro.
-            if (CombatMath.FlatDistance(P.transform.position, grandpa.transform.position) > 4f)
+            // del abuelo el plano del final mostraba el patio vacío. En negro se lo ubica al costado del
+            // abuelo, perpendicular al plano de abajo (offset 3.5, -4.5), así se ven los dos de perfil.
+            Vector3 camOff = new Vector3(3.5f, 0f, -4.5f).normalized;
+            Vector3 dir = Vector3.Cross(Vector3.up, camOff);
+            if (CombatMath.FlatDistance(P.transform.position, grandpa.transform.position + dir * 2.4f) > 1f)
             {
                 yield return Game.UI.Fade(1f, 0.6f);
-                Vector3 toP = (P.transform.position - grandpa.transform.position).Flat();
-                Vector3 dir = toP.sqrMagnitude > 0.01f ? toP.normalized : grandpa.transform.forward;
                 Vector3 spot = grandpa.transform.position + dir * 2.4f;
                 if (UnityEngine.AI.NavMesh.SamplePosition(spot, out var hit, 2f, UnityEngine.AI.NavMesh.AllAreas)) spot = hit.position;
                 P.Teleport(spot, Quaternion.LookRotation(-dir));

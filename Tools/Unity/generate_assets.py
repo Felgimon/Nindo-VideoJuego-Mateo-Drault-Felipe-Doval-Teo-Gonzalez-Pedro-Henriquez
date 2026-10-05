@@ -683,16 +683,17 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
     def chars():
         rows = []
         defs = [
-            ("kaito", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.5),
-            ("kage", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.6),
-            ("ninja", read_guid(A("Models/Ninja/Ninja 1.fbx")), ctrls["ninja"], 1.7),
-            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.5),
-            ("goro", read_guid(A("Models/Minijefe.fbx")), ctrls["goro"], 3.2),
+            ("kaito", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.5, 0),
+            ("kage", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.6, 0),
+            ("ninja", read_guid(A("Models/Ninja/Ninja 1.fbx")), ctrls["ninja"], 1.7, 0),
+            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.5, 0),
+            ("goro", read_guid(A("Models/Minijefe.fbx")), ctrls["goro"], 3.2, 0),
         ]
         if "grandpa" in ctrls:
-            defs.append(("grandpa", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45))
-            defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45))
-        for cid, mg, (cg, lens), h in defs:
+            # export_grandpa.py usa axis_forward='-Z': el abuelo mira a -Z en Unity (los demás a +Z)
+            defs.append(("grandpa", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 180))
+            defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 180))
+        for cid, mg, (cg, lens), h, yaw in defs:
             # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
             names = "".join(f"\n    - {n}" for n in lens) or " []"
             secs = "".join(f"\n    - {lens[n]}" for n in lens) or " []"
@@ -700,6 +701,7 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
     model: {ref(mg, MODEL, 3)}
     controller: {ref(cg, 9100000, 2)}
     height: {h}
+    modelYaw: {yaw}
     materialOverrides: []
     stateNames:{names}
     stateLengths:{secs}""")
