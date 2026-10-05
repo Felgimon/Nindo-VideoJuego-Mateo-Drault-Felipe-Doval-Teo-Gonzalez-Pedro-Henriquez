@@ -23,9 +23,9 @@ la niebla y el post-proceso cambian el resultado final)*
 
 ## Cómo abrirlo
 
-1. Abrir la carpeta `Nindo/` con **Unity 6** (se probó la compilación contra 6000.3; el código
-   mantiene compatibilidad con 2022.3 donde es barato). La primera importación tarda: hay
-   ~120 modelos nuevos y el audio.
+1. Abrir la carpeta `Nindo/` con **Unity 6.3 LTS (6000.3.25f1)** desde el Hub (el proyecto ya
+   está actualizado: URP 17.3, Input System 1.20, AI Navigation 2.0). La primera importación
+   tarda: hay ~120 modelos y el audio.
 2. Abrir `Assets/Nindo/Scenes/Menu.unity` y darle Play. `Nindo.unity` es la escena de juego
    (también se puede abrir directo para probar).
 3. Si Unity pregunta por actualizar paquetes (URP, Input System, VFX Graph), aceptar.
@@ -43,8 +43,24 @@ Así nadie pisa la escena del otro en Git y el mapa se regenera con un comando.
 | `debugStartCheckpoint` | Arranca en un santuario: `cp_home`, `cp_fields`, `cp_forest`, `cp_wall`, `cp_garden`, `cp_dojo_gate`, `cp_mountain`, `cp_mountain_top`, `cp_lake`, `cp_lake_docks`, `cp_bamboo`, `cp_dojo`. |
 | `debugUnlockAll` | Dash y habilidades desbloqueados desde el principio. |
 
-La partida se guarda en un JSON en `Application.persistentDataPath` y las opciones en
-`PlayerPrefs` (menú → *Nueva partida* empieza de cero).
+`debugStartCheckpoint` también saltea el prólogo. La partida se guarda en un JSON en
+`Application.persistentDataPath` y las opciones en `PlayerPrefs` (menú → *Nueva partida*
+empieza de cero; *Nindo → Borrar partida guardada* la borra).
+
+### Piloto automático para pruebas (`AutoPilot`, solo editor/development)
+
+Maneja una entrada virtual de `InputReader`, así que funciona con el editor sin foco y a
+cualquier framerate (pensado para probar por el MCP de Unity o desde tests):
+
+```csharp
+Nindo.AutoPilot.Run("waitcontrol 40; goto 0 94.5; move 0 1 4; talk; bot on");
+Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
+```
+
+`tap ACT [xN] [pausa]`, `hold ACT seg`, `down/up ACT`, `move X Y [seg]`, `wait seg`,
+`talk [max]` (avanza diálogos), `waitcontrol [max]`, `goto X Z [max]` y `bot on|off`
+(peleador automático: parry, dash a imparables, remates, ataques). `ACT` son los nombres de
+`Act` (Attack, Parry, Dash, Finisher, Interact, Ability1, Ability2, Submit...).
 
 ---
 
@@ -155,34 +171,35 @@ luces puntuales con un pool (solo se encienden las más cercanas).
 
 ---
 
-## Estado y lo que hay que revisar en Unity
+## Estado (probado en Unity 6.3 jugando, con el MCP del editor)
 
-Este trabajo se hizo desde un entorno en la nube **sin poder abrir el editor de Unity**:
-todo el código compila sin errores contra las DLLs de Unity 6 (editor y player), los
-modelos se revisaron con renders de Blender y el audio con análisis de nivel/espectro, pero
-**nada se probó jugando**. En la primera abierta conviene revisar:
+Probado de punta a punta en el editor: menú → nueva partida → prólogo completo (secuestro,
+bandana, tutorial de parry en cámara lenta, remate), viaje por los 12 santuarios con peleas
+(bot de pruebas) sin errores en consola, subida al dojo y presentación de jefes. La consola
+queda limpia salvo el aviso de cuenta del paquete AI Assistant.
 
-1. Que `NindoContent` tenga todo asignado (Consola: avisos `[Nindo] Falta…`).
-2. Escala/orientación de props y del mundo (los FBX usan `bake_space_transform`).
-3. Materiales URP (paleta, emisivo, follaje con viento, agua) y el skybox `Nindo/Night Sky`.
-   El agua (`Nindo/Water Lowpoly`) y el follaje (`Nindo/Foliage Wind`) son shaders propios
-   revisados contra el código de URP 17.3 pero nunca compilados en Unity: si alguno queda rosa,
-   apagar `useAnimatedWater` / `useFoliageWind` en `NindoContent` vuelve a los materiales Lit.
-   El agua se ajusta a ojo en `Nindo_WaterLowpoly` (olas, crestas, facetas, espuma, destellos);
-   copiar los valores finales a `Tools/Unity/generate_assets.py` para que no se pisen.
-   Los renderers usan Forward+ para que los faroles iluminen terreno y lago sin límite por objeto.
-   El agua (`Nindo_WaterLowpoly`, shader `Nindo/Water Lowpoly`) mueve la malla con olas,
-   aclara las crestas y suma facetas finas animadas que titilan; se ajusta con
-   `_WaveHeight` (los botes lo leen del material), `_CrestContrast`, `_FacetBoost` y
-   `_RippleScale` / `_RippleStrength` / `_RippleSpeed`. Los valores salen de
-   `Tools/Unity/generate_assets.py`.
-4. Tiempos de los ataques y de las ventanas de parry (`PlayerConfig`, `EnemyArchetypes`).
-5. Que el NavMesh en runtime cubra bien los caminos (agentes de radio 0.45).
-6. Volúmenes de audio (`NindoContent` → sfx/music/ambience → volume).
+Se corrigió en la primera abierta (ver el historial de git): materiales que Unity no leía,
+barras de vida/espíritu invisibles, enemigos que se deslizaban congelados, el abuelo que salía
+volando, el santuario del jardín dentro del estanque, la escalera del dojo intransitable,
+árboles flotando, el tutorial de parry que no salía, contornos de texto invisibles, URP que
+rechazaba los builds, y los personajes negros que de noche eran siluetas planas.
 
-**Unity MCP**: el MCP de Unity funciona cuando Claude Code corre en la misma computadora que
-el editor (servidor local). Desde una sesión en la nube no hay forma de conectarse; para
-usarlo hay que abrir Claude Code localmente con el paquete MCP instalado en el proyecto.
+Shaders propios: el agua (`Nindo/Water Lowpoly`) y el follaje (`Nindo/Foliage Wind`) compilan
+y se ven bien en URP 17.3. El agua se ajusta en `Nindo_WaterLowpoly` (`_WaveHeight`,
+`_CrestContrast`, `_FacetBoost`, `_RippleScale/_RippleStrength/_RippleSpeed`...; los botes
+siguen los cambios en vivo); copiar los valores a `Tools/Unity/generate_assets.py`.
+
+Pendiente / para decidir:
+1. **Espacio de color**: el proyecto está en *Gamma* (heredado). URP en Unity 6 está pensado
+   para *Linear*; cambiarlo mejora luces y degradés pero cambia todo el look (hay que reajustar
+   agua, cielo y paleta).
+2. Lectura nocturna: el bosque y el bambú quedan muy oscuros en algunas tomas; los caminos de
+   tierra se ven gris claro bajo la luna.
+3. Balance de jefes y combate jugando con mando/teclado (el bot de pruebas reacciona perfecto).
+4. Rendimiento medido con el Profiler en una build.
+
+**Unity MCP**: funciona con Claude Code en la misma computadora que el editor; el paquete
+`com.unity.ai.assistant` ya está en el proyecto.
 
 ## Créditos
 
