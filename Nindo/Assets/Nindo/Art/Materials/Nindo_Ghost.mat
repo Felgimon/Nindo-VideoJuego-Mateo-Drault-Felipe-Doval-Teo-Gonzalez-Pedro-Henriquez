@@ -30,7 +30,7 @@ Material:
   - _BLENDMODE_ADD
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
-  m_DoubleSidedGI: 0
+  m_DoubleSidedGI: 1
   m_CustomRenderQueue: 3000
   stringTagMap:
     RenderType: Transparent
@@ -52,8 +52,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
+    - _AlphaToMask: 0
     - _Blend: 2
+    - _BlendOp: 0
     - _CameraFadingEnabled: 0
     - _ColorMode: 0
     - _Cull: 0
@@ -63,10 +66,12 @@ Material:
     - _DstBlendAlpha: 1
     - _FlipbookBlending: 0
     - _QueueOffset: 0
+    - _SampleGI: 0
     - _SoftParticlesEnabled: 0
     - _SrcBlend: 5
     - _SrcBlendAlpha: 1
     - _Surface: 1
+    - _XRMotionVectorsPass: 1
     - _ZWrite: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 0.85, b: 0.45, a: 0.35}
