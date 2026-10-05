@@ -39,10 +39,16 @@ namespace Nindo
             var root = (RectTransform)canvas.transform;
             var bg = UIFactory.Image("Bg", root, new Color(0.03f, 0.03f, 0.06f, 1f));
             bg.rectTransform.Fill(Vector2.zero, Vector2.zero);
-            eyesClosed = UIFactory.Image("EyesClosed", root, Color.white, content.menuEyesClosed);
+            // el arte del equipo es 16:9: lo que se apoya en él (título sobre la bandana, botones bajo la
+            // máscara) va en un contenedor con la misma proporción, así queda alineado en cualquier pantalla
+            var art = UIFactory.Rect("Art", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1920, 1080));
+            var fit = art.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            fit.aspectRatio = 16f / 9f;
+            eyesClosed = UIFactory.Image("EyesClosed", art, Color.white, content.menuEyesClosed);
             eyesClosed.preserveAspect = true;
             eyesClosed.rectTransform.Fill(new Vector2(0, 0), new Vector2(0, 0));
-            eyesOpen = UIFactory.Image("EyesOpen", root, new Color(1, 1, 1, 0), content.menuEyesOpen);
+            eyesOpen = UIFactory.Image("EyesOpen", art, new Color(1, 1, 1, 0), content.menuEyesOpen);
             eyesOpen.preserveAspect = true;
             eyesOpen.rectTransform.Fill(new Vector2(0, 0), new Vector2(0, 0));
             if (content.menuEyesClosed == null) eyesClosed.color = new Color(0, 0, 0, 0);
@@ -54,28 +60,26 @@ namespace Nindo
                 f.gameObject.AddComponent<UIFirefly>();
             }
 
-            var titleRt = UIFactory.Rect("Title", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -40), new Vector2(1200, 220));
+            // el título va escrito con tinta sobre la bandana amarilla (como un hachimaki): en dorado,
+            // amarillo sobre amarillo, no se leía
+            var ink = new Color(0.1f, 0.06f, 0.05f, 0.95f);
+            var titleRt = UIFactory.Rect("Title", art, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -28), new Vector2(1200, 290));
             title = titleRt.gameObject.AddComponent<CanvasGroup>();
-            var t1 = UIFactory.Text("Kanji", titleRt, "忍道", 120, UIFactory.Gold, new Vector2(0.5f, 1f), new Vector2(0, 0), new Vector2(600, 140), TextAlignmentOptions.Center, true);
-            UIFactory.Outline(t1, 0.2f);
-            var t2 = UIFactory.Text("Name", titleRt, "N I N D Ō", 54, UIFactory.Paper, new Vector2(0.5f, 1f), new Vector2(0, -140), new Vector2(800, 70), TextAlignmentOptions.Center, true);
-            UIFactory.Outline(t2, 0.2f);
+            UIFactory.Text("Kanji", titleRt, "忍道", 150, ink, new Vector2(0.5f, 1f), new Vector2(0, -6), new Vector2(700, 180), TextAlignmentOptions.Center, true);
+            UIFactory.Text("Name", titleRt, "N I N D Ō", 46, ink, new Vector2(0.5f, 1f), new Vector2(0, -190), new Vector2(800, 64), TextAlignmentOptions.Center, true);
 
-            var brt = UIFactory.Rect("Buttons", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 80), new Vector2(600, 420));
+            // botones en fila, debajo de la máscara (antes tapaban los ojos, que son la gracia del menú)
+            var brt = UIFactory.Rect("Buttons", art, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 34), new Vector2(1600, 90));
             buttons = brt.gameObject.AddComponent<CanvasGroup>();
-            float y = 340;
-            Button first = null;
-            if (SaveSystem.HasSave)
-            {
-                var c = UIFactory.Button("Continue", brt, "Continuar", new Vector2(480, 74), () => Play(false));
-                c.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, y - 200); y -= 92; first = c;
-            }
-            var n = UIFactory.Button("New", brt, "Nueva partida", new Vector2(480, 74), () => Play(true));
-            n.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, y - 200); y -= 92; if (first == null) first = n;
-            var o = UIFactory.Button("Options", brt, "Opciones", new Vector2(480, 74), () => Game.UI.OpenOptions(false));
-            o.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, y - 200); y -= 92;
-            var q = UIFactory.Button("Quit", brt, "Salir", new Vector2(480, 74), Application.Quit);
-            q.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, y - 200);
+            var list = new System.Collections.Generic.List<Button>();
+            if (SaveSystem.HasSave) list.Add(UIFactory.Button("Continue", brt, "Continuar", new Vector2(330, 74), () => Play(false)));
+            list.Add(UIFactory.Button("New", brt, "Nueva partida", new Vector2(330, 74), () => Play(true)));
+            list.Add(UIFactory.Button("Options", brt, "Opciones", new Vector2(330, 74), () => Game.UI.OpenOptions(false)));
+            list.Add(UIFactory.Button("Quit", brt, "Salir", new Vector2(330, 74), Application.Quit));
+            const float w = 330f, gap = 26f;
+            float x0 = -(list.Count * w + (list.Count - 1) * gap) * 0.5f + w * 0.5f;
+            for (int i = 0; i < list.Count; i++) list[i].GetComponent<RectTransform>().anchoredPosition = new Vector2(x0 + i * (w + gap), 0f);
+            Button first = list[0];
             ui.transform.SetAsLastSibling();
             EventSystem.current?.SetSelectedGameObject(first.gameObject);
 

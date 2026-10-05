@@ -90,6 +90,10 @@ namespace Nindo
 
         public static Checkpoint Get(string id) => id != null && byId.TryGetValue(id, out var c) ? c : null;
 
+        // no se reza en combate: curaba todo y reiniciaba los encuentros en plena pelea
+        // (cp_dojo está adentro de la arena de Kage)
+        public override bool CanInteract => Game.Combat == null || !Game.Combat.InCombat;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetDict() => byId.Clear();
 
@@ -179,11 +183,13 @@ namespace Nindo
             visual = transform.childCount > 0 ? transform.GetChild(0) : null;
         }
 
-        public override bool CanInteract => string.IsNullOrEmpty(requiredFlag) || Game.Save.HasFlag(requiredFlag);
+        bool Unlocked => string.IsNullOrEmpty(requiredFlag) || Game.Save.HasFlag(requiredFlag);
+        // visible apenas se desbloquea, pero no se viaja en plena pelea
+        public override bool CanInteract => Unlocked && (Game.Combat == null || !Game.Combat.InCombat);
 
         void Update()
         {
-            bool on = CanInteract;
+            bool on = Unlocked;
             if (visual != null && visual.gameObject.activeSelf != on)
             {
                 visual.gameObject.SetActive(on);
