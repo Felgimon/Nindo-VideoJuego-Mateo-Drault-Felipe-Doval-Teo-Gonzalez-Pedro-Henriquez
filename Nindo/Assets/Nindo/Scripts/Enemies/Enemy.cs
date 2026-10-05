@@ -45,6 +45,8 @@ namespace Nindo
         float strikeEta = float.PositiveInfinity;
         /// <summary>Alcance del golpe en curso: arco del ataque más lo que le queda de embestida.</summary>
         public float StrikeReach { get; private set; }
+        /// <summary>Paso del combo que está ejecutando (null si no ataca). Lo usa el aviso en el suelo.</summary>
+        public AttackDef CurrentAttack => State == EnemyState.Attack && pattern != null && pattern.steps != null && step >= 0 && step < pattern.steps.Length ? pattern.steps[step] : null;
         public const float StrikeWarning = 0.18f;
         public float LastHitTime { get; private set; } = -99f;
         public Transform katanaTip, katanaBase;

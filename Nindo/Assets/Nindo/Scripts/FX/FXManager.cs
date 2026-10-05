@@ -26,6 +26,7 @@ namespace Nindo
         {
             Game.FX = this;
             Screen = gameObject.AddComponent<ScreenFX>();
+            gameObject.AddComponent<CombatTelegraphs>();   // avisos de ataque en el suelo
             BuildTemplates();
             flashLights = new Light[4];
             for (int i = 0; i < flashLights.Length; i++)
