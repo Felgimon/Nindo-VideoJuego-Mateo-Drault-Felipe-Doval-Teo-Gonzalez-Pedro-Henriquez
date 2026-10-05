@@ -132,7 +132,10 @@ def _col(name, c):
     return f"    - {name}: {{r: {c[0]}, g: {c[1]}, b: {c[2]}, a: {c[3]}}}\n"
 
 
-def material(path, name, shader_guid, textures, floats, colors, keywords=(), queue=-1, tags=None, disabled_passes=(), version_block=True, shader_fileid=4800000):
+def material(path, name, shader_guid, textures, floats, colors, keywords=(), queue=-1, tags=None, disabled_passes=(), version_block=True, shader_fileid=4800000, lightmap_flags=None):
+    # 4 = EmissiveIsBlack; con emisión hace falta 1 (Realtime): si no, la validación de URP le saca _EMISSION
+    if lightmap_flags is None:
+        lightmap_flags = 1 if "_EMISSION" in keywords else 4
     texs = "".join(_tex(k, v) for k, v in textures.items())
     fl = "".join(f"    - {k}: {v}\n" for k, v in floats.items())
     cl = "".join(_col(k, v) for k, v in colors.items())
@@ -169,7 +172,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:{chr(10) + kw if kw else ' []'}
   m_InvalidKeywords: []
-  m_LightmapFlags: 4
+  m_LightmapFlags: {lightmap_flags}
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: {queue}
@@ -192,6 +195,8 @@ def lit(path, name, base_tex, base_color=(1, 1, 1, 1), smooth=0.08, emission_tex
     kws = []
     if emission_tex is not None or emission[0] + emission[1] + emission[2] > 0:
         kws.append("_EMISSION")
+    if not spec:
+        kws.append("_SPECULARHIGHLIGHTS_OFF")   # lo que escribe URP al validar _SpecularHighlights = 0
     floats = {"_AlphaClip": 0, "_AlphaToMask": 0, "_Blend": 0, "_BlendModePreserveSpecular": 1, "_BumpScale": 1,
               "_ClearCoatMask": 0, "_ClearCoatSmoothness": 0, "_Cull": cull, "_Cutoff": 0.5, "_DetailAlbedoMapScale": 1,
               "_DetailNormalMapScale": 1, "_DstBlend": 0, "_DstBlendAlpha": 0, "_EnvironmentReflections": 1,
@@ -210,7 +215,7 @@ def transparent(path, name, shader, tex, color, additive, particles=False):
               "_DstBlendAlpha": 1 if additive else 10, "_QueueOffset": 0, "_SrcBlend": 5, "_SrcBlendAlpha": 1, "_Surface": 1,
               "_ZWrite": 0, "_ColorMode": 0, "_SoftParticlesEnabled": 0, "_CameraFadingEnabled": 0, "_DistortionEnabled": 0,
               "_FlipbookBlending": 0}
-    kws = ["_SURFACE_TYPE_TRANSPARENT"] + (["_BLENDMODE_ADD"] if additive else [])
+    kws = ["_SURFACE_TYPE_TRANSPARENT"] + (["_BLENDMODE_ADD"] if additive else []) + (["_FLIPBOOKBLENDING_OFF"] if particles else [])
     texs = {"_BaseMap": tex, "_MainTex": tex}
     colors = {"_BaseColor": color, "_Color": color}
     return material(path, name, shader, texs, floats, colors, kws, 3000, {"RenderType": "Transparent"}, ("DepthOnly", "SHADOWCASTER"))
