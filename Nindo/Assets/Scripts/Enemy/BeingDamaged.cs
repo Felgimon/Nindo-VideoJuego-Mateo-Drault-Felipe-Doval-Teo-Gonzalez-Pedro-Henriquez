@@ -71,7 +71,7 @@ public class BeingDamaged : MonoBehaviour
             isBeingDamaged = true;
 
             //Knockback
-            rb.velocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero;
             Vector3 knockback = (transform.position - playerTransform.position).normalized;
             knockback.y = 0f;
             rb.AddForce(knockback * knockbackForce, ForceMode.Impulse);
