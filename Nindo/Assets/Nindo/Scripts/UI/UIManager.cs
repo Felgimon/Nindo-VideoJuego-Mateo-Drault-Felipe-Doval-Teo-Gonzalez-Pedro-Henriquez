@@ -233,8 +233,13 @@ namespace Nindo
             inner.rectTransform.Fill(new Vector2(7, 7), new Vector2(-7, -7));
             lockReticle.gameObject.SetActive(false);
 
-            finisherPrompt = UIFactory.Text("Finisher", world, "", 30, UIFactory.Gold, new Vector2(0, 0), Vector2.zero, new Vector2(320, 60), TextAlignmentOptions.Center, true);
+            finisherPrompt = UIFactory.Text("Finisher", world, "", 30, UIFactory.Gold, new Vector2(0, 0), Vector2.zero, new Vector2(420, 60), TextAlignmentOptions.Center, true);
             finisherPrompt.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+#if UNITY_2023_2_OR_NEWER
+            finisherPrompt.textWrappingMode = TextWrappingModes.NoWrap;   // "Ejecutar (falta Espíritu)" no entraba en un renglón
+#else
+            finisherPrompt.enableWordWrapping = false;
+#endif
             UIFactory.Outline(finisherPrompt, 0.25f);
             interactPrompt = UIFactory.Text("Interact", world, "", 28, UIFactory.Paper, new Vector2(0, 0), Vector2.zero, new Vector2(420, 60), TextAlignmentOptions.Center);
             interactPrompt.rectTransform.pivot = new Vector2(0.5f, 0.5f);
@@ -262,7 +267,13 @@ namespace Nindo
                     pip.rectTransform.localRotation = Quaternion.Euler(0, 0, 45);
                     w.pips[i] = pip;
                 }
-                w.status = UIFactory.Text("Status", w.rt, "", 26, UIFactory.Gold, new Vector2(0.5f, 0), new Vector2(0, 44), new Vector2(200, 40), TextAlignmentOptions.Center, true);
+                w.status = UIFactory.Text("Status", w.rt, "", 26, UIFactory.Gold, new Vector2(0.5f, 0), new Vector2(0, 44), new Vector2(320, 40), TextAlignmentOptions.Center, true);
+                // en un renglón: "¡DESEQUILIBRADO!" se partía en dos y crecía hasta pisar el aviso de ejecutar
+#if UNITY_2023_2_OR_NEWER
+                w.status.textWrappingMode = TextWrappingModes.NoWrap;
+#else
+                w.status.enableWordWrapping = false;
+#endif
                 UIFactory.Outline(w.status, 0.25f);
                 widgets.Add(w);
             }
