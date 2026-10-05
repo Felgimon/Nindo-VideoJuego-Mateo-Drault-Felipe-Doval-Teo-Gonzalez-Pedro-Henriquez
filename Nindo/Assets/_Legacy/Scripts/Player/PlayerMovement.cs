@@ -32,8 +32,8 @@ public class PlayerMovement : MonoBehaviour
     }
     void FixedUpdate()
     {
-        Vector3 vel = playerRB.velocity;
+        Vector3 vel = playerRB.linearVelocity;
         vel.y = Mathf.Clamp(vel.y, -maxFallSpeed, maxRiseSpeed);
-        playerRB.velocity = vel;
+        playerRB.linearVelocity = vel;
     }
 }

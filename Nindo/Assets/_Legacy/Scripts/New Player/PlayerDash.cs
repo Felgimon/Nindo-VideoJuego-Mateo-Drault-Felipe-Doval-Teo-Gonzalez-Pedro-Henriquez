@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerDash : MonoBehaviour
 {
     public float attackDashSpeed = 5f;//velocidad del dash
-    public float attackDashTime = 0.15f;//duración del dash en segundos
+    public float attackDashTime = 0.15f;//duraciï¿½n del dash en segundos
     public bool isDashing = false;
     [SerializeField] private NewPlayerMovement playerMovement;
     [SerializeField] private Rigidbody playerRB;
@@ -40,7 +40,7 @@ public class PlayerDash : MonoBehaviour
     {
         if (isDashing)
         {
-            playerRB.velocity = dashVelocity;
+            playerRB.linearVelocity = dashVelocity;
         }
     }
 
@@ -65,7 +65,7 @@ public class PlayerDash : MonoBehaviour
 
         yield return new WaitForSeconds(attackDashTime);
         // Al terminar, para el dash
-        playerRB.velocity = Vector3.zero;
+        playerRB.linearVelocity = Vector3.zero;
         isDashing = false;
     }
 }
