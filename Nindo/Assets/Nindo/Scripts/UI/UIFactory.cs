@@ -163,6 +163,14 @@ namespace Nindo
 
         public static void Outline(TextMeshProUGUI t, float width = 0.2f)
         {
+            // un texto creado bajo un padre inactivo (p. ej. los marcadores "!" durante una cinemática)
+            // todavía no corrió el Awake de TMP: setear el borde ahí tira NullReference adentro de TMP
+            if (!t.gameObject.activeInHierarchy) { t.gameObject.AddComponent<DeferredOutline>().width = width; return; }
+            ApplyOutline(t, width);
+        }
+
+        internal static void ApplyOutline(TextMeshProUGUI t, float width)
+        {
             t.outlineWidth = width;   // crea la instancia de material propia del texto
             t.outlineColor = new Color32(10, 8, 12, 255);
             // TMP_SDF-Mobile solo dibuja el borde con este keyword (nada lo activa en runtime)
@@ -218,5 +226,17 @@ namespace Nindo
     {
         public void OnSelect(BaseEventData e) => Game.Audio?.Play("ui_move", null, 0.35f);
         public void OnPointerEnter(PointerEventData e) => EventSystem.current?.SetSelectedGameObject(gameObject);
+    }
+
+    /// <summary>Aplica el borde de un texto recién cuando se activa (TMP ya inicializado).</summary>
+    public class DeferredOutline : MonoBehaviour
+    {
+        public float width = 0.2f;
+        void OnEnable()
+        {
+            var t = GetComponent<TextMeshProUGUI>();
+            if (t != null) UIFactory.ApplyOutline(t, width);
+            Destroy(this);
+        }
     }
 }
