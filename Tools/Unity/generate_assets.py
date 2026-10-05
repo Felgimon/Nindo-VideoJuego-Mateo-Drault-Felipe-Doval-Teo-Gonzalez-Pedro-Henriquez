@@ -179,11 +179,8 @@ Material:
   m_LockedProperties:
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs:
-{texs}    m_Ints: []
-    m_Floats:
-{fl}    m_Colors:
-{cl}  m_BuildTextureStacks: []
+    m_TexEnvs:{chr(10) + texs if texs else ' []' + chr(10)}    m_Ints: []
+    m_Floats:{chr(10) + fl if fl else ' []' + chr(10)}    m_Colors:{chr(10) + cl if cl else ' []' + chr(10)}  m_BuildTextureStacks: []
   m_AllowLocking: 1
 """
     write(path, text)
