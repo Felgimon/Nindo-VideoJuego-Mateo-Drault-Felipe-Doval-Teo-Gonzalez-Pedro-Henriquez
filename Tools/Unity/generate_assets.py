@@ -701,10 +701,12 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
     def chars():
         rows = []
         defs = [
-            ("kaito", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.5, 0),
-            ("kage", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.6, 0),
-            ("ninja", read_guid(A("Models/Ninja/Ninja 1.fbx")), ctrls["ninja"], 1.7, 0),
-            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.5, 0),
+            # giro del modelo (frente medido en Unity con renders desde los 4 lados): los FBX del equipo
+            # no salieron todos con el frente en +Z. Kaito y el ninja miran a -X, el sumo a -Z.
+            ("kaito", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.5, 90),
+            ("kage", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.6, 90),
+            ("ninja", read_guid(A("Models/Ninja/Ninja 1.fbx")), ctrls["ninja"], 1.7, 90),
+            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.5, 180),
             ("goro", read_guid(A("Models/Minijefe.fbx")), ctrls["goro"], 3.2, 0),
         ]
         if "grandpa" in ctrls:

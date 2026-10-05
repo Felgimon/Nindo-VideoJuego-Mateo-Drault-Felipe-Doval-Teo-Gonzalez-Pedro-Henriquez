@@ -17,6 +17,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.5
+    modelYaw: 90
     materialOverrides: []
     stateNames:
     - Attack1
@@ -44,6 +45,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.6
+    modelYaw: 90
     materialOverrides: []
     stateNames:
     - Attack1
@@ -71,6 +73,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 642c39cca7e4c9040ae0e8ba3072ec24, type: 3}
     controller: {fileID: 9100000, guid: af122ddaa0ad524ad3c947730fe1632a, type: 2}
     height: 1.7
+    modelYaw: 90
     materialOverrides: []
     stateNames:
     - Attack1
@@ -98,6 +101,7 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 6e6d595635ec9544d83855ca6d060fbb, type: 3}
     controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
     height: 2.5
+    modelYaw: 180
     materialOverrides: []
     stateNames:
     - Attack1
