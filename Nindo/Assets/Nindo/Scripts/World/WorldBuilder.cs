@@ -237,9 +237,13 @@ namespace Nindo
             bool floating = Array.IndexOf(FloatingProps, id) >= 0;
             bool nonStatic = floating || (spec != null && spec.tags != null && Array.IndexOf(spec.tags, "nonstatic") >= 0);
             var go = Instantiate(model, marker.position, marker.rotation, nonStatic ? dynamicRoot : staticRoot);
-            go.transform.localScale = Vector3.Scale(go.transform.localScale, marker.lossyScale);
+            Vector3 ms = marker.lossyScale;
+            // la pasarela del lago se estira solo a lo largo: con escala uniforme la primera tabla quedaba
+            // de 0.96 m de ancho y 0.38 m hundida respecto de la orilla (y el NavMesh se cortaba)
+            if (id == "boardwalk_segment") ms = new Vector3(1f, 1f, ms.z);
+            go.transform.localScale = Vector3.Scale(go.transform.localScale, ms);
             go.name = id;
-            ApplySpec(go, spec, marker.lossyScale);
+            ApplySpec(go, spec, ms);
             if (floating)
             {
                 foreach (var tr in go.GetComponentsInChildren<Transform>()) tr.gameObject.isStatic = false;
@@ -311,7 +315,7 @@ namespace Nindo
         void AddLight(GameObject go, PropSpec spec, Color c, float range, float intensity)
         {
             Vector3 off = spec.light_offset != null ? V(spec.light_offset, Vector3.up) : Vector3.up * 1.2f;
-            lightPool.Add(go.transform.TransformPoint(off), c, range, intensity);
+            lightPool.Add(go.transform.TransformPoint(off), c, range, intensity, go);
         }
 
         static Vector3 V(float[] a, Vector3 def) => a != null && a.Length >= 3 ? new Vector3(a[0], a[1], a[2]) : def;
@@ -424,7 +428,7 @@ namespace Nindo
                     var portal = go.AddComponent<Portal>();
                     portal.requiredFlag = p.Length > 3 ? p[3] : "";
                     portal.destinationCheckpoint = p.Length > 4 ? p[4] : "cp_dojo_gate";
-                    lightPool.Add(pos + Vector3.up * 1.8f, new Color(0.45f, 0.8f, 1f), 8f, 2.5f);
+                    // (la luz ya la pone el manifest del portal_ring; antes se sumaba una segunda igual)
                     break;
                 }
                 case "Door":
@@ -437,6 +441,17 @@ namespace Nindo
                     d.openFlag = p.Length > 2 ? p[2] : "";
                     d.openAngle = p.Length > 4 ? F(p[4], 100f) : 100f;
                     d.Snap();
+                    // la puerta no se hornea en el NavMesh (se hornea una sola vez): la tapa un obstáculo
+                    // que GateDoor apaga al abrirse, así los enemigos pueden seguir a Kaito por el portón
+                    pivot.AddComponent<NavMeshExclude>();
+                    var obs = pivot.AddComponent<NavMeshObstacle>();
+                    obs.shape = NavMeshObstacleShape.Box; obs.carving = true;
+                    if (specs.TryGetValue(p.Length > 3 ? p[3] : "wall_gate_door", out var ds) && ds.collider != null)
+                    {
+                        obs.center = V(ds.collider.center, Vector3.zero);
+                        obs.size = V(ds.collider.size, Vector3.one);
+                    }
+                    obs.enabled = !d.IsOpen;
                     break;
                 }
                 case "Barrier":
@@ -445,8 +460,14 @@ namespace Nindo
                     var go = new GameObject("Barrier_" + (p.Length > 2 ? p[2] : "b"));
                     go.transform.SetParent(dynamicRoot, false); go.transform.SetPositionAndRotation(pos, rot);
                     float w = p.Length > 3 ? F(p[3], 3f) : 3f;
-                    var vis = InstantiateProp("rope_barrier", pos, rot, go.transform, w / 3f);
+                    // estirar solo a lo ancho (con escala uniforme la cuerda quedaba de 3.4 m de alto)
+                    var vis = InstantiateProp("rope_barrier", pos, rot, go.transform);
+                    if (vis != null) vis.transform.localScale = Vector3.Scale(vis.transform.localScale, new Vector3(w / 3f, 1f, 1f));
                     var col = go.AddComponent<BoxCollider>(); col.size = new Vector3(w, 3f, 0.6f); col.center = new Vector3(0, 1.5f, 0);
+                    // igual que las puertas: fuera del horneado y tapada por un obstáculo que se apaga con el flag
+                    go.AddComponent<NavMeshExclude>();
+                    var bo = go.AddComponent<NavMeshObstacle>();
+                    bo.shape = NavMeshObstacleShape.Box; bo.carving = true; bo.center = col.center; bo.size = col.size;
                     var fb = go.AddComponent<FlagBarrier>(); fb.removeFlag = p.Length > 2 ? p[2] : "";
                     break;
                 }
@@ -497,7 +518,7 @@ namespace Nindo
             var sources = new List<NavMeshBuildSource>();
             var markups = new List<NavMeshBuildMarkup>();
             foreach (var ex in WorldRoot.GetComponentsInChildren<NavMeshExclude>())
-                markups.Add(new NavMeshBuildMarkup { root = ex.transform, ignoreFromBuild = true });
+                markups.Add(new NavMeshBuildMarkup { root = ex.transform, overrideIgnore = true, ignoreFromBuild = true, applyToChildren = true });
             int mask = LayerMask.GetMask("Default");
             NavMeshBuilder.CollectSources(WorldRoot, mask, NavMeshCollectGeometry.PhysicsColliders, 0, markups, sources);
             var bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);

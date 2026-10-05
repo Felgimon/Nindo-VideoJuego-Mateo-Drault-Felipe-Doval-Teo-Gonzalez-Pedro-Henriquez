@@ -280,7 +280,8 @@ namespace Nindo
     public class LightPool : MonoBehaviour
     {
         public int maxLights = 10;
-        struct Anchor { public Vector3 pos; public Color color; public float range, intensity; }
+        // owner: si el prop dueño de la luz está oculto (portal antes de vencer al jefe), la luz no se usa
+        struct Anchor { public Vector3 pos; public Color color; public float range, intensity; public GameObject owner; public bool hasOwner; }
         readonly List<Anchor> anchors = new List<Anchor>();
         Light[] lights;
         readonly List<int> order = new List<int>();
@@ -300,9 +301,9 @@ namespace Nindo
             }
         }
 
-        public void Add(Vector3 pos, Color c, float range, float intensity)
+        public void Add(Vector3 pos, Color c, float range, float intensity, GameObject owner = null)
         {
-            anchors.Add(new Anchor { pos = pos, color = c, range = range, intensity = intensity });
+            anchors.Add(new Anchor { pos = pos, color = c, range = range, intensity = intensity, owner = owner, hasOwner = owner != null });
         }
 
         void Update()
@@ -313,7 +314,7 @@ namespace Nindo
             Vector3 p = Game.Player.transform.position;
             order.Clear();
             for (int i = 0; i < anchors.Count; i++)
-                if ((anchors[i].pos - p).sqrMagnitude < 45f * 45f) order.Add(i);
+                if ((!anchors[i].hasOwner || (anchors[i].owner != null && anchors[i].owner.activeInHierarchy)) && (anchors[i].pos - p).sqrMagnitude < 45f * 45f) order.Add(i);
             order.Sort((a, b) => (anchors[a].pos - p).sqrMagnitude.CompareTo((anchors[b].pos - p).sqrMagnitude));
             for (int i = 0; i < lights.Length; i++)
             {

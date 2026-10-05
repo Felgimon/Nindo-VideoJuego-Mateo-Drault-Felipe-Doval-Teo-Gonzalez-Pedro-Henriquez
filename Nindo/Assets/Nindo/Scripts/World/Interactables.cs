@@ -216,6 +216,7 @@ namespace Nindo
         Quaternion closed;
         float angle;
         Collider[] cols;
+        UnityEngine.AI.NavMeshObstacle obstacle;
 
         void Awake()
         {
@@ -223,7 +224,7 @@ namespace Nindo
             cols = GetComponentsInChildren<Collider>();
         }
 
-        bool IsOpen => !string.IsNullOrEmpty(openFlag) && Game.Save.HasFlag(openFlag);
+        public bool IsOpen => !string.IsNullOrEmpty(openFlag) && Game.Save.HasFlag(openFlag);
 
         void Update()
         {
@@ -234,6 +235,8 @@ namespace Nindo
             transform.localRotation = closed * Quaternion.Euler(0f, angle, 0f);
             if (wasClosed && IsOpen) Game.Audio?.Play("gate_open", transform.position, 1f);
             foreach (var c in cols) c.enabled = !IsOpen || Mathf.Abs(angle) < 20f;
+            if (obstacle == null) obstacle = GetComponent<UnityEngine.AI.NavMeshObstacle>();   // lo agrega WorldBuilder después de Awake
+            if (obstacle != null) obstacle.enabled = !IsOpen || Mathf.Abs(angle) < 20f;
         }
 
         public void Snap()
@@ -276,6 +279,7 @@ namespace Nindo
             shown = visible;
             foreach (Transform c in transform) c.gameObject.SetActive(visible);
             foreach (var col in GetComponents<Collider>()) col.enabled = visible;
+            foreach (var o in GetComponents<UnityEngine.AI.NavMeshObstacle>()) o.enabled = visible;
         }
     }
 

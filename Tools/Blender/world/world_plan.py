@@ -131,8 +131,8 @@ LANDMARKS = [
     # ---------------- Jardín del Clan
     ("pagoda_small", -12, 36, 160, 1.0),
     ("pavilion_azumaya", 22, 36, 200, 1.0),
-    ("bridge_arch", -4, 6, 0, 1.0),
-    ("bridge_arch", 40, 2, 0, 0.9),
+    ("bridge_arch@0", -2.2, 9.6, -12.5, 1.0),  # centrado en el cruce camino/arroyo (antes terminaba en medio del agua)
+    # (el puente del este, en 40,2, se quitó: el arroyo ahí no tiene orillas transitables a los dos lados)
     ("bridge_plank", -46, 4, 0, 1.0),
     ("house_village_a", -47, 21, 110, 1.0), ("house_village_b", -50, 0, 70, 1.0),
     ("house_village_a", 46, 32, 250, 1.0), ("house_village_b", 50, 8, 290, 1.0),

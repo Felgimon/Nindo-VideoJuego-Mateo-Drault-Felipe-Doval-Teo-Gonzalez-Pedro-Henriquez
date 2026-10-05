@@ -74,14 +74,66 @@ def H(x, z):
     for sx, z0, z1, h0, h1, hw in STAIRS:
         # el terreno queda por debajo de la escalera (su malla es el suelo)
         if abs(x - sx) < hw + 0.6 and z0 - 0.5 < z < z1 + 0.5:
-            t = max(0.0, min(1.0, (z - z0) / (z1 - z0)))
-            h = min(h, h0 + (h1 - h0) * t - 0.45)
+            if z < z0:
+                h = min(h, h0)                     # al pie: al ras del arranque (sin zanja)
+            elif z > z1:
+                h = min(h, h1)                     # arriba: al ras del último escalón
+            else:
+                # bajo la escalera: línea de las narices - 0.25 (el escalón real siempre queda por encima;
+                # con 0.45 la malla de 2.5 m interpolaba una zanja delante del primer escalón y el primer
+                # escalón quedaba de 0.46-0.70 m, más que el stepOffset 0.4 de Kaito)
+                h = min(h, h0 + (h1 - h0) * (z - z0) / (z1 - z0) - 0.25)
     for px, pz, pr, ph in PADS:
         d = math.hypot(x - px, z - pz)
         if d < pr + 3:
             w = T.smoothstep(pr + 3, pr, d)
             h = h + (ph - h) * w
     return h
+
+
+# misma grilla (con el mismo jitter y descarte) que build_terrain: la altura de la malla
+# triangulada de 2.5 m, que es lo que pisa Unity. H() es analítica y en los saltos de
+# world_terrain.height() la malla no la puede seguir: los props apoyados en H flotaban
+# (árboles hasta 7.9 m) o quedaban enterrados.
+NXV = int((X1 - X0) / CELL) + 1
+NZV = int((Z1 - Z0) / CELL) + 1
+_GV = {}
+
+
+def _grid_vert(i, j):
+    k = (i, j)
+    if k not in _GV:
+        v = None
+        if 0 <= i < NXV and 0 <= j < NZV:
+            jx = 0.0 if i in (0, NXV - 1) else (T._hash(i, j, 7) - 0.5) * CELL * 0.55
+            jz = 0.0 if j in (0, NZV - 1) else (T._hash(i, j, 9) - 0.5) * CELL * 0.55
+            px, pz = X0 + i * CELL + jx, Z0 + j * CELL + jz
+            if T.walk_dist(px, pz) < 46 or T.in_lake(px, pz):
+                v = (px, pz, H(px, pz))
+        _GV[k] = v
+    return _GV[k]
+
+
+def mesh_H(x, z):
+    """Altura del terreno TRIANGULADO que exporta build_terrain. None = no hay terreno ahí."""
+    i0 = int(math.floor((x - X0) / CELL))
+    j0 = int(math.floor((z - Z0) / CELL))
+    for j in (j0 - 1, j0, j0 + 1):
+        for i in (i0 - 1, i0, i0 + 1):
+            q = [_grid_vert(i, j), _grid_vert(i + 1, j), _grid_vert(i + 1, j + 1), _grid_vert(i, j + 1)]
+            if None in q:
+                continue
+            tris = ((q[0], q[1], q[2]), (q[0], q[2], q[3])) if (i + j) % 2 == 0 else ((q[0], q[1], q[3]), (q[1], q[2], q[3]))
+            for a, b, c in tris:
+                d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+                if abs(d) < 1e-12:
+                    continue
+                l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (z - c[1])) / d
+                l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (z - c[1])) / d
+                l3 = 1.0 - l1 - l2
+                if min(l1, l2, l3) >= -1e-6:
+                    return l1 * a[2] + l2 * b[2] + l3 * c[2]
+    return None
 
 
 # =========================================================================== terreno
@@ -391,15 +443,22 @@ def occ_add(x, z, r):
     OCC.setdefault((int(math.floor(x / 8)), int(math.floor(z / 8))), []).append((x, z, r))
 
 
-def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True):
+def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True, ground=True):
+    """ground=True: 'y' es relativa a H (o None = H) y se corrige a la malla triangulada.
+    ground=False: altura absoluta (agua, '@altura', parches de arroz)."""
     base = pid.split("@")[0]
     if y is None:
         if "@" in pid:
-            y = float(pid.split("@")[1])
+            y = float(pid.split("@")[1]); ground = False
         elif base in WATER_PROPS:
-            y = W.WATER_LAKE
+            y = W.WATER_LAKE; ground = False
         else:
             y = H(x, z)
+    if ground:
+        g = mesh_H(x, z)
+        if g is None:
+            return                      # fuera de la malla (borde norte): no colgar props en el vacío
+        y += g - H(x, z)                # misma altura relativa a H, pero sobre lo que pisa Unity
     (DECOR_PLACED if base in DECOR else PLACED).append((base, x, z, yaw, scale, y))
     if block:
         occ_add(x, z, (radius if radius is not None else prop_radius(base)) * scale)
@@ -412,7 +471,7 @@ def place_landmarks():
             y = W.WATER_LAKE + 1.0
         if pid == "lily_pads":
             y = W.WATER_STREAM + 0.02
-        place(pid, x, z, yaw, sc, y=y)
+        place(pid, x, z, yaw, sc, y=y, ground=(y is None))
     # muralla
     x = W.WALL_X_RANGE[0]
     while x <= W.WALL_X_RANGE[1]:
@@ -606,7 +665,7 @@ def scatter():
     for r in W.PADDIES:
         for xx in range(int(r[0]) + 1, int(r[2]), 2):
             for zz in range(int(r[1]) + 1, int(r[3]), 2):
-                place("rice_patch", xx + 0.5, zz + 0.5, 0, 1.0, y=-0.3, block=False)
+                place("rice_patch", xx + 0.5, zz + 0.5, 0, 1.0, y=-0.3, block=False, ground=False)
     for r in W.WHEAT:
         for xx in range(int(r[0]) + 1, int(r[2]), 2):
             for zz in range(int(r[1]) + 1, int(r[3]), 2):
@@ -752,7 +811,8 @@ def export():
             e.empty_display_size = 0.5
             e.location = B(x, z, y)
             e.rotation_euler = (0, 0, math.radians(-yaw))
-            e.scale = (sc, sc, sc)
+            # la pasarela se estira solo a lo largo (Blender Y local = Z local en Unity)
+            e.scale = (1.0, sc, 1.0) if name.startswith("P__boardwalk_segment__") else (sc, sc, sc)
             bpy.context.scene.collection.objects.link(e)
             objs.append(e)
         L.export_fbx(objs, os.path.join(OUT_DIR, f"World_{reg}.fbx"))
