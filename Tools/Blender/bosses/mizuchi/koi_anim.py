@@ -9,13 +9,18 @@ le dan el peso:
   2. resortes amortiguados (k, c) en aletas, bigotes, branquias y shide, empujados por la aceleración
      angular y lineal de su padre: el seguimiento y el solapamiento salen solos y no se pueden olvidar;
   3. ruido suave para que ninguna pausa quede congelada (una pose quieta más de medio segundo se lee
-     como un error) y para el temblor del rugido.
+     como un error) y para el temblor del rugido;
+  4. inercia de la columna (clips no cíclicos): cada vértebra tiene masa. Lo que hacen las claves la
+     empuja (un frenazo la deja seguir y pasarse, un arranque la deja atrás un cuadro) y al girar el
+     cuerpo se curva en C hacia el giro (la cabeza se adelanta, la cola se arrastra). Sin esto la ola del
+     golpe bajaba por la cola y cada tramo se clavaba en seco al llegarle (la suelta termina a toda
+     velocidad y la clave siguiente es la misma pose).
 Cada hueso puede ir 'lag' cuadros atrás de la clave (la ola del golpe baja por la cola).
 Los clips cíclicos se simulan tres vueltas y se queda la última: la costura del loop es < 1°.
 """
 import math, random, zlib
 from mathutils import Vector, Quaternion, Matrix
-from koi_common import clamp, lerp
+from koi_common import clamp, lerp, smoothstep
 
 FPS = 30.0
 
@@ -28,16 +33,23 @@ def _back_out(u, s=1.2):
 
 EASE = {
     "lin": lambda u: u,
-    # se pasa ~5 % y vuelve. Arranca y termina con velocidad cero: el BACK puro arrancaba a 4x la velocidad
-    # media justo después de un 'out' que terminaba quieto, y la vuelta se leía como un segundo golpe
-    "settle": lambda u: _back_out(0.5 - 0.5 * math.cos(math.pi * u)),
+    # se pasa ~5 % y vuelve. Arranca y termina con velocidad cero: el BACK puro arranca a 4.2x la velocidad
+    # media y la vuelta se leía como un segundo golpe. La entrada es cuadrática y no en coseno: con coseno el
+    # primer cuadro de un tramo de 6 ya hacía el 26 % del recorrido (la aleta pasaba de 0 a 136°/s); así, 11 %
+    "settle": lambda u: _back_out(u * u),
     "hold": lambda u: 0.5 - 0.5 * math.cos(math.pi * u),                  # seno: pausa viva
     "ease": lambda u: 2 * u * u if u < 0.5 else 1 - 2 * (1 - u) ** 2,
     "in": lambda u: u * u * u,
     "acc": lambda u: u * u,           # acelera y termina a 2x la velocidad media: empalma con un 'out' de igual largo
     "strike": lambda u: u ** 1.6,     # suelta de un golpe: acelera hasta el contacto sin saltos de un cuadro
     "out": lambda u: 1 - (1 - u) ** 2,
+    # sigue de largo después de un 'strike' y frena hasta parar: arranca a 1.5x la velocidad media y la
+    # velocidad solo baja (Hermite). Con el tramo y el ángulo justos empalma con la suelta sin cambio de
+    # velocidad (el giro del coletazo después del contacto)
+    "carry": lambda u: 3 * u * u - 2 * u ** 3 + 1.5 * (u - 2 * u * u + u ** 3),
 }
+# las que arrancan a toda velocidad: un canal que venía quieto las cambia por 'ease' (ver Baker._key_vals)
+FAST_START = {"out", "carry"}
 
 
 def smooth_noise(seed, t, period=None, octaves=((1.0, 1.0), (2.3, 0.5), (4.7, 0.25))):
@@ -58,10 +70,11 @@ class Clip:
     """Definición de un clip. keys: [(cuadro, pose, easing hacia esta clave)]. pose = {hueso: {canal: valor}}.
     lag: {hueso: cuadros}. wave: dict(amp=escala, cycles=n, env=[(cuadro, factor)]).
     noise: [(huesos, canal, amplitud, frecuencia Hz, env)]. extra(f, t, vals): ajustes procedurales.
-    timing: datos para el sidecar (tell, hold, contact, activeEnd, strikeBone, ...)."""
+    timing: datos para el sidecar (tell, hold, contact, activeEnd, strikeBone, ...).
+    inertia: capa de inercia de la columna (solo clips no cíclicos; ver Baker._inertia)."""
 
     def __init__(self, name, frames, keys, loop=False, lag=None, wave=None, noise=None, extra=None,
-                 springs=True, timing=None, spring_gain=1.0, spring_scale=None):
+                 springs=True, timing=None, spring_gain=1.0, spring_scale=None, inertia=True):
         self.name = name
         self.frames = frames
         self.keys = sorted(keys, key=lambda k: k[0])
@@ -74,6 +87,7 @@ class Clip:
         self.timing = timing or {}
         self.spring_gain = spring_gain
         self.spring_scale = spring_scale or {}
+        self.inertia = inertia and not loop
 
 
 # ------------------------------------------------------------------ onda viajera y resortes
@@ -97,6 +111,17 @@ for s in ("L", "R"):
 SPRINGS.update({"dorsal_1": (70, 9, 14, 0.6), "dorsal_2": (70, 9, 15, 0.6), "dorsal_3": (65, 8.5, 16, 0.6),
                 "dorsal_4": (60, 8, 18, 0.6), "anal": (65, 8, 16, 0.6)})
 SPRING_GAIN = 0.55   # fracción de la inercia real: es un espíritu, no un pez de 3 toneladas en el aire
+
+# inercia de la columna: hueso -> (fracción de su propio frenazo/arranque que conserva, grados de curva por
+# cada grado/cuadro de giro del cuerpo, rigidez en rad/cuadro). Al girar el pez se curva en C hacia el giro:
+# la cabeza se adelanta (dirige) y la cola se arrastra; con la convención de 'bend' las dos son el mismo
+# signo que la velocidad de giro. La cabeza muerde y se queda: poca inercia y más rígida (un frenazo suave
+# no la saca de la pausa, uno en seco igual le deja un resto); hacia la cola la masa pesa más.
+# Cola: ~2.6 Hz con amortiguamiento 0.55, el exceso llega en 2 cuadros y se apaga en 5-6 con un contrarrebote chico
+INERTIA = {"spine_f": (0.25, 0.05, 1.0), "head": (0.25, 0.06, 1.0), "spine_b1": (0.45, 0.06, 0.6),
+           "spine_b2": (0.5, 0.09, 0.55), "spine_b3": (0.55, 0.12, 0.55), "spine_b4": (0.6, 0.15, 0.55),
+           "tail": (0.6, 0.18, 0.55)}
+INERTIA_ZETA = 0.55
 
 
 def rot_of(M):
@@ -141,9 +166,17 @@ class Baker:
         u = clamp((x - k0[0]) / span)
         e = EASE[k1[2]](u)
         a, b = self._pose(k0[1]).get(bone, {}), self._pose(k1[1]).get(bone, {})
+        # un canal que venía quieto no arranca a toda velocidad: con 'out' la aleta de abajo pasaba de 0 a
+        # 230°/s en un cuadro al volver del aletazo (el tramo anterior solo movía la otra). El primer tramo
+        # del clip queda como está (el sacudón del Hit tiene que ser instantáneo)
+        prev = self._pose(keys[i - 1][1]).get(bone, {}) if (k1[2] in FAST_START and i > 0) else None
         out = {}
         for c in set(a) | set(b):
-            out[c] = lerp(a.get(c, 0.0), b.get(c, 0.0), e)
+            va, vb = a.get(c, 0.0), b.get(c, 0.0)
+            ec = e
+            if prev is not None and va != vb and prev.get(c, 0.0) == va:
+                ec = EASE["ease"](u)
+            out[c] = lerp(va, vb, ec)
         return out
 
     def _pose(self, p):
@@ -201,16 +234,52 @@ class Baker:
         n = clip.frames
         frames = list(range(n + 1))
         # 1) bases sin resortes
-        base = []
-        for f in frames:
-            vals = self.values(clip, f)
-            base.append({b: rig.basis(b, vals.get(b, {})) for b in rig.names})
+        vals = [self.values(clip, f) for f in frames]
+        if clip.inertia:
+            self._inertia(clip, vals)
+        base = [{b: rig.basis(b, v.get(b, {})) for b in rig.names} for v in vals]
         if clip.springs:
             base = self._springs(clip, base)
         if clip.loop:
             # costura exacta: el último cuadro es el primero
             base[n] = dict(base[0])
         return base
+
+    def _inertia(self, clip, vals):
+        """Suma a la columna la desviación de un resorte (INERTIA) empujado por:
+          * la aceleración de sus propias claves (con su lag): un frenazo de v grados/cuadro le deja
+            alfa * v de velocidad (sigue de largo y vuelve), un arranque la deja atrás;
+          * el giro del cuerpo: su reposo se corre 'curva * velocidad de giro' (la cabeza se adelanta, la
+            cola se arrastra mientras gira y, al frenar, se pasa y rebota sola).
+        Solo mira las claves, no la onda, el ruido ni los extras: un loop o un temblor no cambian. En los
+        últimos 4 cuadros se apaga: el clip termina en su pose (FinL encadena con FinR, que arranca en ella)."""
+        n = clip.frames
+        turn = [self._key_vals(clip, "body", f).get("turn", 0.0) for f in range(n + 1)]
+        # velocidad de giro en grados/cuadro (centrada; en los bordes, la del tramo)
+        vt = [(turn[min(f + 1, n)] - turn[max(f - 1, 0)]) / max(1, min(f + 1, n) - max(f - 1, 0)) for f in range(n + 1)]
+        z = INERTIA_ZETA
+        sub = 8
+        for b, (alpha, drag, wn) in INERTIA.items():
+            for ch in ("bend", "lift"):
+                k = [self._key_vals(clip, b, f).get(ch, 0.0) for f in range(n + 1)]
+                dr = drag if ch == "bend" else 0.0
+                if not dr and max(k) - min(k) < 1e-6:
+                    continue
+                y = yd = 0.0
+                for f in range(n + 1):
+                    if y:
+                        d = vals[f].setdefault(b, {})
+                        d[ch] = d.get(ch, 0.0) + y * smoothstep(0, 4, n - f)
+                    if f == n:
+                        break
+                    if f > 0:
+                        yd -= alpha * (k[f + 1] - 2 * k[f] + k[f - 1])
+                    for s in range(sub):
+                        u = (s + 0.5) / sub
+                        eq = dr * lerp(vt[f], vt[f + 1], u)
+                        ydd = wn * wn * (eq - y) - 2 * z * wn * yd
+                        yd += ydd / sub
+                        y += yd / sub
 
     def _springs(self, clip, base):
         rig = self.rig

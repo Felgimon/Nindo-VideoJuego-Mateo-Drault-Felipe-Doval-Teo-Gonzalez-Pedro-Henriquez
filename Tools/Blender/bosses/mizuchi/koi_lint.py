@@ -12,9 +12,16 @@ hueso que fallan). Mide sobre la malla deformada de verdad (skinning lineal con 
   i) costura de los loops < 1°
   j) ningún triángulo de piel (cuerpo, cabeza, boca, cuerda) se da vuelta al deformarse (con Cull Back
      sería un agujero; las aletas son de doble cara y no cuentan)
-  k) el golpe es lo más rápido del clip: la punta del hueso del golpe tiene su pico de velocidad en
-     [contacto - 1, activeEnd], y en los desviables la vuelta no pasa del 45 % de la velocidad del golpe
+  k) el golpe es lo más rápido del clip: la punta del hueso del golpe tiene su pico de velocidad a 2
+     cuadros o menos del contacto, y en los desviables la vuelta no pasa del 45 % de la velocidad del golpe
      (una vuelta rápida se lee como un segundo golpe justo cuando el jugador acaba de hacer parry)
+  l) alcance: en el cuadro del contacto la malla del hueso del golpe llega al 85 % del alcance del
+     AttackDef y está dentro del sector que ataca (timing 'reach'). El juego resuelve golpe y parry en ese
+     cuadro: si el arma todavía no llegó, el jugador no tiene cómo saber cuándo apretar
+  m) ninguna vértebra frena en seco: de más de 150°/s (respecto de su padre) a menos del 10 % en un
+     cuadro. Solo se perdona el contacto en la cadena del hueso del golpe (la mordida que se clava)
+  n) en los clips con golpe, la columna y la raíz de las pectorales no arrancan de golpe (de quieto a más
+     de 120°/s en un cuadro) fuera de la suelta: en la vuelta eso se lee como otro ataque
 """
 import math
 from collections import Counter
@@ -39,6 +46,12 @@ RECOVERY_MAX = 0.45
 SKIN_BONES = {"root", "body", "spine_f", "head", "jaw", "spine_b1", "spine_b2", "spine_b3", "spine_b4", "tail",
               "gill_L", "gill_R", "seal"}
 FLIP_TOL = 3     # triángulos por cuadro: la soga del lado cóncavo de la C cerrada se arruga en 1-2 tris
+SPINE = ["spine_f", "head", "spine_b1", "spine_b2", "spine_b3", "spine_b4", "tail"]
+REACH_MIN = 0.85
+STOP_FAST, STOP_RATIO = 150.0, 0.1       # °/s respecto del padre
+ONSET_FAST = 120.0
+# varado: los coletazos de costado golpean la cubierta, que los frena en seco a propósito
+STOP_OK = {"BreachLand"}
 
 
 class Skin:
@@ -218,8 +231,8 @@ def lint(rig, clip, base, skin):
         v = [0.0] + [(tips[f] - tips[f - 1]).length * 30.0 for f in range(1, len(tips))]
         pk = max(range(len(v)), key=lambda f: v[f])
         info["strikePeak"] = [pk, round(v[pk], 1)]
-        if not c - 1 <= pk <= ae:
-            errs.append(f"{clip.name}: la punta de {sb} es más rápida en f{pk} ({v[pk]:.0f} m/s), fuera del golpe f{c}-{ae}")
+        if abs(pk - c) > 2:
+            errs.append(f"{clip.name}: la punta de {sb} es más rápida en f{pk} ({v[pk]:.0f} m/s), lejos del contacto f{c}")
         if tm.get("kind") == "parry":
             a0 = tm.get("apex") or 0
             strike = max(sp[b][f] for b in MAIN for f in range(a0, ae + 1))
@@ -227,6 +240,47 @@ def lint(rig, clip, base, skin):
             info["recovery"] = round(rec / max(strike, 1e-6), 2)
             if rec > RECOVERY_MAX * strike:
                 errs.append(f"{clip.name}: la vuelta de {rb} en f{rf} va al {100 * rec / strike:.0f} % del golpe (máx {100 * RECOVERY_MAX:.0f} %)")
+    # l) alcance en el contacto (el root no se mueve en horizontal: se mide desde el origen)
+    if tm.get("reach") and sb and c is not None:
+        rng, center, half = tm["reach"]
+        X = skin.deform(Ms[c])[np.array(skin.dom) == sb]
+        r = np.hypot(X[:, 0], X[:, 1])
+        i = int(r.argmax())
+        bearing = math.degrees(math.atan2(X[i, 0], -X[i, 1])) % 360      # 0 = frente (-Y), 90 = izquierda (+X)
+        off = abs((bearing - center + 180) % 360 - 180)
+        info["reach"] = [round(float(r[i]), 2), round(bearing), round(float(X[i, 2]), 2)]
+        if r[i] < REACH_MIN * rng or off > half:
+            errs.append(f"{clip.name}: en el contacto f{c} {sb} llega a {r[i]:.2f} m a {bearing:.0f}° "
+                        f"(necesita {REACH_MIN * rng:.2f} m a {center}±{half}°)")
+    # m, n) paradas en seco y arranques bruscos, con la velocidad de cada hueso respecto de su padre
+    rel = {}
+    for b in set(SPINE) | {"pec_L1", "pec_R1"}:
+        p = rig.parent[b]
+        q = [_rq(M[p].inverted() @ M[b]) for M in Ms]
+        rel[b] = [0.0] + [_ang(q[f - 1], q[f]) * 30.0 for f in range(1, len(q))]
+    chain_sb = set()
+    b = sb
+    while b:
+        chain_sb.add(b)
+        b = rig.parent[b]
+    if clip.name not in STOP_OK:
+        for b in SPINE:
+            v = rel[b]
+            for f in range(1, len(v) - 1):
+                if v[f] > STOP_FAST and v[f + 1] < STOP_RATIO * v[f] and not (f == c and b in chain_sb):
+                    errs.append(f"{clip.name}: {b} frena en seco en f{f}->{f + 1} ({v[f]:.0f} -> {v[f + 1]:.0f}°/s)")
+                    break
+    if c is not None and tm.get("kind") in ("parry", "danger") and clip.name not in STOP_OK:
+        hold = tm.get("hold")
+        r0 = hold[1] if hold else (tm.get("apex") or c)
+        r1 = c + max(clip.lag.values(), default=0) + 1           # la suelta baja por la cola con su lag
+        for b, v in rel.items():
+            for f in range(1, len(v) - 1):
+                if r0 <= f <= r1:
+                    continue
+                if v[f + 1] > ONSET_FAST and v[f] < STOP_RATIO * v[f + 1]:
+                    errs.append(f"{clip.name}: {b} arranca de golpe en f{f}->{f + 1} ({v[f]:.0f} -> {v[f + 1]:.0f}°/s)")
+                    break
     # i) costura
     if clip.loop:
         seam = max(_ang(_rq(Ms[0][b]), _rq(Ms[n][b])) for b in rig.names)

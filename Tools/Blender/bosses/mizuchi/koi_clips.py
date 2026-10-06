@@ -4,7 +4,10 @@ Gramática de lectura desde la cámara alta (la del diseño, 'el agua no miente'
   * cada golpe desviable arranca con un cambio de silueta grande visto desde arriba (C de la mordida,
     rolido del aletazo, C cerrada del coletazo, el koi que se para para escupir) y una pausa VIVA en el
     apex; la suelta dura 2-4 cuadros y el contacto cae en un cuadro exacto (timing en el sidecar);
-  * después del contacto la ola baja por la cola (lag por hueso) y las aletas siguen por resorte.
+  * después del contacto la ola baja por la cola (lag por hueso), la columna sigue de largo por inercia y
+    las aletas siguen por resorte;
+  * en el cuadro del contacto el arma ya llegó: 'reach' = (alcance del AttackDef, rumbo, ±grados) y
+    koi_lint lo mide sobre la malla (el juego resuelve golpe y parry en ese cuadro).
 Signos: bend + = la punta del hueso va a la izquierda del koi (+X). C = mismo signo adelante y atrás.
 """
 import math
@@ -42,7 +45,6 @@ def body(**ch):
 BACK = ["spine_b1", "spine_b2", "spine_b3", "spine_b4", "tail"]
 FRONT = ["spine_f", "head"]
 SPINE = FRONT + BACK
-FINS1 = ["pec_L1", "pec_R1"]
 LAG_TAIL = {"spine_b1": 1, "spine_b2": 2, "spine_b3": 3, "spine_b4": 3, "tail": 4}
 
 # ------------------------------------------------------------------ poses base
@@ -118,7 +120,8 @@ def clips():
                                (33, H, "settle")],
                   lag=LAG_TAIL, wave=dict(amp=0.5, cycles=1, env=[(0, 1), (6, 0.15), (26, 0.15), (33, 1)]),
                   noise=[(SPINE, "bend", 0.9, 0.7, [(12, 0), (13, 1), (16, 1), (17, 0)])],
-                  timing=dict(tell=7, hold=(13, 16), apex=15, contact=19, activeEnd=23, strikeBone="jaw", kind="parry")))
+                  timing=dict(tell=7, hold=(13, 16), apex=15, contact=19, activeEnd=23, strikeBone="jaw", kind="parry",
+                              reach=(3.4, 0, 35))))
 
     # 4. FinL: rola a la derecha, el ala izquierda sube plegada como una hoja y barre 150° por delante.
     raise_l = merge(H, body(roll=35, tz=0.1, turn=8), side("pec_{}1", "L", up=66, fwd=-20), side("pec_{}2", "L", fold=-0.25, up=10),
@@ -141,7 +144,8 @@ def clips():
                                (18, over_l, "out"), (22, tuck_l, "acc"), (27, cock_r, "out")],
                   lag={"spine_b2": 1, "spine_b3": 2, "spine_b4": 2, "tail": 3}, wave=dict(amp=0.4, cycles=1, env=[(0, 1), (6, 0.2), (22, 0.2), (27, 0.6)]),
                   noise=[(["body"], "roll", 1.2, 0.8, [(7, 0), (8, 1), (11, 1), (12, 0)])],
-                  timing=dict(tell=3, hold=(7, 11), apex=11, contact=15, activeEnd=18, strikeBone="pec_L3", kind="parry")))
+                  timing=dict(tell=3, hold=(7, 11), apex=11, contact=15, activeEnd=18, strikeBone="pec_L3", kind="parry",
+                              reach=(3.3, 0, 75))))
 
     # 5. FinR: espejo desde la pose armada del final de FinL, sin pausa ('taa... ta').
     raise_r = merge(H, body(roll=-34, tz=0.1, turn=-8), side("pec_{}1", "R", up=64, fwd=-20), side("pec_{}2", "R", fold=-0.25, up=10),
@@ -156,31 +160,37 @@ def clips():
     C.append(Clip("FinR", 24, [(0, cock_r, "lin"), (6, raise_r, "ease"), (10, sweep_r, "strike"), (13, over_r, "out"), (18, tuck_r, "acc"),
                                (24, H, "out")],
                   lag={"spine_b2": 1, "spine_b3": 2, "spine_b4": 2, "tail": 3}, wave=dict(amp=0.4, cycles=1, env=[(0, 0.6), (5, 0.2), (19, 0.2), (24, 1)]),
-                  timing=dict(tell=0, hold=None, apex=6, contact=10, activeEnd=13, strikeBone="pec_R3", kind="parry")))
+                  timing=dict(tell=0, hold=None, apex=6, contact=10, activeEnd=13, strikeBone="pec_R3", kind="parry",
+                              reach=(3.3, 0, 75))))
 
-    # 6. TailWhip: se levanta y se enrosca mirando hacia atrás por encima del hombro; el abanico gotea en la
-    #    pausa; giro completo de 360° (45-60°/cuadro) con la cola arrastrada: barre un disco entero.
-    coil_t = merge(H, body(tz=0.5, turn=10, pitch=4), chain((30, 26), (28, 32, 34, 35, 30)), {"head": {"lift": 8}},
-                   both("fluke_{}1", out=18, up=25, fold=0.3), both("fluke_{}2", out=8), both("pec_{}1", up=20, out=15, fwd=10),
+    # 6. TailWhip (Kaito está ATRÁS): gira el cuerpo 100° a su izquierda y mira hacia atrás por encima del
+    #    hombro, con el cuerpo en S: la cabeza hacia Kaito y el abanico en alto, del otro lado, adelante a la
+    #    derecha; gotea en la pausa. La suelta gira a la derecha y la cola, que venía arrastrada, se estira y
+    #    barre por detrás: en el contacto (f23) el abanico pasa estirado (~4 m) y a la altura de Kaito justo
+    #    por donde está él, en el cuadro más rápido del golpe. La inercia sigue el giro una vuelta entera
+    #    (barre el disco del arco 360) frenando, y al parar la cola se pasa y rebota sola (ver koi_anim._inertia).
+    #    Antes el giro arrancaba en la pausa con la C cerrada: en el contacto el abanico estaba enroscado
+    #    a 3.5 m y en alto, y el latigazo estirado llegaba 5-7 cuadros después, casi toda la ventana de parry.
+    coil_t = merge(H, body(tz=0.45, turn=100, pitch=3), chain((25, 30), (-10, -16, -20, -22, -18)), {"head": {"lift": 10}},
+                   {"jaw": {"open": 7}}, both("gill_{}", out=12),
+                   both("fluke_{}1", out=16, up=22, fold=0.3), both("fluke_{}2", out=8), both("pec_{}1", up=18, out=14, fwd=10),
                    {"dorsal_1": {"rake": -12}, "dorsal_2": {"rake": -12}, "dorsal_3": {"rake": -10}})
-    coil_t2 = merge(coil_t, body(tz=0.52, turn=11, pitch=5), chain((31.5, 27), (29, 33.5, 35.5, 36.5, 31)))
-    # el giro va hacia la izquierda (turn +): la C cargada a la izquierda queda ATRÁS del giro y la cola
-    # arrastrada barre el disco; al frenar, la cola se pasa en el sentido del giro (over_t) y rebota (wob_t).
-    # Girando a la derecha la cola enroscada iba adelante y el latigazo salía al revés, después del frenazo
-    whip_end = merge(body(tz=0.32, turn=360), chain((-6, -4), (-4, -6, -8, -10, -10)), both("fluke_{}1", out=14, fold=0.2),
-                     both("pec_{}1", up=8, out=12, fwd=-20))
-    # el pasarse y el rebote son chicos (~45° y ~20° del abanico): más grandes eran un segundo latigazo
-    over_t = merge(body(tz=0.25, turn=376), chain((-7, -4), (-6, -8, -9, -10, -8)), both("pec_{}1", up=4, fwd=-10))
-    wob_t = merge(body(tz=0.14, turn=357), chain((3, 1), (3, 4, 4, 4, 3)))
-    end_t = merge(H, body(turn=360))
-    C.append(Clip("TailWhip", 42, [(0, H, "lin"), (12, coil_t, "ease"), (20, coil_t2, "hold"), (29, whip_end, "hold"),
-                                   (32, over_t, "out"), (37, wob_t, "ease"), (42, end_t, "settle")],
-                  lag={"spine_b1": 1, "spine_b2": 1, "spine_b3": 2, "spine_b4": 2, "tail": 2},
+    coil_t2 = merge(coil_t, body(tz=0.47, turn=102, pitch=4), chain((26, 31), (-10.5, -17, -21, -23, -19)), {"jaw": {"open": 8}})
+    # la suelta (3 cuadros, 'strike') y el giro ('carry', 9 cuadros) empalman sin cambio de velocidad:
+    # 1.6 * 110 / 3 = 1.5 * 352 / 9 = 58.7°/cuadro, el pico del giro, en el contacto
+    whip = merge(body(tz=0.1, turn=-8, pitch=3), chain((-6, -4), (3, 5, 6, 6, 5)), chain((0, 0), (-2, -3, -4, -5, -4), ch="lift"),
+                 both("fluke_{}1", out=14, up=-6, fold=0.15), both("pec_{}1", up=8, out=12, fwd=-20))
+    spun = merge(body(tz=0.16, turn=-360), chain((-3, -2)), both("fluke_{}1", out=12, fold=0.1), both("pec_{}1", up=4, out=8, fwd=-10))
+    settle_t = merge(H, body(tz=0.06, turn=-360.5), both("pec_{}1", up=2, out=6))
+    end_t = merge(H, body(turn=-360))
+    C.append(Clip("TailWhip", 42, [(0, H, "lin"), (12, coil_t, "ease"), (20, coil_t2, "hold"), (23, whip, "strike"),
+                                   (32, spun, "carry"), (37, settle_t, "ease"), (42, end_t, "settle")],
+                  lag={"spine_b3": 1, "spine_b4": 1, "tail": 1},
                   wave=dict(amp=0.3, cycles=1, env=[(0, 1), (8, 0), (36, 0), (42, 0.8)]),
                   noise=[(["fluke_L1", "fluke_R1"], "up", 3, 2.2, [(12, 0), (13, 1), (20, 1), (21, 0)]),
                          (SPINE, "bend", 0.9, 0.7, [(12, 0), (13, 1), (20, 1), (21, 0)])],
-                  extra=tailwhip_extra,
-                  timing=dict(tell=4, hold=(12, 20), apex=19, contact=23, activeEnd=30, strikeBone="fluke_L2", kind="parry")))
+                  timing=dict(tell=4, hold=(12, 20), apex=19, contact=23, activeEnd=30, strikeBone="fluke_L2", kind="parry",
+                              reach=(4.6, 180, 40))))
 
     # 7. Spit: se para, infla las branquias, aspira (se hincha), cabezazo y sale la perla; retroceso.
     rear = merge(H, body(pitch=30, tz=0.3, ty=0.15), chain((0, -6), (8, 9, 9, 8, 6), ch="lift"), both("gill_{}", out=25),
@@ -362,17 +372,6 @@ def clips():
 
 
 # ------------------------------------------------------------------ extras por clip
-def tailwhip_extra(f, t, vals):
-    # durante el giro la cola se arrastra hacia afuera de la curva (lo contrario a la velocidad de giro)
-    if 20 <= f <= 32:
-        u = (f - 20) / 12.0
-        trail = math.sin(math.pi * u) * 16.0
-        for i, b in enumerate(BACK):
-            add(vals, b, "bend", trail * (0.6 + 0.15 * i))
-        for s in ("L", "R"):
-            add(vals, f"fluke_{s}1", "out", trail * 0.5)
-
-
 def breachland_extra(f, t, vals):
     # tres coletazos de pez fuera del agua (0.3 s cada uno, 30° -> 22° -> 15°): de costado, la 'flexión
     # lateral' se ve como un golpe contra la cubierta. Branquias y boca jadean.

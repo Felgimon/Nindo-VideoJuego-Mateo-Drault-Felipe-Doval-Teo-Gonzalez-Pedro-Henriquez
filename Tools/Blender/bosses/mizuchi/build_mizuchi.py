@@ -289,18 +289,31 @@ def clip_sheets(arm, p1, p2, results, phase=1):
     p1.hide_render = phase != 1
     p2.hide_render = phase != 2
     yaw = 150.0
-    fwd = (math.sin(math.radians(yaw)), -math.cos(math.radians(yaw)))
-    RV.place_kaito((fwd[0] * 6.0, fwd[1] * 6.0), yaw + 180)
     gcam = RV.game_cam((0.0, 0.6, 1.0), pitch=47, dist=17.5, name="g_clip")
     scam = RV.camera("s_clip", (18, 0.6, 1.9), (0, 0.6, 1.9), ortho=10.5)
+
+    def kaito_at(rot, bearing, dist):
+        """Kaito a 'dist' m del root, en el rumbo 'bearing' del koi (0 = adelante, 90 = su izquierda), mirándolo."""
+        a = math.radians(rot + bearing)
+        RV.place_kaito((math.sin(a) * dist, -math.cos(a) * dist), rot + bearing + 180)
+
     for clip, base, act in results:
         if ONLY and clip.name not in ONLY:
             continue
         arm.animation_data.action = act
         frames = pick_frames(clip)
         cells, strip = [], []
+        # los golpes con alcance ponen a Kaito donde apuntan, al 85 % del alcance: en el cuadro rojo el arma
+        # tiene que estar tocándolo (el coletazo, atrás). Los demás, 6 m adelante como escala; en el perfil de
+        # esos queda donde lo dejó la vista del juego, a la derecha del cuadro
+        rch = clip.timing.get("reach")
         for view in ("game", "side"):
-            arm.rotation_euler = (0, 0, math.radians(yaw) if view == "game" else 0)
+            rot = yaw if view == "game" else 0.0
+            arm.rotation_euler = (0, 0, math.radians(rot))
+            if rch:
+                kaito_at(rot, rch[1], 0.85 * rch[0])
+            elif view == "game":
+                kaito_at(rot, 0.0, 6.0)
             RV.show_stage(True)
             for f in frames:
                 bpy.context.scene.frame_set(f)

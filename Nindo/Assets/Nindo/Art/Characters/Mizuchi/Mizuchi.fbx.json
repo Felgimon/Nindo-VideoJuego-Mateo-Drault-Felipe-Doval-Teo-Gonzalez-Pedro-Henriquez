@@ -156,16 +156,16 @@
      9,
      42
     ],
-    "holdDrift": 2.2,
+    "holdDrift": 1.15,
     "holdSpeed": [
-     31.7,
+     13.9,
      "head"
     ],
     "bodyTravel": 0.6,
     "minZ": [
-     0.258,
+     0.272,
      "barbel_R2",
-     19
+     20
     ],
     "maxDegPerFrame": [
      54.4,
@@ -178,9 +178,14 @@
     ],
     "strikePeak": [
      19,
-     33.6
+     34.0
     ],
-    "recovery": 0.19
+    "recovery": 0.13,
+    "reach": [
+     3.63,
+     357,
+     0.96
+    ]
    }
   },
   {
@@ -227,9 +232,9 @@
      15,
      44
     ],
-    "holdDrift": 2.22,
+    "holdDrift": 2.17,
     "holdSpeed": [
-     35.2,
+     35.0,
      "pec_L1"
     ],
     "bodyTravel": 0.31,
@@ -239,7 +244,7 @@
      23
     ],
     "maxDegPerFrame": [
-     83.1,
+     83.2,
      "pec_L3",
      15
     ],
@@ -249,9 +254,14 @@
     ],
     "strikePeak": [
      15,
-     64.0
+     64.1
     ],
-    "recovery": 0.41
+    "recovery": 0.41,
+    "reach": [
+     3.45,
+     353,
+     0.9
+    ]
    }
   },
   {
@@ -296,12 +306,12 @@
     ],
     "bodyTravel": 0.31,
     "minZ": [
-     0.088,
+     0.077,
      "pec_R3",
      19
     ],
     "maxDegPerFrame": [
-     83.0,
+     83.1,
      "pec_R3",
      10
     ],
@@ -311,9 +321,14 @@
     ],
     "strikePeak": [
      10,
-     68.7
+     68.8
     ],
-    "recovery": 0.33
+    "recovery": 0.33,
+    "reach": [
+     3.55,
+     18,
+     0.92
+    ]
    }
   },
   {
@@ -344,7 +359,7 @@
    ],
    "bodyAtContact": [
     -0.0,
-    0.47,
+    0.1,
     0.0
    ],
    "bodyAtEnd": [
@@ -360,31 +375,36 @@
      7,
      45
     ],
-    "holdDrift": 3.75,
+    "holdDrift": 3.54,
     "holdSpeed": [
-     26.0,
+     30.4,
      "head"
     ],
-    "bodyTravel": 0.52,
+    "bodyTravel": 0.47,
     "minZ": [
-     0.417,
-     "pel_L",
-     0
+     0.202,
+     "fluke_R2",
+     23
     ],
     "maxDegPerFrame": [
-     90.5,
+     108.2,
      "fluke_L2",
-     26
+     24
     ],
     "flips": [
-     3,
-     22
+     0,
+     42
     ],
     "strikePeak": [
-     27,
-     100.7
+     24,
+     155.1
     ],
-    "recovery": 0.12
+    "recovery": 0.21,
+    "reach": [
+     4.91,
+     178,
+     1.55
+    ]
    }
   },
   {
@@ -439,12 +459,12 @@
     ],
     "bodyTravel": 0.36,
     "minZ": [
-     0.051,
+     0.067,
      "fluke_L2",
-     26
+     27
     ],
     "maxDegPerFrame": [
-     35.5,
+     35.2,
      "barbel_R1",
      20
     ],
@@ -454,9 +474,9 @@
     ],
     "strikePeak": [
      20,
-     32.1
+     31.9
     ],
-    "recovery": 0.2
+    "recovery": 0.17
    }
   },
   {
@@ -502,12 +522,12 @@
     ],
     "bodyTravel": 0.4,
     "minZ": [
-     0.411,
+     0.414,
      "pel_L",
-     12
+     4
     ],
     "maxDegPerFrame": [
-     27.5,
+     27.1,
      "whisker_L2",
      5
     ],
@@ -517,9 +537,9 @@
     ],
     "strikePeak": [
      5,
-     25.4
+     25.2
     ],
-    "recovery": 0.4
+    "recovery": 0.3
    }
   },
   {
@@ -566,14 +586,14 @@
     ],
     "bodyTravel": 1.4,
     "minZ": [
-     0.102,
+     0.096,
      "fluke_R2",
-     15
+     14
     ],
     "maxDegPerFrame": [
      27.5,
      "jaw",
-     34
+     35
     ],
     "flips": [
      0,
@@ -612,14 +632,14 @@
    "lint": {
     "bodyTravel": 1.6,
     "minZ": [
-     -2.791,
+     -2.784,
      "barbel_R1",
      24
     ],
     "maxDegPerFrame": [
-     36.6,
+     40.2,
      "fluke_L2",
-     12
+     13
     ],
     "flips": [
      0,
@@ -657,14 +677,14 @@
    "lint": {
     "bodyTravel": 0.0,
     "minZ": [
-     -2.952,
+     -2.951,
      "fluke_R2",
      7
     ],
     "maxDegPerFrame": [
-     24.0,
+     23.7,
      "fluke_L2",
-     14
+     33
     ],
     "flips": [
      0,
@@ -757,25 +777,20 @@
     0.1
    ],
    "lint": {
-    "holdDrift": 2.0,
+    "holdDrift": 2.04,
     "holdSpeed": [
-     30.0,
-     "body"
+     30.8,
+     "head"
     ],
     "bodyTravel": 1.02,
     "minZ": [
-     -1.144,
-     "fluke_R2",
-     17
+     -1.293,
+     "fluke_L2",
+     19
     ],
     "maxDegPerFrame": [
-     56.6,
+     47.5,
      "tail",
-     16
-    ],
-    "pop": [
-     18.8,
-     "anal",
      16
     ],
     "flips": [
@@ -784,7 +799,7 @@
     ],
     "strikePeak": [
      16,
-     65.1
+     53.5
     ]
    }
   },
@@ -819,14 +834,14 @@
    "lint": {
     "bodyTravel": 0.36,
     "minZ": [
-     0.111,
+     0.136,
      "fluke_R2",
      14
     ],
     "maxDegPerFrame": [
-     24.1,
-     "barbel_L2",
-     11
+     21.7,
+     "barbel_R2",
+     13
     ],
     "flips": [
      0,
@@ -867,7 +882,7 @@
      0
     ],
     "maxDegPerFrame": [
-     27.5,
+     27.0,
      "fluke_R2",
      2
     ],
@@ -903,12 +918,12 @@
    "lint": {
     "bodyTravel": 0.12,
     "minZ": [
-     0.311,
+     0.309,
      "pel_R",
-     2
+     3
     ],
     "maxDegPerFrame": [
-     36.6,
+     36.5,
      "pec_L3",
      1
     ],
@@ -949,9 +964,9 @@
      4
     ],
     "maxDegPerFrame": [
-     29.0,
-     "barbel_L2",
-     1
+     29.2,
+     "barbel_R2",
+     2
     ],
     "flips": [
      0,
@@ -986,12 +1001,12 @@
    "lint": {
     "bodyTravel": 0.05,
     "minZ": [
-     0.289,
+     0.288,
      "pel_R",
      26
     ],
     "maxDegPerFrame": [
-     23.3,
+     24.2,
      "barbel_R2",
      2
     ],
@@ -1084,9 +1099,9 @@
      0
     ],
     "maxDegPerFrame": [
-     75.4,
+     73.4,
      "seal",
-     21
+     30
     ],
     "flips": [
      0,
