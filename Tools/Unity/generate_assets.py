@@ -624,6 +624,8 @@ def props_manifest():
             e = {"id": pid, "collider": m.get("collider"), "tags": m.get("tags", []), "size": m.get("size")}
             if "light_offset" in m:
                 e["light_offset"] = m["light_offset"]
+            if "falls" in m:
+                e["falls"] = m["falls"]     # cascada (Tools/Blender/world/falls_layout.py): la arma FX/KohanFalls.cs
             out["props"].append(e)
     os.makedirs(P_DATA, exist_ok=True)
     p = os.path.join(P_DATA, "PropsManifest.json")
@@ -657,7 +659,9 @@ def audio_entries():
     for k, v in gen.items():
         sfx.setdefault(k, [])
         sfx[k] = sorted(set(sfx[k] + v)) if k not in ("step",) else sorted(v)
-    vols = {"swing": 0.8, "hurt": 0.9, "ui_select": 0.6, "hit": 0.9, "clang": 0.85}
+    vols = {"swing": 0.8, "hurt": 0.9, "ui_select": 0.6, "hit": 0.9, "clang": 0.85,
+            # cascada Kohan: loops 3D largos, por debajo de los avisos de combate
+            "falls_roar": 0.8, "falls_spray": 0.5, "falls_gust": 0.7, "water_splash": 0.9}
     entries = []
     for k in sorted(sfx):
         clips = [g(p) for p in sfx[k] if g(p)]

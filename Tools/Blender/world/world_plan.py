@@ -11,6 +11,7 @@ Recorrido (según el documento de diseño):
   Bosque de Bambú (noreste, Ōzeki) -> portales de vuelta -> Dojo: Kage -> abuelo.
 """
 import math
+import falls_layout as FALLS
 
 # --------------------------------------------------------------------------- niveles
 WATER_LAKE = -0.55
@@ -179,7 +180,8 @@ LANDMARKS = [
     ("boat_small", 128, -6, 70, 1.0), ("boat_small", 144, 0, 120, 1.0), ("boat_small", 170, 30, 30, 1.0),
     ("barrel", 108, 14, 0, 1.0), ("crate_stack", 102, 16, 30, 1.0),
     ("lake_arena_platform", 184, 72, 225, 1.0),
-    ("shrine_small", 189.1, 77.1, 225, 0.75),        # al fondo de la plataforma de la arena
+    # (el santuario chico que estaba al fondo de la plataforma pasó al saliente de la cascada: deja libre
+    # el piso para el cuerpo de 7.5 m de Mizuchi; ver FALLS.landmarks() al final de la lista)
     ("lantern_post", 110, 20, 180, 1.0), ("lantern_post", 98, -2, 180, 1.0),
     ("reeds_patch", 104.5, -18, 0, 1.2), ("reeds_patch", 119, 30, 40, 1.0),   # en la línea del agua (más atrás quedaban en el barranco)
     # ---------------- Bambú
@@ -190,6 +192,9 @@ LANDMARKS = [
     ("temple_bell", 134, 172, 200, 0.9),
     ("lantern_post", 118, 168, 180, 1.0), ("lantern_post", 134, 154, 180, 1.0),
 ]
+# Cascada Kohan (jefe del lago): acantilado de basalto en herradura al norte de la arena, pinos del borde y
+# el santuario del saliente. El trazado entero vive en falls_layout.py.
+LANDMARKS += FALLS.landmarks()
 
 # muralla: segmentos a lo largo de z=-30 (el portón está en x=0)
 WALL_Z = -30.0
@@ -248,7 +253,7 @@ ENCOUNTERS = [
 # jefes: (arquetipo, x_arena, z_arena, radio, x_jefe, z_jefe, yaw_jefe)
 BOSSES = [
     ("goro", -200, 122, 15, -204, 128, 150),
-    ("mizuchi", 184, 72, 9.5, 186, 74, 225),
+    ("mizuchi", 184, 72, 9.5, 184, 76, 200),      # de cara a la entrada, con la cascada detrás
     ("ozeki", 124, 162, 15, 126, 166, 215),
     ("kage", 0, 132, 18, 0, 140, 180),
 ]

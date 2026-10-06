@@ -484,6 +484,91 @@ PEAK = {"ui_move": -10, "ui_open": -7, "ui_close": -7, "dialogue": -12, "denied"
         "parry_whiff": -6}
 
 
+# ============================================================================ CASCADA KOHAN
+# Loops 3D de la cascada (los toca FX/KohanFalls.cs con su propia fuente, con caída por distancia) y efectos
+# de agua. Los loops salen en estéreo decorrelacionado solo para que write_wav no les haga el fundido final
+# (Unity los importa en mono: Sfx = forceToMono); loop_crossfade los deja sin costura.
+FALLS_X = 1.5
+
+
+def _norm01(x):
+    return (x - x.min()) / (np.ptp(x) + 1e-9)
+
+
+def _falls_layer(dur, seed):
+    """Una capa de rugido: retumbo grave que late con las masas de agua, lavado medio que golpetea y
+    chisporroteo de gotas finas."""
+    r = rng(seed)
+    n = secs(dur)
+    rum = filt(np.cumsum(r.standard_normal(n)) * 0.02, 30, 120)
+    rum *= 0.55 + 0.45 * _norm01(filt(r.standard_normal(n), None, 0.6, 1))
+    wash = filt(r.standard_normal(n), 250, 1800)
+    wash *= 0.65 + 0.35 * _norm01(filt(r.standard_normal(n), None, 9, 1))
+    fizz = filt(r.standard_normal(n), 3000, 9000)
+    fizz *= 0.6 + 0.4 * _norm01(filt(r.standard_normal(n), None, 25, 1))
+    rum /= np.std(rum) + 1e-9
+    wash /= np.std(wash) + 1e-9
+    fizz /= np.std(fizz) + 1e-9
+    return rum * 1.0 + wash * 0.42 + fizz * 0.11
+
+
+def _falls_thumps(dur, seed):
+    """Golpes graves sueltos: el agua que cae a montones sobre el pozo."""
+    def one(s):
+        rr = rng(s)
+        return thump(rr.uniform(70, 95), rr.uniform(35, 50), 0.6, rr.uniform(0.12, 0.2), seed=s) * rr.uniform(0.4, 1.0)
+    return events(dur, seed, 0.9, one, 0.6, 0.2)
+
+
+@sfx("falls_roar")
+def _falls_roar(i):
+    d = 10.0 + FALLS_X
+    L = _falls_layer(d, 700)
+    R = _falls_layer(d, 701)
+    th = _falls_thumps(d, 702) * 0.8
+    x = np.stack([L, R], 1) + th[:len(L)]
+    return loop_crossfade(x, 10.0, FALLS_X)
+
+
+@sfx("falls_spray")
+def _falls_spray(i):
+    """Siseo del rocío y la llovizna cerca del pozo (se oye a menos de ~25 m)."""
+    d = 8.0 + FALLS_X
+    chans = []
+    for c in range(2):
+        r = rng(710 + c)
+        n = secs(d)
+        hiss = filt(r.standard_normal(n), 1500, 10000)
+        hiss *= 0.6 + 0.4 * _norm01(filt(r.standard_normal(n), None, 3, 1))
+        pat = (r.random(n) < 0.004) * r.standard_normal(n)                # gotas sueltas que golpetean
+        pat = band(pat, 4200, 1.5)
+        x = hiss / (np.std(hiss) + 1e-9) + pat / (np.std(pat) + 1e-9) * 0.35
+        chans.append(np.tanh(x * 0.45))                                     # sin picos: el siseo queda parejo
+    return loop_crossfade(np.stack(chans, 1), 8.0, FALLS_X)
+
+
+@sfx("falls_gust", 2)
+def _falls_gust(i):
+    """Ráfaga que sale del pozo: un 'fuuu' de viento con rocío que sube y baja."""
+    d = 2.0
+    w = whoosh(d, 220, 900, 0.45, 1.0, seed=720 + i, curve=lambda t: 220 + 680 * np.sin(np.pi * t))
+    spray = filt(noise(d, 722 + i), 2000, 7000) * env_points(d, [(0, 0), (0.8, 1), (1.4, 0.6), (d, 0)]) ** 1.5
+    return reverb(mix((w, 0, 1.0), (spray, 0, 0.35)), 0.3, 1.6, 0.5)
+
+
+@sfx("water_splash", 3)
+def _water_splash(i):
+    """Un cuerpo grande cae en la plataforma mojada: golpe grave, estallido de agua y gotas que vuelven a caer."""
+    sub = thump(95 - 8 * i, 38, 0.6, 0.14, seed=730 + i)
+    body = filt(noise(0.9, 733 + i), 150, 2600) * env_exp(0.9, 0.16)
+    crash = filt(noise(0.5, 736 + i), 1500, 8000) * env_exp(0.5, 0.06)
+    drops = bubbles(1.2, 739 + i, 60, 1.0)[:, 0] * env_points(1.2, [(0, 0), (0.15, 1), (1.2, 0)])
+    return reverb(mix((sub, 0, 1.0), (body, 0, 0.8), (crash, 0, 0.55), (drops, 0.12, 0.6)), 0.25, 1.4, 0.45)
+
+
+PEAK.update({"falls_roar": -4, "falls_spray": -6, "falls_gust": -5, "water_splash": -2})
+
+
 # ============================================================================ AMBIENTES
 AMB_LEN, AMB_X = 40.0, 3.0
 
