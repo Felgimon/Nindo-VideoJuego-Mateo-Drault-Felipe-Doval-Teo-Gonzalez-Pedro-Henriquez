@@ -141,10 +141,11 @@ namespace Nindo
         /// <summary>El silbido del arma se adelanta lo que tarda en llegar a su pico (medido en los .wav).</summary>
         public const float SwingLight = 0.13f, SwingHeavy = 0.24f;
 
-        public static readonly Color Gold = new Color(1f, 0.84f, 0.47f);          // #FFD678
-        // dorado claro y saturado, no blanco: en el tramo decisivo el anillo tiene que seguir siendo dorado sobre
-        // la nieve y el lago (el bloom ya lo hace brillar)
-        public static readonly Color GoldHot = new Color(1f, 0.9f, 0.55f);         // #FFE68C
+        // dorado profundo: el #FFD678 anterior salía crema después del tonemapping y en la nieve casi no se veía
+        // (prueba en Play, 2026-10-05); con más rojo y menos azul sigue siendo dorado sobre nieve, agua y madera
+        public static readonly Color Gold = new Color(1f, 0.72f, 0.24f);          // #FFB83D
+        // el tramo decisivo se aclara pero sin llegar al blanco (el bloom ya lo hace brillar)
+        public static readonly Color GoldHot = new Color(1f, 0.84f, 0.4f);         // #FFD666
         public static readonly Color Crimson = new Color(0.92f, 0.157f, 0.118f);   // #EB281E
         public static readonly Color Ink = new Color(0.07f, 0.04f, 0.047f);        // #120A0C
         public static readonly Color TrailParry = new Color(1f, 0.93f, 0.8f, 0.7f);

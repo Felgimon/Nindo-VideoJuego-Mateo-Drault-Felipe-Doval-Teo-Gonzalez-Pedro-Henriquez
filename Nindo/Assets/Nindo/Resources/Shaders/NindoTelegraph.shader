@@ -8,7 +8,9 @@
 //  _Mode 1  disco de la zona real que golpea (pisotón, giro), se llena desde el centro al ritmo del anillo.
 //  _Mode 2  carril (embestida, tajo a distancia), se llena desde el atacante.
 // _Outcome: 1 desviado (el anillo se parte en 8 y sale volando), 2 cortado (la tinta se deshace), 3 golpe (se apaga).
-// Una sola pasada, alfa premultiplicado: la tinta oscurece el suelo y el trazo lo cubre con color HDR (bloom). Sin texto ni kanji.
+// Alfa premultiplicado: la tinta oscurece el suelo y el trazo lo cubre con color HDR (bloom). Sin texto ni kanji.
+// Segunda pasada "rayos X" (ZTest Greater): donde un cuerpo o una roca tapa el anillo (enemigo pegado a Kaito,
+// atacante detrás de un poste) el trazo se sigue viendo al _XRay de intensidad, sin halo de tinta encima de los cuerpos.
 Shader "Nindo/Telegraph"
 {
     Properties
@@ -29,6 +31,7 @@ Shader "Nindo/Telegraph"
         _OutT ("Avance del final (0..1)", Range(0, 1)) = 0
         _Seed ("Semilla del pincel", Float) = 0
         _Ink ("Tinta", Color) = (0.07, 0.04, 0.047, 1)
+        _XRay ("Intensidad detrás de los cuerpos", Range(0, 1)) = 0.45
     }
 
     SubShader
@@ -36,23 +39,14 @@ Shader "Nindo/Telegraph"
         Tags { "RenderType" = "Transparent" "Queue" = "Transparent-10" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
         Blend One OneMinusSrcAlpha
         ZWrite Off
-        ZTest LEqual
-        Offset -2, -2
         Cull Off
 
-        Pass
-        {
-            Name "Telegraph"
-            Tags { "LightMode" = "UniversalForward" }
-            HLSLPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma multi_compile_instancing
+        HLSLINCLUDE
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _Color, _HotColor, _Ink;
-                float _Mode, _Progress, _Hot, _Flash, _Danger, _Alpha, _Radius, _Width, _Dot, _MinPx, _Outcome, _OutT, _Seed;
+                float _Mode, _Progress, _Hot, _Flash, _Danger, _Alpha, _Radius, _Width, _Dot, _MinPx, _Outcome, _OutT, _Seed, _XRay;
             CBUFFER_END
 
             struct A { float4 pos : POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
@@ -86,7 +80,7 @@ Shader "Nindo/Telegraph"
             }
 
             // px: tamaño de un píxel en unidades del quad (las derivadas se toman en frag, fuera de los if)
-            half4 Enso(float2 p, float d, float px)
+            half4 Enso(float2 p, float d, float px, float inkAmt)
             {
                 float s = frac(atan2(p.x, p.y) * 0.15915494 + 1.0);   // 0..1 a lo largo de la vuelta, horario desde arriba
                 float f = saturate(_Progress);
@@ -120,7 +114,7 @@ Shader "Nindo/Telegraph"
                 float dotA = band(length(p - hp), max(_Dot, 3 * px), px) * (1 - closed) * step(_Outcome, 0.5) * step(0.001, f);
 
                 float fade = _Alpha * OutcomeFade(p);
-                stroke *= fade; ink *= fade * 0.55; dotA *= fade;
+                stroke *= fade; ink *= fade * 0.55 * inkAmt; dotA *= fade;
                 half3 col = lerp(_Color.rgb, _HotColor.rgb, saturate(_Hot + shatter));
                 if (_Outcome > 1.5 && _Outcome < 2.5) col = lerp(col, _Ink.rgb, _OutT);
                 col *= 1.15 + 1.6 * _Flash;                                    // HDR: el bloom lo hace brillar
@@ -130,7 +124,7 @@ Shader "Nindo/Telegraph"
                 return half4(rgb, under + stroke * 0.8 + dotA * 0.2);
             }
 
-            half4 Disc(float2 p, float d, float px)
+            half4 Disc(float2 p, float d, float px, float inkAmt)
             {
                 float teeth = 1 - _Danger * 0.03 * step(0.5, frac(atan2(p.x, p.y) * 0.15915494 * 24));
                 float re = _Radius * teeth;
@@ -140,13 +134,13 @@ Shader "Nindo/Telegraph"
                 float edge = band(abs(d - re), 1.5 * px + 0.006, px);
                 float ink = band(abs(d - re), 4 * px + 0.012, px);
                 float fade = _Alpha * OutcomeFade(p);
-                fill *= fade; edge *= fade * (0.5 + 0.4 * f); ink *= fade * 0.5;
+                fill *= fade; edge *= fade * (0.5 + 0.4 * f); ink *= fade * 0.5 * inkAmt;
                 half3 col = _Color.rgb * 1.3;
                 float under = ink * (1 - edge);
                 return half4(_Ink.rgb * under + col * (edge + fill), under + edge * 0.4 + fill * 0.6);
             }
 
-            half4 Lane(float2 p, float pxx, float pxy)
+            half4 Lane(float2 p, float pxx, float pxy, float inkAmt)
             {
                 float ex = _Radius * (1 - _Danger * 0.05 * step(0.5, frac(p.y * 6)));   // borde lateral dentado
                 float ey = _Width;                                                       // fin del carril
@@ -157,21 +151,50 @@ Shader "Nindo/Telegraph"
                 float edge = max(band(abs(ax - ex), 1.5 * pxx, pxx) * inY, band(abs(p.y - ey), 1.5 * pxy, pxy) * inX);
                 float ink = max(band(abs(ax - ex), 4 * pxx, pxx) * inY, band(abs(p.y - ey), 4 * pxy, pxy) * inX);
                 float fade = _Alpha * OutcomeFade(p);
-                fill *= fade; edge *= fade * (0.5 + 0.4 * f); ink *= fade * 0.5;
+                fill *= fade; edge *= fade * (0.5 + 0.4 * f); ink *= fade * 0.5 * inkAmt;
                 half3 col = _Color.rgb * 1.3;
                 float under = ink * (1 - edge);
                 return half4(_Ink.rgb * under + col * (edge + fill), under + edge * 0.4 + fill * 0.6);
             }
 
-            half4 frag(V i) : SV_Target
+            half4 Shade(V i, float inkAmt)
             {
                 float d = length(i.p);
                 float px = max(fwidth(d), 1e-5);
                 float pxx = max(fwidth(i.p.x), 1e-5), pxy = max(fwidth(i.p.y), 1e-5);
-                if (_Mode < 0.5) return Enso(i.p, d, px);
-                if (_Mode < 1.5) return Disc(i.p, d, px);
-                return Lane(i.p, pxx, pxy);
+                half4 c;
+                if (_Mode < 0.5) c = Enso(i.p, d, px, inkAmt);
+                else if (_Mode < 1.5) c = Disc(i.p, d, px, inkAmt);
+                else c = Lane(i.p, pxx, pxy, inkAmt);
+                return c;
             }
+            half4 frag(V i) : SV_Target { return Shade(i, 1); }
+            half4 fragXRay(V i) : SV_Target { return Shade(i, 0) * _XRay; }
+        ENDHLSL
+
+        Pass
+        {
+            Name "Telegraph"
+            Tags { "LightMode" = "UniversalForward" }
+            ZTest LEqual
+            Offset -2, -2
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_instancing
+            ENDHLSL
+        }
+
+        // lo tapado: URP dibuja también las pasadas SRPDefaultUnlit del mismo material
+        Pass
+        {
+            Name "TelegraphXRay"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
+            ZTest Greater
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragXRay
+            #pragma multi_compile_instancing
             ENDHLSL
         }
     }
