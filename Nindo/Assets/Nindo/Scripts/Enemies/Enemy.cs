@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -226,6 +227,41 @@ namespace Nindo
             stateDuration = Mathf.Clamp(anim.Length(config.animSpotted, 0.6f), 0.4f, 0.9f);
             // alerta a los compañeros del mismo encuentro
             encounter?.OnMemberAlerted(this);
+        }
+
+        // práctica del parry del prólogo: la config original queda guardada mientras dura
+        EnemyConfig practiceBackup;
+        /// <summary>Vida mínima en la práctica del parry: por encima del umbral de ejecución (0.25).</summary>
+        const float PracticeMinHealth = 0.35f;
+        /// <summary>Tope de la postura: en la práctica se queda a medio pip de quebrarse (las marcas se siguen viendo).</summary>
+        float PostureCap => practiceBackup != null ? config.maxImbalance - 0.5f : config.maxImbalance;
+
+        /// <summary>
+        /// Práctica del parry del prólogo (StoryDirector): ataca de a un golpe liviano con el aviso largo, la postura
+        /// no se quiebra y no baja del 35 % de vida (cada parry igual lo deja abierto un rato corto). Con la config
+        /// normal los dos parries guiados ya le quebraban la postura y moría en la ventana de daño antes de que se
+        /// practicara a velocidad real. Con 'false' vuelve a la config original.
+        /// </summary>
+        public void SetParryPractice(bool on)
+        {
+            if (on == (practiceBackup != null)) return;
+            if (!on) { config = practiceBackup; practiceBackup = null; return; }
+            practiceBackup = config;
+            var c = config.Clone();
+            c.exhaustedTime = 1.2f;
+            var singles = new List<AttackPattern>();
+            var seen = new HashSet<AttackDef>();
+            if (c.patterns != null)
+                foreach (var p in c.patterns)
+                    if (p != null && p.steps != null)
+                        foreach (var s in p.steps)
+                            if (s != null && s.kind == AttackKind.Light && seen.Add(s))
+                            {
+                                s.windup = Mathf.Max(s.windup, 0.75f);
+                                singles.Add(new AttackPattern { name = s.name, steps = new[] { s }, maxRange = p.maxRange });
+                            }
+            if (singles.Count > 0) c.patterns = singles.ToArray();
+            config = c;
         }
 
         public bool CanBeFinished(float healthThreshold)
@@ -513,7 +549,7 @@ namespace Nindo
             tellActive = StepHasTell(a);
             if (tellActive)
             {
-                // que no peguen dos enemigos casi juntos: si hace falta, este espera más en el apex
+                // que no peguen dos enemigos casi juntos: si hace falta, este demora su golpe
                 float travel = a.special == "charge" ? ChargeRoom() / ChargeSpeed(a) : 0f;
                 float delay = Game.Combat != null ? Game.Combat.ReserveStrike(this, Time.time + tl.T + travel) : 0f;
                 if (delay > CombatDirector.MaxStrikeDelay && step == 0)
@@ -527,7 +563,10 @@ namespace Nindo
                     nextAttackTime = Time.time + 0.3f;
                     return;
                 }
-                tl.AddHold(Mathf.Min(delay, CombatDirector.MaxStrikeDelay));
+                // la espera se arma de nuevo como windup (no como pausa extra en el apex): Build deja la pose quieta
+                // en MaxHold y reparte el resto en una anticipación más lenta. Sumada al apex llegaba a ~1 s congelado
+                float dly = Mathf.Min(delay, CombatDirector.MaxStrikeDelay);
+                if (dly > 0f) tl = StepTimeline.Build(a, clipLen, tl.T + dly, 0f);
                 tellStart = Mathf.Max(0f, tl.T + travel - TellStyle.MaxLead(a.kind));
                 TellId++;
                 Game.FX?.BeginTell(this);
@@ -536,6 +575,9 @@ namespace Nindo
             // suelta para no superar ~12 m/s (si no, el ninja se teletransporta en la estocada)
             lungeEndT = tl.T + 0.05f * tl.stepLen;
             lungeStartT = Mathf.Max(0f, lungeEndT - Mathf.Max(lungeEndT - tl.ReleaseTime, a.lunge / 12f));
+            // ETA real desde este mismo frame: con el infinito del reset, un aviso que arranca ya (tellStart 0) se
+            // dibujaba un frame cerrado del todo, con el destello de "¡ahora!"
+            strikeEta = ComputeStrikeEta(a);
             anim.Play(a.state, 0.08f);
             anim.SetSpeed(0f);   // este frame el clip no avanza: el reloj del paso arranca en el próximo
             OnStepStarted(a);
@@ -595,8 +637,9 @@ namespace Nindo
 
             TickSpecial(a, dt);
             if (State != EnemyState.Attack) return;   // lo desviaron (Recoil) o cambió de fase
-            // el golpe ya salió (pegó o no): el aviso termina
-            if (tellActive && float.IsInfinity(ComputeStrikeEta(a))) EndTell(TellOutcome.Struck);
+            // el golpe ya salió (pegó o no): el aviso termina. Una embestida que no lo tocó (Kaito salió del carril
+            // o ya pasó de largo) se deshace como cortada: se corrió a tiempo
+            if (tellActive && float.IsInfinity(ComputeStrikeEta(a))) EndTell(a.special == "charge" && !stepHit ? TellOutcome.Cancelled : TellOutcome.Struck);
 
             if (stepNorm > a.activeEnd + 0.05f) trail?.Stop();
             if (stepNorm >= 1f) NextStep();
@@ -634,7 +677,8 @@ namespace Nindo
                 if (StepKind == AttackKind.Unblockable) OnUnblockableTelegraph(a);
             }
             float eta = strikeEta;
-            if (!ticked && eta <= TellStyle.TickLead(StepKind))
+            // los sonidos se adelantan la latencia de salida del audio: cuentan desde que se OYEN
+            if (!ticked && AudioManager.CueDue(eta, TellStyle.TickLead(StepKind)))
             {
                 ticked = true;
                 // cerca o fijado: en 2D, siempre igual de claro; lejos, posicional para saber de dónde viene
@@ -643,7 +687,7 @@ namespace Nindo
                 GameEvents.RaiseStrikeCue(this, StepKind == AttackKind.Unblockable);
             }
             // el silbido del arma arranca antes para que su pico caiga justo en el golpe
-            if (!swung && eta <= (a.kind == AttackKind.Light ? TellStyle.SwingLight : TellStyle.SwingHeavy))
+            if (!swung && AudioManager.CueDue(eta, a.kind == AttackKind.Light ? TellStyle.SwingLight : TellStyle.SwingHeavy))
             {
                 swung = true;
                 Game.Audio?.Play(a.sfx, transform.position, 0.65f, 0.1f);
@@ -727,8 +771,12 @@ namespace Nindo
             if (target == null || stepNorm > a.activeEnd) return float.PositiveInfinity;
             float pre = Mathf.Max(0f, tl.T - stepClock);
             if (!released) return pre + ChargeRoom() / ChargeSpeed(a);
-            float along = Vector3.Dot((target.transform.position - transform.position).Flat(), laneDir) - ChargeContact;
-            return along < -0.5f ? float.PositiveInfinity : pre + Mathf.Max(0f, along) / ChargeSpeed(a);
+            Vector3 to = (target.transform.position - transform.position).Flat();
+            float along = Vector3.Dot(to, laneDir) - ChargeContact;
+            // ya pasó de largo, o Kaito salió del carril de costado (la respuesta correcta): no lo va a alcanzar y
+            // el anillo no puede seguir pidiendo un dash que gasta Espíritu
+            float lateral = Mathf.Abs(Vector3.Dot(to, Vector3.Cross(Vector3.up, laneDir)));
+            return along < -0.5f || lateral > ChargeContact ? float.PositiveInfinity : pre + Mathf.Max(0f, along) / ChargeSpeed(a);
         }
 
         /// <summary>Movimientos especiales: pisotón y embestida (cualquier enemigo); los jefes agregan los suyos.
@@ -880,7 +928,7 @@ namespace Nindo
         public void AddImbalance(float amount)
         {
             if (!IsAlive || amount <= 0f || State == EnemyState.Exhausted) return;
-            Imbalance = Mathf.Min(config.maxImbalance, Imbalance + amount);
+            Imbalance = Mathf.Min(PostureCap, Imbalance + amount);
             Game.UI?.PulseImbalance(this);
             if (Imbalance >= config.maxImbalance - 0.01f) BreakPosture();
         }
@@ -954,6 +1002,7 @@ namespace Nindo
                 stateDuration = Mathf.Max(stateDuration, stateTime + 0.6f);
             }
             Health -= dmg;
+            if (practiceBackup != null) Health = Mathf.Max(Health, config.maxHealth * PracticeMinHealth);
             flash?.Flash();
             if (Health <= 0f)
             {
@@ -1015,7 +1064,7 @@ namespace Nindo
         public virtual void OnParried(bool perfect)
         {
             if (!IsAlive) return;
-            Imbalance = Mathf.Min(config.maxImbalance, Imbalance + (perfect ? 1.5f : 1f));
+            Imbalance = Mathf.Min(PostureCap, Imbalance + (perfect ? 1.5f : 1f));
             trail?.Stop();
             Game.UI?.PulseImbalance(this);
             EndTell(TellOutcome.Parried);   // el anillo se rompe en pedazos (antes de que el Recoil lo cancele)

@@ -17,6 +17,7 @@ namespace Nindo
         bool swingSoundPlayed;
         bool swingConnected;          // el primer impacto de cada corte lleva hit-stop global
         Vector3 lungeVelocity, carry; // avance del corte e inercia de la carrera (se suman)
+        float cutStartedAt = -1f;     // tiempo real en que la hoja empezó a cortar (-1 = todavía no)
 
         void StartAttack(int index)
         {
@@ -31,6 +32,7 @@ namespace Nindo
             hitThisSwing.Clear();
             swingSoundPlayed = false;
             swingConnected = false;
+            cutStartedAt = -1f;
             SetState(PlayerState.Attack);
 
             attackTarget = AttackTarget(config.attackMagnetRange);
@@ -91,8 +93,12 @@ namespace Nindo
                 float cutEnd = Mathf.Min(a.cancelWindow, a.activeEnd);
                 bool cutting = attackNorm >= a.activeStart && attackNorm <= cutEnd;
                 bool lateCancel = attackNorm > cutEnd;
-                if (!cutting && input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
-                if (!cutting && input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return; }
+                // el buffer se estira lo que duró el corte: con el hit-stop del impacto el tramo activo dura 0.2-0.35 s
+                // reales y lo apretado al principio del corte vencía antes de que terminara
+                if (cutting && cutStartedAt < 0f) cutStartedAt = Time.unscaledTime;
+                float defenseWindow = config.defenseBuffer + (cutStartedAt >= 0f ? Time.unscaledTime - cutStartedAt : 0f);
+                if (!cutting && input.Buffered(Act.Parry, defenseWindow)) { input.Consume(Act.Parry); StartParry(); return; }
+                if (!cutting && input.Buffered(Act.Dash, defenseWindow)) { input.Consume(Act.Dash); if (TryDash()) return; }
                 if (lateCancel && input.Buffered(Act.Finisher, 0.12f) && TryFinisher()) { input.Consume(Act.Finisher); return; }
                 // combo
                 if (attackNorm >= a.comboWindow && comboIndex < config.combo.Length - 1 && input.Buffered(Act.Attack, 0.3f))
@@ -346,7 +352,8 @@ namespace Nindo
             Vector3 p = AimPoint + transform.forward * 0.55f;
             Game.FX?.ParryFlash(p, transform.forward, perfect);
             Game.Audio?.Play(perfect ? "parry_perfect" : "parry", p, 1f, 0.06f);
-            Game.Camera?.Punch(perfect ? -6f : -3.5f, perfect ? 0.35f : 0.22f);
+            // golpe de FOV chico: los anillos en pantalla no pueden saltar de tamaño justo cuando arranca el siguiente
+            Game.Camera?.Punch(perfect ? -3f : -1.5f, perfect ? 0.35f : 0.22f);
             Game.Camera?.Shake(perfect ? 0.45f : 0.3f);
             if (perfect)
             {
@@ -457,23 +464,30 @@ namespace Nindo
             }
         }
 
+        float lastShadowAt = -99f;
+        const float ShadowCooldown = 6f;
+
         void OnDodged(in DamageInfo info)
         {
             Game.FX?.DodgeSpark(AimPoint);
             // el dash cansado salva pero no premia (sin Instante Sombra, sin devolver Espíritu ni sumar furia)
             if (perfectDodgeDone || dashTired) return;
-            if (stateTime <= config.perfectDodgeWindow + config.dashIFrameStart || info.kind == AttackKind.Unblockable)
-            {
-                perfectDodgeDone = true;
-                // "Instante Sombra": el mundo se ralentiza, recuperás espíritu
-                Game.Time?.SlowMotion(0.25f, 1.0f, 0.03f, 0.4f);
-                Game.FX?.Screen?.ShadowInstant();
-                Game.Audio?.Play("perfect_dodge", transform.position, 0.9f);
-                Game.UI?.ShowToast("Instante sombra", new Color(0.6f, 0.85f, 1f));
-                AddSpirit(config.dashCost);
-                AddRage(10f);
-                Game.Input?.Rumble(0.2f, 0.5f, 0.15f);
-            }
+            bool perfect = stateTime <= config.perfectDodgeWindow + config.dashIFrameStart;
+            if (!perfect && info.kind != AttackKind.Unblockable) return;
+            // esquivar a tiempo (o un imparable) devuelve el Espíritu y suma furia
+            perfectDodgeDone = true;
+            Game.Audio?.Play("perfect_dodge", transform.position, 0.9f);
+            AddSpirit(config.dashCost);
+            AddRage(10f);
+            Game.Input?.Rumble(0.2f, 0.5f, 0.15f);
+            // "Instante Sombra" (el mundo se frena): solo la esquiva perfecta, corta y no más de una cada 6 s. Antes
+            // cada imparable esquivado daba 1 s de cámara lenta gris: en un jefe era un 10-18 % de la pelea y el
+            // anillo siguiente corría a otro ritmo del que se aprendió
+            if (!perfect || Time.unscaledTime - lastShadowAt < ShadowCooldown) return;
+            lastShadowAt = Time.unscaledTime;
+            Game.Time?.SlowMotion(0.35f, 0.4f, 0.02f, 0.15f);
+            Game.FX?.Screen?.ShadowInstant();
+            Game.UI?.ShowToast("Instante sombra", new Color(0.6f, 0.85f, 1f));
         }
 
         // =============================================================== FINISHER

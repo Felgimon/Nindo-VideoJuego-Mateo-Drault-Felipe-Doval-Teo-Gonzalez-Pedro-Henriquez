@@ -7,7 +7,7 @@ namespace Nindo
     /// Avisos de ataque en el suelo (ensō). El jugador tiene que saber CUÁNDO pega cada enemigo para hacer
     /// parry, y desde la cámara alta la anticipación de la animación no alcanza. Por cada golpe se dibuja
     /// (shader Nindo/Telegraph) una pincelada que rodea al atacante y se cierra justo cuando hay que apretar:
-    ///  * dorada: parry al cerrarse (el anillo se cierra 0.08 s antes del golpe, dentro de la ventana perfecta);
+    ///  * dorada: parry al cerrarse (el anillo se cierra 0.10 s antes del golpe, dentro de la ventana perfecta);
     ///  * roja y dentada, con la zona real que golpea: imparable, dash al cerrarse (centra los i-frames);
     ///  * a los pies de Kaito, para las olas que vienen hacia él.
     /// Lo maneja el enemigo (FXManager.BeginTell / EndTell): el progreso sale de su línea de tiempo, así que
@@ -21,7 +21,7 @@ namespace Nindo
             public Transform ring, area;
             public MeshRenderer ringR, areaR;
             public float yaw, radius, seed, progress, closedFor, outT;
-            public bool danger, visible, hasArea, areaLane;
+            public bool danger, visible, hasArea, areaLane, mirror;
             public TellOutcome? outcome;
             public Vector3 center, normal = Vector3.up;
             public TellArea areaShape;
@@ -120,13 +120,7 @@ namespace Nindo
                     else if (!e.InTell) continue;          // todavía en la anticipación temprana: no se dibuja
                     else
                     {
-                        if (!t.visible)
-                        {
-                            // el trazo arranca del lado de Kaito y gira en sentido horario
-                            var p = Game.Player;
-                            Vector3 to = p != null ? (p.transform.position - e.transform.position).Flat() : e.transform.forward;
-                            t.yaw = to.sqrMagnitude > 0.01f ? Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg : e.transform.eulerAngles.y;
-                        }
+                        if (!t.visible) AimStroke(t, e);
                         t.progress = e.TellProgress01;
                         t.hasArea = e.TryGetTellArea(out t.areaShape);
                         t.center = e.transform.position;
@@ -141,6 +135,24 @@ namespace Nindo
                 Show(t, true);
                 Draw(t);
             }
+        }
+
+        /// <summary>
+        /// Dónde arranca (y se cierra) el trazo: del costado en pantalla que da a Kaito (3 o 9 en punto), girando
+        /// primero por detrás del atacante y cerrándose por delante. Antes arrancaba justo hacia Kaito: con Kaito
+        /// arriba en pantalla el cierre quedaba tapado por el cuerpo del atacante, y con Kaito abajo y cerca, por su
+        /// propia cabeza (el "¡ahora!" no se veía en ~1 de cada 4 golpes).
+        /// </summary>
+        static void AimStroke(Tell t, Enemy e)
+        {
+            var p = Game.Player;
+            Vector3 to = p != null ? (p.transform.position - e.transform.position).Flat() : e.transform.forward;
+            Vector3 side = Game.Camera != null ? Game.Camera.transform.right.Flat().normalized : Vector3.right;
+            if (side.sqrMagnitude < 0.01f) side = Vector3.right;
+            // a la derecha gira antihorario (espejado) y a la izquierda horario: en los dos casos pasa primero por arriba
+            t.mirror = Vector3.Dot(to, side) >= 0f;
+            if (!t.mirror) side = -side;
+            t.yaw = Mathf.Atan2(side.x, side.z) * Mathf.Rad2Deg;
         }
 
         static float OutcomeTime(TellOutcome o) => o == TellOutcome.Parried ? 0.22f : o == TellOutcome.Cancelled ? 0.14f : 0.15f;
@@ -196,15 +208,15 @@ namespace Nindo
             // el quad deja lugar para el halo de tinta, el punto de la punta y los pedazos que salen volando
             float half = t.radius * 1.7f + 0.3f;
             t.ring.SetPositionAndRotation(pos + n * 0.06f, Quaternion.LookRotation(fwd, n));
-            t.ring.localScale = new Vector3(half * 2f, 1f, half * 2f);
+            t.ring.localScale = new Vector3(half * 2f * (t.mirror ? -1f : 1f), 1f, half * 2f);
 
-            // al cerrarse: destello corto (más ancho, blanco). Después queda tenue hasta el golpe y se apaga:
+            // al cerrarse: destello corto (más ancho y brillante). Después queda tenue hasta el golpe y se apaga:
             // el momento de apretar ya pasó y no tiene que tapar el aviso del siguiente
             bool closed = t.progress >= 1f;
             float flash = closed && t.outcome != TellOutcome.Parried && t.outcome != TellOutcome.Cancelled ? Mathf.Clamp01(1f - t.closedFor / FlashTime) : 0f;
             float alpha = closed && flash <= 0f && t.outcome != TellOutcome.Parried ? 0.45f : 1f;
             float width = strokeWidth * 0.5f * (t.danger ? 1.4f : 1f);
-            // dorado casi todo el trazo; en el último tramo (ya dentro de la ventana del parry) se pone blanco
+            // dorado casi todo el trazo; en el último tramo (ya dentro de la ventana del parry) se aclara (dorado claro, nunca blanco)
             float hot = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.8f, 1f, t.progress)) * (t.danger ? 0.5f : 1f);
 
             mpb.Clear();
@@ -273,7 +285,7 @@ namespace Nindo
                 t.area = NewQuad("EnsoArea", out t.areaR);
             }
             t.e = null; t.outcome = null; t.progress = 0f; t.closedFor = 0f; t.outT = 0f; t.hasArea = false;
-            t.danger = false; t.normal = Vector3.up; t.visible = true;
+            t.danger = false; t.mirror = false; t.normal = Vector3.up; t.visible = true;
             Show(t, false);
             active.Add(t);
             return t;

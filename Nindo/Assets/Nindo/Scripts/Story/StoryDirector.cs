@@ -170,7 +170,8 @@ namespace Nindo
             // FinishIntro no se llamaría nunca: el prólogo se repetiría en cada "Continuar".
             if (introEnc != null && !introEnc.Completed)
             {
-                foreach (var m in introEnc.Members) if (m != null) m.ExitScripted(true);
+                // el ninja de la práctica no muere ni se quiebra hasta que se practique a velocidad real
+                foreach (var m in introEnc.Members) if (m != null) { m.ExitScripted(true); m.SetParryPractice(true); }
                 introEnc.Activate();
                 parryTutorial = true;
                 parryGuided = parryRealtime = parryMisses = parryAttempts = 0;
@@ -230,6 +231,7 @@ namespace Nindo
         {
             parryTutorial = false;
             EndParryWatch();
+            Game.UI.HideTutorial();   // el texto de la práctica no puede quedar encima del diálogo
             P.RestoreAll();
             yield return Say("intro_after_fight");
             Game.Save.SetFlag(Flags.IntroDone);
@@ -245,9 +247,10 @@ namespace Nindo
         // ================================================================== tutoriales
         // Enseñan la pista que se ve a velocidad normal: el anillo (ensō) que se cierra alrededor del atacante.
         // Parry: primero guiado en cámara lenta (el anillo dorado se cierra despacio y se aprieta al cerrarse),
-        // después a velocidad real; si falla dos seguidas, una ayuda a 0.6x. Dash: con el sumo (un común),
-        // nunca congelando una pelea de jefe.
-        const int GuidedParries = 2, RealtimeParries = 2, MaxGuidedAttempts = 4;
+        // después a velocidad real; si falla dos seguidas, una ayuda a 0.6x. Mientras dura, el ninja está en modo
+        // práctica (Enemy.SetParryPractice); si falla muchas seguidas igual se termina, para no trabar el prólogo.
+        // Dash: con el sumo (un común), nunca congelando una pelea de jefe.
+        const int GuidedParries = 2, RealtimeParries = 2, MaxGuidedAttempts = 4, MaxPracticeMisses = 8;
         int tutorialSlow = -1;
         int parryGuided, parryRealtime, parryMisses, parryAttempts;
         Enemy parryWatch, dashWatch;
@@ -286,7 +289,13 @@ namespace Nindo
                 if (parryLanded) { if (guided) parryGuided++; else parryRealtime++; parryMisses = 0; }
                 else parryMisses++;
                 if (guided) parryAttempts++;
-                if (parryRealtime >= RealtimeParries) { FinishParryTutorial(); return; }
+                if (parryRealtime >= RealtimeParries || parryMisses >= MaxPracticeMisses) { FinishParryTutorial(); return; }
+                // el primer parry: qué se ganó (queda hasta el próximo golpe, mientras el ninja está abierto)
+                if (parryLanded && guided && parryGuided == 1)
+                {
+                    Game.UI.ShowTutorial("Cada parry DESEQUILIBRA al enemigo: cuando termina su ataque queda abierto. ¡Castigalo!");
+                    return;
+                }
                 ShowParryText(false);
                 return;
             }
@@ -342,7 +351,9 @@ namespace Nindo
         {
             parryTutorial = false;
             Game.Save.SetFlag("tip_parry_done");
-            Game.UI.ShowTutorial("Cada parry DESEQUILIBRA al enemigo. Cuando termine su combo, quedará vulnerable.");
+            var enc = Encounter.Get("intro");
+            if (enc != null) foreach (var m in enc.Members) if (m != null) m.SetParryPractice(false);
+            Game.UI.ShowTutorial("Parry cuando se cierra el anillo dorado y, cuando quede abierto, castigalo. ¡Terminá la pelea!");
             StartCoroutine(HideTutorialLater(4.5f));
         }
 
@@ -350,8 +361,9 @@ namespace Nindo
         {
             if (waitingDash)
             {
+                // la cámara lenta sigue hasta que sale el golpe (no se corta al apretar: el dash también se ve lento)
                 bool over = Game.InCutscene || dashWatch == null || !dashWatch.InTell || dashWatch.TellId != dashWatchTell;
-                if (!over && !(Game.Input != null && Game.Input.Pressed(Act.Dash))) return;
+                if (!over) return;
                 waitingDash = false;
                 dashWatch = null;
                 if (tutorialSlow >= 0) { Game.Time.CancelSlowMotion(tutorialSlow); tutorialSlow = -1; }
@@ -373,15 +385,17 @@ namespace Nindo
                     StartCoroutine(HideTutorialLater(4f));
                     return;
                 }
-                // con el sumo: cámara lenta cuando el anillo rojo está por cerrarse, se aprieta al cerrarse
-                if (e.TellProgress01 < 0.6f) continue;
+                // con el sumo, igual que el parry guiado: se congela un segundo al aparecer el anillo rojo (para leer) y
+                // sigue en cámara lenta hasta el golpe. Antes arrancaba con el anillo casi cerrado y se cortaba al
+                // apretar: el que apretaba al terminar de leer esquivaba antes de tiempo y comía la embestida
                 Game.Save.SetFlag(Flags.DashUnlocked);
                 P.AddSpirit(40f);
                 waitingDash = true;
                 dashWatch = e;
                 dashWatchTell = e.TellId;
+                Game.Time.SlowMotion(0.03f, 1f, 0.05f, 0.3f);
                 tutorialSlow = Game.Time.SlowMotion(0.2f, 30f, 0.05f, 0.1f);
-                Game.UI.ShowTutorial($"¡Anillo ROJO: no se puede desviar! Esquivá con [{k}] cuando se cierre (DASH MÁGICO, usa Espíritu)");
+                Game.UI.ShowTutorial($"¡Anillo ROJO: no se puede desviar! Esquivá hacia un costado con [{k}] cuando se cierre (DASH MÁGICO, usa Espíritu)");
                 return;
             }
         }

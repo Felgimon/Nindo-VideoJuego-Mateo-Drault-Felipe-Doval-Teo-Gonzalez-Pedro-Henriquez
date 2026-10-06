@@ -126,7 +126,9 @@ namespace Nindo
             float dt = Time.unscaledDeltaTime;
             chromaPunch = Mathf.MoveTowards(chromaPunch, 0f, dt * 2.5f);
             damagePulse = Mathf.MoveTowards(damagePulse, 0f, dt * 2.2f);
-            shadowInstant = Mathf.MoveTowards(shadowInstant, 0f, dt * 0.9f);
+            // el Instante Sombra dura lo que su cámara lenta (0.4 s) y apenas desatura: el parry es el que ilumina,
+            // y la escena no se puede apagar mientras corre el anillo del golpe siguiente
+            shadowInstant = Mathf.MoveTowards(shadowInstant, 0f, dt * 1.6f);
             abilityFocus = Mathf.MoveTowards(abilityFocus, abilityTarget, dt * 4f);
             rageAmount = Mathf.MoveTowards(rageAmount, rageTarget, dt * 2f);
             finisher = Mathf.MoveTowards(finisher, finisherTarget, dt * 4f);
@@ -150,7 +152,7 @@ namespace Nindo
             vc = Color.Lerp(vc, new Color(0.45f, 0.02f, 0.02f), Mathf.Max(damagePulse, lowHealth * 0.6f));
             vc = Color.Lerp(vc, new Color(0.35f, 0.12f, 0.0f), rageAmount * 0.6f);
             vignette.color.value = vc;
-            color.saturation.value = BaseSaturation - slow * 45f - shadowInstant * 35f + rageAmount * 10f - finisher * 30f + vivid * 12f;
+            color.saturation.value = BaseSaturation - slow * 45f - shadowInstant * 18f + rageAmount * 10f - finisher * 30f + vivid * 12f;
             color.postExposure.value = BaseExposure + parryLight * 0.9f;
             color.contrast.value = BaseContrast + abilityFocus * 15f + finisher * 15f;
             Color filter = Color.Lerp(Color.white, new Color(1f, 0.86f, 0.75f), rageAmount * 0.6f);

@@ -162,8 +162,23 @@ namespace Nindo
             waveCued = false;
         }
 
-        // la ola no pega en activeStart: su golpe es el del proyectil, que avisa a los pies de Kaito (ProjectileEta)
-        protected override float ComputeStrikeEta(AttackDef a) => a.special == "wave" ? float.PositiveInfinity : base.ComputeStrikeEta(a);
+        protected override float ComputeStrikeEta(AttackDef a)
+        {
+            switch (a.special)
+            {
+                // la ola no pega en activeStart: su golpe es el del proyectil, que avisa a los pies de Kaito (ProjectileEta)
+                case "wave": return float.PositiveInfinity;
+                // el giro persigue a Kaito y pega cuando lo alcanza: el aviso dura todo el giro y retrocede si Kaito se
+                // aleja (corre más rápido que el giro). Antes se cerraba al empezar a girar y se borraba mientras
+                // seguía golpeando: con Kaito a 6 m el dash "a tiempo" se gastaba 0.75 s antes del golpe
+                case "spin":
+                    if (target == null || stepNorm > a.activeEnd) return float.PositiveInfinity;
+                    return Mathf.Max(0f, tl.T - stepClock) + Mathf.Max(0f, DistToTarget - (a.range + target.Radius)) / SpinSpeed(a);
+                default: return base.ComputeStrikeEta(a);
+            }
+        }
+
+        static float SpinSpeed(AttackDef a) => a.specialParam > 0 ? a.specialParam : 3.5f;
         protected override bool StepHasTell(AttackDef a) => a.special != "wave" && base.StepHasTell(a);
 
         protected override bool HitAreaFor(AttackDef a, out TellArea area)
@@ -185,7 +200,7 @@ namespace Nindo
 
         /// <summary>
         /// Próxima ola que va a tocar a Kaito: las que están en vuelo y la que está por salir (misma cuenta desde
-        /// donde va a aparecer). A 0.32 s suena el hyōshigi, igual que con un golpe desviable.
+        /// donde va a aparecer). El hyōshigi suena con la misma anticipación que en un golpe desviable.
         /// </summary>
         void UpdateProjectiles()
         {
@@ -212,7 +227,7 @@ namespace Nindo
                     if (eta < projEta) { projEta = eta; projFrom = transform.position; next = null; }
                 }
             }
-            if (projEta > TellStyle.TickParryable) return;
+            if (!AudioManager.CueDue(projEta, TellStyle.TickParryable)) return;
             // aviso "¡ya!" de la ola: una sola vez por ola (o por ola por salir)
             if (next != null ? next.cued : waveCued) return;
             if (next != null) next.cued = true; else waveCued = true;
@@ -230,7 +245,7 @@ namespace Nindo
                 case "spin":
                     if (active)
                     {
-                        if (target != null) MoveTo(target.transform.position, a.specialParam > 0 ? a.specialParam : 3.5f);
+                        if (target != null) MoveTo(target.transform.position, SpinSpeed(a));
                         model.localRotation = modelBaseRot * Quaternion.Euler(0f, stateTime * 900f, 0f);
                         spinTick -= dt;
                         if (spinTick <= 0f && target != null && CombatMath.FlatDistance(target.transform.position, transform.position) <= a.range + target.Radius)

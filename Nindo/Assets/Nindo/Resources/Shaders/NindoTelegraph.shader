@@ -1,7 +1,7 @@
 // Aviso de ataque (ensō): una pincelada de tinta que rodea al atacante y se cierra EXACTO cuando hay que
 // apretar (Enemy.TellProgress01). La dibuja FX/CombatTelegraphs en un quad horizontal (v = hacia donde
-// arranca el trazo, que es hacia Kaito).
-//  _Mode 0  ensō: trazo de pincel en sentido horario visto desde arriba, entra fino, engorda y afina en la
+// arranca el trazo: el costado en pantalla que da a Kaito; el quad se espeja para que gire primero por detrás).
+//  _Mode 0  ensō: trazo de pincel en sentido horario visto desde arriba (en el quad), entra fino, engorda y afina en la
 //           punta, con pelos secos al final. Debajo, un halo de tinta oscura (se lee sobre nieve, agua y
 //           antorchas). El ancho nunca baja de _MinPx píxeles de pantalla (fwidth), a cualquier distancia.
 //           Dorado = parry al cerrarse; rojo dentado = imparable, dash al cerrarse.
@@ -14,10 +14,10 @@ Shader "Nindo/Telegraph"
     Properties
     {
         _Color ("Color", Color) = (1, 0.84, 0.47, 1)
-        _HotColor ("Color al cerrarse", Color) = (1, 1, 0.94, 1)
+        _HotColor ("Color al cerrarse", Color) = (1, 0.9, 0.55, 1)
         _Mode ("0 ensō, 1 disco, 2 carril", Float) = 0
         _Progress ("Progreso del trazo / relleno", Range(0, 1)) = 0
-        _Hot ("Blanco caliente", Range(0, 1)) = 0
+        _Hot ("Tramo caliente (más claro)", Range(0, 1)) = 0
         _Flash ("Destello al cerrarse", Range(0, 1)) = 0
         _Danger ("Imparable", Range(0, 1)) = 0
         _Alpha ("Opacidad", Range(0, 1)) = 1
@@ -94,13 +94,13 @@ Shader "Nindo/Telegraph"
                 float shatter = (_Outcome > 0.5 && _Outcome < 1.5) ? _OutT : 0;
 
                 float r = _Radius * (1 + 0.012 * sin(s * 18.85 + _Seed)) * (1 + 0.55 * shatter);
-                // ancho: presión del pincel y punta afinada; nunca menos de _MinPx px en pantalla
+                // ancho: presión del pincel y borde áspero; nunca menos de _MinPx px en pantalla DESPUÉS de modularlo
+                // (antes el mínimo se aplicaba antes y el último cuarto, el que se mira para apretar, quedaba en ~9 px)
                 float w0 = max(_Width, _MinPx * 0.5 * px);
                 float pressure = (0.72 + 0.38 * sin(3.14159 * s)) * smoothstep(0.0, 0.06, s);
                 float tip = lerp(saturate((f - s) * 6.2832 * _Radius / (w0 * 3.0)), 1.0, closed);
-                float w = w0 * pressure * sqrt(tip);
+                float w = max(w0 * pressure * (0.9 + 0.2 * vnoise(float2(s * 90, _Seed))), _MinPx * 0.5 * px) * sqrt(tip);
                 w *= 1 + _Danger * 0.6 * step(0.5, frac(s * 12 + 0.25));    // dientes del imparable
-                w *= 0.9 + 0.2 * vnoise(float2(s * 90, _Seed));               // borde áspero
                 w *= 1 + 0.8 * _Flash;
 
                 float drawn = step(s, f);
@@ -108,10 +108,10 @@ Shader "Nindo/Telegraph"
                 drawn *= shatter > 0 ? step(0.06 + 0.3 * shatter, seg) * step(seg, 0.97 - 0.1 * shatter) : 1;
                 float dist = abs(d - r);
 
-                // pincel seco: rayas de pelo que se abren hacia el final del trazo
+                // pincel seco: rayas de pelo que se abren hacia el final del trazo (sutiles: ese tramo es el que avisa)
                 float v = (d - r) / max(w, 1e-4);
                 float hair = vnoise(float2(v * 6 + _Seed * 3, s * 4));
-                float dry = 0.08 + 0.37 * smoothstep(0.5, 1.0, s);
+                float dry = 0.08 + 0.17 * smoothstep(0.5, 1.0, s);
                 float stroke = band(dist, w, px) * drawn * (1 - 0.85 * step(hair, dry) * (1 - _Flash));
                 float ink = band(dist, w * 1.6 + 1.5 * px, px) * drawn;
 

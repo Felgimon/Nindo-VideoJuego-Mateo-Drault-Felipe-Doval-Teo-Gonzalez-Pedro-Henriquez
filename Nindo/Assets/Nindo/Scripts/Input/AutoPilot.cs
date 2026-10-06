@@ -78,7 +78,13 @@ namespace Nindo
         public static bool Bot
         {
             get => inst != null && inst.bot;
-            set { if (inst == null) Run(""); inst.bot = value; }
+            set
+            {
+                if (inst == null) Run("");
+                inst.bot = value;
+                // las reacciones que quedaron en espera no pueden salir solas en el próximo "bot on"
+                if (!value) inst.pending.Clear();
+            }
         }
         /// <summary>Contadores del bot (pulsaciones) para los informes de prueba.</summary>
         public static int BotParries, BotDashes, BotFinishers, BotAttacks;
@@ -136,7 +142,9 @@ namespace Nindo
             var e = source as Enemy;
             bool mine = source is WaveProjectile || e != null && (e.StrikeCanReach(p.transform.position, p.Radius + 0.5f) || e.ProjectileEta < 0.5f);
             if (!mine) return;
-            float rt = Mathf.Clamp(ReactionMean + Gaussian() * ReactionSd, 0.15f, 0.4f);
+            // una persona lo oye cuando sale por los parlantes (latencia de salida) y su tecla entra uno o dos frames
+            // después: el evento sale con el Play(), así que se suman las dos para medir lo mismo que ella
+            float rt = Mathf.Clamp(ReactionMean + Gaussian() * ReactionSd, 0.15f, 0.4f) + AudioManager.OutputLatency + 1f / 60f;
             pending.Add(new KeyValuePair<float, Act>(Time.unscaledTime + rt, unblockable ? Act.Dash : Act.Parry));
         }
 

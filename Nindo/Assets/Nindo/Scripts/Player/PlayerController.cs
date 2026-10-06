@@ -444,11 +444,14 @@ namespace Nindo
                 return ImperfectGuard(info);
             }
 
-            // 3) daño (y la pista de aprendizaje: "TEMPRANO" si la ventana se había cerrado hace un instante)
+            // 3) daño (y la pista de aprendizaje: "TEMPRANO" si la ventana se había cerrado hace un instante, o que
+            // el rojo no se desvía si le hizo parry a un imparable: es la confusión dorado/rojo que hay que enseñar)
             bool early = info.CanBeParried && Time.time - parryClosedAt <= EarlyFeedback;
+            bool parriedRed = info.kind == AttackKind.Unblockable && (State == PlayerState.Parry || State == PlayerState.ParryRecover);
             TakeDamage(info);
             if (Health <= 0f) return HitResult.Killed;
             if (early) Game.FX?.Coach?.Timing(true);
+            else if (parriedRed) Game.FX?.Coach?.Unblockable();
             else if (info.CanBeParried) lastParryableHitAt = Time.unscaledTime;
             return HitResult.Hit;
         }

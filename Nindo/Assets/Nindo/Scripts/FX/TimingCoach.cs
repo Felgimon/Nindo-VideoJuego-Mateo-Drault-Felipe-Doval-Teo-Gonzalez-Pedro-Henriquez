@@ -8,6 +8,7 @@ namespace Nindo
     /// medido solo dolía: no había forma de saber si había que esperar más o apretar antes.
     ///  * TEMPRANO: el golpe llegó apenas después de que se cerró su ventana (o en la guardia imperfecta).
     ///  * TARDE: apretó parry hasta 0.2 s después de recibir un golpe desviable.
+    ///  * ¡ROJO: DASH!: le hizo parry a un imparable (anillo rojo), que solo se esquiva.
     /// Es ayuda de aprendizaje: aparece las primeras <see cref="MaxLabels"/> veces (se cuenta en PlayerPrefs:
     /// es la mano del jugador la que aprende, no la partida). Lienzo propio, no toca la UI.
     /// </summary>
@@ -26,13 +27,25 @@ namespace Nindo
         float t = Life;
 
         /// <summary>Muestra la pista de tiempo (si todavía corresponde).</summary>
-        public void Timing(bool early)
+        public void Timing(bool early) => Hint(early ? "TEMPRANO" : "TARDE", early ? EarlyColor : LateColor);
+
+        /// <summary>Apretó parry contra un imparable: no se desvía, se esquiva.</summary>
+        public void Unblockable() => Hint("¡ROJO: DASH!", TellStyle.Crimson);
+
+        void Hint(string text, Color c)
         {
             int shown = PlayerPrefs.GetInt(PrefKey, 0);
             if (shown >= MaxLabels) return;
-            PlayerPrefs.SetInt(PrefKey, shown + 1);
-            Show(early ? "TEMPRANO" : "TARDE", early ? EarlyColor : LateColor);
+            // las pruebas automáticas (bot o guion del AutoPilot) muestran la pista pero no gastan las del jugador
+            if (!Automated) PlayerPrefs.SetInt(PrefKey, shown + 1);
+            Show(text, c);
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        static bool Automated => AutoPilot.Bot || AutoPilot.Busy;
+#else
+        const bool Automated = false;
+#endif
 
         void Show(string text, Color c)
         {

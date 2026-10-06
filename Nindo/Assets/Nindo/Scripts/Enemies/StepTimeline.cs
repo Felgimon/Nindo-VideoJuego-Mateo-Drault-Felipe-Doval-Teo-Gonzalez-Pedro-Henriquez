@@ -54,14 +54,6 @@ namespace Nindo
             return t;
         }
 
-        /// <summary>Alarga la pausa en el apex (lo pide el CombatDirector para separar golpes de distintos enemigos).</summary>
-        public void AddHold(float seconds)
-        {
-            if (seconds <= 0f) return;
-            hold += seconds;
-            T += seconds;
-        }
-
         /// <summary>Tiempo normalizado del clip a 't' segundos del inicio del paso.</summary>
         public float NormAt(float t)
         {
@@ -133,22 +125,26 @@ namespace Nindo
         public const float MaxParryable = 0.85f, MaxUnblockable = 1.0f;
         /// <summary>
         /// El anillo se cierra este tiempo ANTES del golpe. Parry: la ventana es [golpe - 0.24, golpe] y la perfecta
-        /// los últimos 0.11 s; el margen tardío es el que falla, y con un frame de latencia de entrada cerrar a
-        /// 0.08 (no en el centro exacto, 0.055) da ~90 % de parries para quien aprieta al cierre con el mismo
-        /// porcentaje de perfectos (Monte Carlo). Dash: centra los i-frames (0.02-0.24) en el golpe.
+        /// los últimos 0.11 s; fallar tarde es lo caro (daño entero y aturdimiento) y quien aprieta al ver el cierre
+        /// llega 2-4 frames después (pantalla + entrada). Cerrando a 0.10, con error N(0, 0.05): 84 % de parries
+        /// (72 % perfectos) sin compensar la latencia y 97 % (55 %) compensándola; a 0.08 era 72 % / 94 %
+        /// (Monte Carlo). Dash: los i-frames van de 0.02 a 0.24; a 0.16, 96 % de esquivas sin compensar, 94 % compensando.
         /// </summary>
-        public const float BiasParryable = 0.08f, BiasUnblockable = 0.12f;
+        public const float BiasParryable = 0.10f, BiasUnblockable = 0.16f;
         /// <summary>
-        /// Hyōshigi (toc de madera) a este tiempo del golpe: reaccionar al sonido (~0.25 s) cae en la
-        /// ventana (91 % parry / 83 % perfecto con reacción N(0.25, 0.04) + 1 frame). Es la pista "reactiva";
-        /// el anillo es la "predictiva".
+        /// Hyōshigi (toc de madera) a este tiempo del golpe, contado desde que se OYE (AudioManager.CueDue suma
+        /// la latencia de salida). Es la pista "reactiva"; el anillo es la "predictiva". Reaccionando al sonido con
+        /// N(0.25, 0.04) s + 1-2 frames de entrada: ~100 % de parries (~45 % perfectos); con N(0.30, 0.05), ~89 %.
+        /// Dash a 0.42: 98 % / 94 %. A 0.32 / 0.36 y sin compensar el audio caía casi siempre tarde.
         /// </summary>
-        public const float TickParryable = 0.32f, TickUnblockable = 0.36f;
+        public const float TickParryable = 0.38f, TickUnblockable = 0.42f;
         /// <summary>El silbido del arma se adelanta lo que tarda en llegar a su pico (medido en los .wav).</summary>
         public const float SwingLight = 0.13f, SwingHeavy = 0.24f;
 
         public static readonly Color Gold = new Color(1f, 0.84f, 0.47f);          // #FFD678
-        public static readonly Color GoldHot = new Color(1f, 1f, 0.94f);           // #FFFFF0
+        // dorado claro y saturado, no blanco: en el tramo decisivo el anillo tiene que seguir siendo dorado sobre
+        // la nieve y el lago (el bloom ya lo hace brillar)
+        public static readonly Color GoldHot = new Color(1f, 0.9f, 0.55f);         // #FFE68C
         public static readonly Color Crimson = new Color(0.92f, 0.157f, 0.118f);   // #EB281E
         public static readonly Color Ink = new Color(0.07f, 0.04f, 0.047f);        // #120A0C
         public static readonly Color TrailParry = new Color(1f, 0.93f, 0.8f, 0.7f);

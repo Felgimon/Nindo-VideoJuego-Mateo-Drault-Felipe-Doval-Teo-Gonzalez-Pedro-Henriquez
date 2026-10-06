@@ -64,7 +64,7 @@ namespace Nindo
         // ------------------------------------------------------------ separación de golpes
         // Los tokens solo escalonan el INICIO de los ataques; dónde cae cada golpe depende de la distancia,
         // el clip y la embestida, y dos golpes a < 0.2 s no se pueden desviar los dos. Cada enemigo anota
-        // cuándo va a pegar (Time.time absoluto) y el que llega después espera en su apex.
+        // cuándo va a pegar (Time.time absoluto) y el que llega después alarga su windup.
         [Tooltip("Separación mínima entre golpes de distintos enemigos (s)")] public float minStrikeSpacing = 0.42f;
         [Tooltip("Separación entre un jefe y sus esbirros (s)")] public float bossStrikeSpacing = 0.5f;
         /// <summary>Más espera que esto y el ataque no arranca (vuelve a rondar y reintenta).</summary>
@@ -73,7 +73,7 @@ namespace Nindo
 
         /// <summary>
         /// Reserva el golpe de 'e' para el instante 'naturalTime' (Time.time) y devuelve cuánto tiene que
-        /// demorarlo (pausa extra en el apex) para quedar separado de los golpes ya anotados de otros enemigos.
+        /// demorarlo (windup más largo) para quedar separado de los golpes ya anotados de otros enemigos.
         /// Los pasos del propio combo no cuentan (reemplazan su reserva).
         /// </summary>
         public float ReserveStrike(Enemy e, float naturalTime)
@@ -142,8 +142,15 @@ namespace Nindo
         // encierran por delante y por detrás). Se reparten en el orden en que ya están, así nadie cruza al otro.
         readonly Dictionary<Enemy, float> slots = new Dictionary<Enemy, float>(16);
         readonly List<Enemy> slotBuf = new List<Enemy>(16);
-        Vector3 slotCenter;
-        System.Comparison<Enemy> byBearing;
+        // comparador propio y cacheado: List.Sort(Comparison) del Mono de Unity envuelve el delegado en un objeto
+        // nuevo en cada llamada, y esto corre todos los frames de una pelea grupal
+        readonly BearingOrder byBearing = new BearingOrder();
+
+        sealed class BearingOrder : IComparer<Enemy>
+        {
+            public Vector3 center;
+            public int Compare(Enemy a, Enemy b) => Bearing(a, center).CompareTo(Bearing(b, center));
+        }
 
         /// <summary>Ángulo (yaw en grados, alrededor de Kaito) al que tiene que rondar este enemigo.</summary>
         public bool TryGetStrafeSlot(Enemy e, out float yawDeg) => slots.TryGetValue(e, out yawDeg);
@@ -152,12 +159,11 @@ namespace Nindo
         {
             slots.Clear();
             if (p == null || !p.IsAlive) return;
-            Vector3 c = slotCenter = p.transform.position;
+            Vector3 c = byBearing.center = p.transform.position;
             slotBuf.Clear();
             foreach (var e in engaged) if (e != null && !attackers.Contains(e) && !(e is Boss)) slotBuf.Add(e);
             int n = slotBuf.Count;
             if (n == 0) return;
-            if (byBearing == null) byBearing = (a, b) => Bearing(a, slotCenter).CompareTo(Bearing(b, slotCenter));
             slotBuf.Sort(byBearing);
             // el reparto arranca después del hueco más grande entre vecinos (si no, dos pegados a ambos lados de 0°
             // quedaban en los extremos de la lista y los mandaba a cruzar toda la ronda)

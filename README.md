@@ -94,8 +94,12 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 * En **guardia** el primer golpe rebota (clang, le suma postura) y el segundo lo devuelve con
   un contraataque. En los últimos 0,3 s antes de su golpe un enemigo ya no se interrumpe con
   un corte liviano: hay que desviar o esquivar.
-* **Ataques 危 (imparables)**: se marcan en rojo; no se bloquean, se esquivan con el dash.
-  La esquiva perfecta también ralentiza el tiempo.
+* **Aviso de cada golpe**: un anillo de tinta (ensō) se dibuja alrededor del atacante y se
+  cierra justo cuando hay que apretar; un toc de madera (hyōshigi) suena a tiempo para
+  reaccionar de oído. Dorado = parry; rojo dentado = no se desvía, dash.
+* **Ataques imparables (anillo rojo dentado + zona roja)**: no se desvían; se esquivan con el
+  dash cuando el anillo se cierra. La esquiva perfecta también ralentiza el tiempo (como mucho
+  una vez cada 6 s).
 * **Espíritu (maná)**: se llena con parries y golpes; lo gastan el dash, el remate y las dos
   habilidades. Sin Espíritu igual hay un dash *cansado* (más corto, con espera de 1,2 s). Al usar una habilidad la cámara se mueve detrás de Kaito (Corte del Viento:
   sobre el hombro; Torbellino: órbita baja).
