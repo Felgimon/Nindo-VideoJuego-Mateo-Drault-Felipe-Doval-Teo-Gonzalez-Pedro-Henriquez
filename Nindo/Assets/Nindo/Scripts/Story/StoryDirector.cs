@@ -13,8 +13,7 @@ namespace Nindo
     public class StoryDirector : MonoBehaviour
     {
         PlayerController P => Game.Player;
-        bool parryTutorial, dashTutorial, finisherTip;
-        int parryTutorialTries;
+        bool parryTutorial, finisherTip;
         GameObject scytheProp;
         Coroutine deathRoutine;
 
@@ -174,7 +173,7 @@ namespace Nindo
                 foreach (var m in introEnc.Members) if (m != null) m.ExitScripted(true);
                 introEnc.Activate();
                 parryTutorial = true;
-                parryTutorialTries = 0;
+                parryGuided = parryRealtime = parryMisses = parryAttempts = 0;
             }
             else FinishIntro();
         }
@@ -230,6 +229,7 @@ namespace Nindo
         IEnumerator IntroOutro()
         {
             parryTutorial = false;
+            EndParryWatch();
             P.RestoreAll();
             yield return Say("intro_after_fight");
             Game.Save.SetFlag(Flags.IntroDone);
@@ -242,57 +242,25 @@ namespace Nindo
 
         IEnumerator HideTutorialLater(float s) { yield return new WaitForSecondsRealtime(s); Game.UI.HideTutorial(); }
 
-        // ================================================================== tutoriales en cámara lenta
+        // ================================================================== tutoriales
+        // Enseñan la pista que se ve a velocidad normal: el anillo (ensō) que se cierra alrededor del atacante.
+        // Parry: primero guiado en cámara lenta (el anillo dorado se cierra despacio y se aprieta al cerrarse),
+        // después a velocidad real; si falla dos seguidas, una ayuda a 0.6x. Dash: con el sumo (un común),
+        // nunca congelando una pelea de jefe.
+        const int GuidedParries = 2, RealtimeParries = 2, MaxGuidedAttempts = 4;
         int tutorialSlow = -1;
-        bool waitingParry, waitingDash;
+        int parryGuided, parryRealtime, parryMisses, parryAttempts;
+        Enemy parryWatch, dashWatch;
+        int parryWatchTell, dashWatchTell;
+        bool parryWatching, parryLanded, waitingDash;
+
+        bool ParryGuidedPhase => parryGuided < GuidedParries && parryAttempts < MaxGuidedAttempts;
 
         void Update()
         {
             if (P == null || Game.IsPaused) return;
-            if (parryTutorial && !waitingParry && !Game.InCutscene)
-            {
-                var enc = Encounter.Get("intro");
-                if (enc != null)
-                    foreach (var e in enc.Members)
-                        // alcance real del golpe (arco + lo que le queda de embestida): si no, la cámara lenta
-                        // podía pedir el parry con un golpe que no iba a llegar
-                        if (e != null && e.IsAlive && e.AboutToStrike && CombatMath.FlatDistance(e.transform.position, P.transform.position) < e.StrikeReach + P.Radius + 0.3f)
-                        {
-                            waitingParry = true;
-                            tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
-                            Game.UI.ShowTutorial($"¡AHORA! Presioná [{Game.Input.Glyph(Act.Parry)}] para desviar el golpe (Parry)");
-                            break;
-                        }
-            }
-            if (waitingParry && Game.Input != null && Game.Input.Pressed(Act.Parry))
-            {
-                waitingParry = false;
-                Game.Time.CancelSlowMotion(tutorialSlow);
-                Game.UI.HideTutorial();
-                parryTutorialTries++;
-                if (parryTutorialTries >= 3) parryTutorial = false;
-            }
-
-            // dash contra golpes imparables (luchador de sumo)
-            if (!Game.Save.HasFlag(Flags.DashUnlocked) && !waitingDash && !Game.InCutscene && Game.Combat != null)
-            {
-                foreach (var e in Game.Combat.Engaged)
-                    if (e != null && e.IsTelegraphingUnblockable && e.State == EnemyState.Attack)
-                    {
-                        waitingDash = true;
-                        Game.Save.SetFlag(Flags.DashUnlocked);
-                        tutorialSlow = Game.Time.SlowMotion(0.04f, 30f, 0.05f, 0.05f);
-                        Game.UI.ShowTutorial($"¡Golpe imparable (estallido rojo)! No se puede desviar: presioná [{Game.Input.Glyph(Act.Dash)}] para el DASH MÁGICO (usa Espíritu)");
-                        P.AddSpirit(40f);
-                        break;
-                    }
-            }
-            if (waitingDash && Game.Input != null && Game.Input.Pressed(Act.Dash))
-            {
-                waitingDash = false;
-                Game.Time.CancelSlowMotion(tutorialSlow);
-                Game.UI.HideTutorial();
-            }
+            if (parryTutorial || parryWatching) TickParryTutorial();
+            TickDashTutorial();
 
             // primer enemigo desequilibrado: explicar la ejecución
             if (!finisherTip && P.FinisherCandidate() != null && !Game.Save.HasFlag("tip_finisher"))
@@ -305,15 +273,124 @@ namespace Nindo
             }
         }
 
+        void TickParryTutorial()
+        {
+            if (parryWatching)
+            {
+                // el golpe salió (lo desvió o no) o se cortó: fuera la cámara lenta y se cuenta
+                bool over = !parryTutorial || Game.InCutscene || parryWatch == null || !parryWatch.InTell || parryWatch.TellId != parryWatchTell;
+                if (!over) return;
+                bool guided = ParryGuidedPhase;
+                EndParryWatch();
+                if (!parryTutorial) return;
+                if (parryLanded) { if (guided) parryGuided++; else parryRealtime++; parryMisses = 0; }
+                else parryMisses++;
+                if (guided) parryAttempts++;
+                if (parryRealtime >= RealtimeParries) { FinishParryTutorial(); return; }
+                ShowParryText(false);
+                return;
+            }
+            if (Game.InCutscene) return;
+            var enc = Encounter.Get("intro");
+            if (enc == null) return;
+            foreach (var e in enc.Members)
+                // solo con un golpe desviable que de verdad llega (zona/alcance real): si no, se enseña mal
+                if (e != null && e.IsAlive && e.InTell && e.StepKind != AttackKind.Unblockable && e.StrikeCanReach(P.transform.position, P.Radius + 0.3f))
+                {
+                    parryWatching = true;
+                    parryLanded = false;
+                    parryWatch = e;
+                    parryWatchTell = e.TellId;
+                    bool assist = !ParryGuidedPhase && parryMisses >= 2;
+                    if (ParryGuidedPhase)
+                    {
+                        // se congela un segundo al aparecer el anillo (para leer) y sigue en cámara lenta: el anillo
+                        // se ve cerrarse despacio y se aprieta en el cierre, igual que después a velocidad real
+                        Game.Time.SlowMotion(0.03f, 1f, 0.05f, 0.3f);
+                        tutorialSlow = Game.Time.SlowMotion(0.2f, 30f, 0.05f, 0.1f);
+                    }
+                    else if (assist) tutorialSlow = Game.Time.SlowMotion(0.6f, 30f, 0.05f, 0.1f);
+                    ShowParryText(true);
+                    break;
+                }
+        }
+
+        void ShowParryText(bool attacking)
+        {
+            string k = Game.Input.Glyph(Act.Parry);
+            if (ParryGuidedPhase)
+            {
+                if (attacking)
+                    Game.UI.ShowTutorial(parryMisses > 0
+                        ? $"Esperá a que el anillo dorado se cierre del todo y recién ahí presioná [{k}]"
+                        : $"Mirá el anillo dorado: cuando se cierre, presioná [{k}] (Parry)");
+                else Game.UI.HideTutorial();
+                return;
+            }
+            // práctica a velocidad real: el texto queda hasta lograrlo
+            Game.UI.ShowTutorial($"Ahora a velocidad real: [{k}] justo cuando se cierra el anillo dorado  ({parryRealtime}/{RealtimeParries})");
+        }
+
+        void EndParryWatch()
+        {
+            parryWatching = false;
+            parryWatch = null;
+            if (tutorialSlow >= 0) { Game.Time.CancelSlowMotion(tutorialSlow); tutorialSlow = -1; }
+        }
+
+        void FinishParryTutorial()
+        {
+            parryTutorial = false;
+            Game.Save.SetFlag("tip_parry_done");
+            Game.UI.ShowTutorial("Cada parry DESEQUILIBRA al enemigo. Cuando termine su combo, quedará vulnerable.");
+            StartCoroutine(HideTutorialLater(4.5f));
+        }
+
+        void TickDashTutorial()
+        {
+            if (waitingDash)
+            {
+                bool over = Game.InCutscene || dashWatch == null || !dashWatch.InTell || dashWatch.TellId != dashWatchTell;
+                if (!over && !(Game.Input != null && Game.Input.Pressed(Act.Dash))) return;
+                waitingDash = false;
+                dashWatch = null;
+                if (tutorialSlow >= 0) { Game.Time.CancelSlowMotion(tutorialSlow); tutorialSlow = -1; }
+                Game.UI.HideTutorial();
+                return;
+            }
+            if (Game.Save.HasFlag(Flags.DashUnlocked) || Game.InCutscene || Game.Combat == null) return;
+            foreach (var e in Game.Combat.Engaged)
+            {
+                // solo imparables que pueden conectar (carril hacia Kaito, Kaito dentro del pisotón)
+                if (e == null || !e.InTell || e.StepKind != AttackKind.Unblockable || !e.StrikeCanReach(P.transform.position, P.Radius)) continue;
+                string k = Game.Input.Glyph(Act.Dash);
+                if (e is Boss)
+                {
+                    // pelea de jefe sin el dash todavía: se habilita sin congelar la pelea
+                    Game.Save.SetFlag(Flags.DashUnlocked);
+                    P.AddSpirit(40f);
+                    Game.UI.ShowTutorial($"Anillo ROJO: no se puede desviar. Esquivá con [{k}] cuando se cierre (DASH MÁGICO)");
+                    StartCoroutine(HideTutorialLater(4f));
+                    return;
+                }
+                // con el sumo: cámara lenta cuando el anillo rojo está por cerrarse, se aprieta al cerrarse
+                if (e.TellProgress01 < 0.6f) continue;
+                Game.Save.SetFlag(Flags.DashUnlocked);
+                P.AddSpirit(40f);
+                waitingDash = true;
+                dashWatch = e;
+                dashWatchTell = e.TellId;
+                tutorialSlow = Game.Time.SlowMotion(0.2f, 30f, 0.05f, 0.1f);
+                Game.UI.ShowTutorial($"¡Anillo ROJO: no se puede desviar! Esquivá con [{k}] cuando se cierre (DASH MÁGICO, usa Espíritu)");
+                return;
+            }
+        }
+
         void OnParry(bool perfect)
         {
-            if (parryTutorial && !Game.Save.HasFlag("tip_parry_done"))
-            {
-                Game.Save.SetFlag("tip_parry_done");
-                Game.UI.ShowToast(perfect ? "¡Parry perfecto!" : "¡Parry!", UIFactory.Gold);
-                Game.UI.ShowTutorial("Cada parry DESEQUILIBRA al enemigo. Cuando termine su combo, quedará vulnerable.");
-                StartCoroutine(HideTutorialLater(4.5f));
-            }
+            if (!parryWatching) return;
+            parryLanded = true;
+            Game.UI.ShowToast(perfect ? "¡Parry perfecto!" : "¡Parry!", UIFactory.Gold);
         }
 
         // ================================================================== triggers del mapa
@@ -547,7 +624,8 @@ namespace Nindo
 
         IEnumerator DeathRoutine()
         {
-            waitingParry = false; waitingDash = false;
+            EndParryWatch();
+            waitingDash = false; dashWatch = null;
             Game.UI.HideTutorial();
             Game.Audio?.PlayMusic("gameover", 1f, loop: false);
             yield return new WaitForSecondsRealtime(1.4f);

@@ -201,6 +201,31 @@ def _danger(i):
     return reverb(distort(x, 1.6), 0.3, 2.0, 0.6)
 
 
+@sfx("tell_tick")
+def _tell_tick(i):
+    # hyōshigi: dos tablas de madera dura que chocan. Es el "¡ya!" del aviso de ataque (suena 0.32 s antes
+    # del golpe): seco, agudo y sin cola para que corte la música y no se confunda con un impacto.
+    # El ataque está en t=0: el instante del aviso es el comienzo del archivo.
+    a = partials(1180, [1, 1.58, 2.31, 3.47], [1, 0.55, 0.32, 0.18], [0.055, 0.035, 0.024, 0.016], 0.22, seed=160)
+    b = partials(1395, [1, 1.61, 2.27, 3.52], [0.8, 0.45, 0.28, 0.14], [0.045, 0.03, 0.02, 0.014], 0.22, seed=161)
+    crack = band(noise(0.018, 162), 3800, 1.4) * env_exp(0.018, 0.0035, 0.0003)
+    body = band(noise(0.05, 163), 520, 2.5) * env_exp(0.05, 0.012, 0.0005)
+    x = mix((crack, 0, 0.9), (a, 0, 1.0), (b, 0.0018, 0.9), (body, 0, 0.5))
+    x *= env_exp(len(x) / SR, 0.06, 0.0003)
+    return reverb(x, 0.14, 0.45, 0.16)
+
+
+@sfx("tell_danger")
+def _tell_danger(i):
+    # taiko "don": aviso de golpe imparable al empezar el anillo rojo. Grave y corto (reemplaza al "danger" de
+    # 3.7 s, que no tenía relación con el momento del golpe)
+    skin = filt(noise(0.04, 170), 180, 2200) * env_exp(0.04, 0.008, 0.0005)
+    don = thump(118, 66, 0.6, 0.17, seed=171)
+    over = osc(glide(196, 150, 0.3, 0.5), 0.3) * env_exp(0.3, 0.05) * 0.35
+    x = mix((skin, 0, 0.7), (don, 0, 1.0), (over, 0, 1.0))
+    return reverb(distort(x, 1.4), 0.16, 0.8, 0.25)
+
+
 @sfx("exhausted")
 def _exhausted(i):
     k = K("impactPlate_heavy_002", 0.9)

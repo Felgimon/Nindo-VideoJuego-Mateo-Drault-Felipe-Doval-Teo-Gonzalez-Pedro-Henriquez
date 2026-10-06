@@ -85,6 +85,8 @@ namespace Nindo
         public void Begin() { emitting = true; count = 0; }
         public void Stop() { emitting = false; }
         public void SetColor(Color c) { color = c; }
+        /// <summary>Cuánto dura cada punto de la estela (s).</summary>
+        public void SetLifetime(float seconds) { lifetime = Mathf.Max(0.02f, seconds); }
 
         void LateUpdate()
         {

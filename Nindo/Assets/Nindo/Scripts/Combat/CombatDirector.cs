@@ -33,7 +33,7 @@ namespace Nindo
         public void Register(Enemy e) { if (!enemies.Contains(e)) enemies.Add(e); }
         public void Unregister(Enemy e)
         {
-            enemies.Remove(e); engaged.Remove(e); attackers.Remove(e);
+            enemies.Remove(e); engaged.Remove(e); attackers.Remove(e); strikes.Remove(e);
         }
 
         // ------------------------------------------------------------ tokens
@@ -52,6 +52,45 @@ namespace Nindo
         public void ReleaseAttackToken(Enemy e) => attackers.Remove(e);
         public bool HasToken(Enemy e) => attackers.Contains(e);
 
+        // ------------------------------------------------------------ separación de golpes
+        // Los tokens solo escalonan el INICIO de los ataques; dónde cae cada golpe depende de la distancia,
+        // el clip y la embestida, y dos golpes a < 0.2 s no se pueden desviar los dos. Cada enemigo anota
+        // cuándo va a pegar (Time.time absoluto) y el que llega después espera en su apex.
+        [Tooltip("Separación mínima entre golpes de distintos enemigos (s)")] public float minStrikeSpacing = 0.42f;
+        [Tooltip("Separación entre un jefe y sus esbirros (s)")] public float bossStrikeSpacing = 0.5f;
+        /// <summary>Más espera que esto y el ataque no arranca (vuelve a rondar y reintenta).</summary>
+        public const float MaxStrikeDelay = 0.6f;
+        readonly Dictionary<Enemy, float> strikes = new Dictionary<Enemy, float>(8);
+
+        /// <summary>
+        /// Reserva el golpe de 'e' para el instante 'naturalTime' (Time.time) y devuelve cuánto tiene que
+        /// demorarlo (pausa extra en el apex) para quedar separado de los golpes ya anotados de otros enemigos.
+        /// Los pasos del propio combo no cuentan (reemplazan su reserva).
+        /// </summary>
+        public float ReserveStrike(Enemy e, float naturalTime)
+        {
+            float shift = 0f;
+            // corrimiento mínimo: cada choque empuja el golpe detrás del otro; con 2-3 atacantes converge rápido
+            for (int iter = 0; iter < 4; iter++)
+            {
+                bool moved = false;
+                foreach (var kv in strikes)
+                {
+                    if (kv.Key == e || kv.Key == null) continue;
+                    float gap = e is Boss || kv.Key is Boss ? bossStrikeSpacing : minStrikeSpacing;
+                    float t = naturalTime + shift;
+                    if (Mathf.Abs(t - kv.Value) < gap) { shift = kv.Value + gap - naturalTime; moved = true; }
+                }
+                if (!moved) break;
+            }
+            strikes[e] = naturalTime + shift;
+            return shift;
+        }
+
+        /// <summary>El golpe se movió (hit-stop local, embestida que persigue): actualiza la reserva.</summary>
+        public void UpdateStrike(Enemy e, float time) { if (strikes.ContainsKey(e)) strikes[e] = time; }
+        public void ReleaseStrike(Enemy e) => strikes.Remove(e);
+
         void Update()
         {
             var p = Game.Player;
@@ -66,12 +105,13 @@ namespace Nindo
                     if ((e.transform.position - pp).sqrMagnitude < engageRadius * engageRadius) engaged.Add(e);
                 }
             }
-            // limpiar tokens de enemigos que ya no atacan
-            if (attackers.Count > 0)
+            // limpiar tokens y golpes anotados de enemigos que ya no atacan
+            if (attackers.Count > 0 || strikes.Count > 0)
             {
                 tmp.Clear();
                 foreach (var a in attackers) if (a == null || !a.IsAlive) tmp.Add(a);
-                foreach (var a in tmp) attackers.Remove(a);
+                foreach (var kv in strikes) if (kv.Key == null || !kv.Key.IsAlive || kv.Value < Time.time - 1f) tmp.Add(kv.Key);
+                foreach (var a in tmp) { attackers.Remove(a); strikes.Remove(a); }
             }
             bool now = engaged.Count > 0 || ActiveBoss != null;
             if (now) leaveCombatTimer = 2.5f;

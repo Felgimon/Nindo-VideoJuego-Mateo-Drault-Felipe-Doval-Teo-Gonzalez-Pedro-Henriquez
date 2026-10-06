@@ -33,8 +33,11 @@ namespace Nindo
 
         readonly List<Enemy> minions = new List<Enemy>();
         float spinTick;
-        bool specialFired;
         bool hiddenForTeleport;
+        // olas de Mizuchi: cuándo llega la próxima a Kaito (se calcula una vez por frame)
+        float projEta = float.PositiveInfinity;
+        Vector3 projFrom;
+        bool waveCued;   // ya sonó el aviso de la ola por salir (que no suene otra vez al aparecer)
         // config original: los cambios de fase la modifican y al reintentar se restaura
         EnemyConfig pristineConfig;
 
@@ -86,6 +89,7 @@ namespace Nindo
         protected override void Update()
         {
             base.Update();
+            UpdateProjectiles();
             if (!Fighting || !IsAlive) return;
             // no salir de la arena
             Vector3 off = (transform.position - arenaCenter).Flat();
@@ -124,46 +128,75 @@ namespace Nindo
         // ---------------------------------------------------------------- especiales
         protected override void OnStepStarted(AttackDef a)
         {
-            specialFired = false;
             spinTick = 0f;
+            waveCued = false;
         }
 
-        protected override float ComputeStrikeEta(AttackDef a, float holdEnd)
+        // la ola no pega en activeStart: su golpe es el del proyectil, que avisa a los pies de Kaito (ProjectileEta)
+        protected override float ComputeStrikeEta(AttackDef a) => a.special == "wave" ? float.PositiveInfinity : base.ComputeStrikeEta(a);
+        protected override bool StepHasTell(AttackDef a) => a.special != "wave" && base.StepHasTell(a);
+
+        protected override bool HitAreaFor(AttackDef a, out TellArea area)
         {
             switch (a.special)
             {
-                // nada pega en activeStart (la onda pega cuando llega; el AutoPilot la tendría que mirar aparte)
-                case "teleport": case "summon": case "clones": case "wave": return float.PositiveInfinity;
-                case "charge":
-                    if (stepHit || stepNorm > a.activeEnd || target == null) return float.PositiveInfinity;
-                    float pre = stepNorm < a.activeStart ? EstimateStrikeEta(a, holdEnd) : 0f;
-                    float room = Mathf.Max(0f, DistToTarget - Radius - target.Radius - 0.6f);
-                    return pre + room / (a.specialParam > 0f ? a.specialParam : 14f);
-                default: return base.ComputeStrikeEta(a, holdEnd);
+                case "spin":
+                    area = new TellArea { origin = transform.position, size = a.range };
+                    return true;
+                case "windslash":
+                    area = new TellArea { lane = true, origin = transform.position, forward = transform.forward.Flat().normalized, size = a.specialParam > 0 ? a.specialParam : 9f, width = 2.8f };
+                    return true;
+                default: return base.HitAreaFor(a, out area);
             }
         }
+
+        public override float ProjectileEta => projEta;
+        public override Vector3 ProjectileFrom => projFrom;
+
+        /// <summary>
+        /// Próxima ola que va a tocar a Kaito: las que están en vuelo y la que está por salir (misma cuenta desde
+        /// donde va a aparecer). A 0.32 s suena el hyōshigi, igual que con un golpe desviable.
+        /// </summary>
+        void UpdateProjectiles()
+        {
+            projEta = float.PositiveInfinity;
+            if (target == null || !target.IsAlive) return;
+            Vector3 p = target.transform.position;
+            WaveProjectile next = null;
+            foreach (var w in WaveProjectile.Active)
+            {
+                if (w == null || w.Owner != this) continue;
+                float eta = w.TimeToHit(p);
+                if (eta < projEta) { projEta = eta; projFrom = w.transform.position; next = w; }
+            }
+            var a = CurrentAttack;
+            bool pending = a != null && a.special == "wave" && !specialFired;
+            if (pending)
+            {
+                float wait = Mathf.Max(0f, tl.T - stepClock), speed = WaveProjectile.SpeedFor(a);
+                int n = Mathf.Max(1, Mathf.RoundToInt(a.specialParam));
+                for (int i = 0; i < n; i++)
+                {
+                    Vector3 dir = WaveDirection(i, n);
+                    float eta = wait + WaveProjectile.TimeToHit(transform.position + dir * 1.2f, dir, speed, p);
+                    if (eta < projEta) { projEta = eta; projFrom = transform.position; next = null; }
+                }
+            }
+            if (projEta > TellStyle.TickParryable) return;
+            // aviso "¡ya!" de la ola: una sola vez por ola (o por ola por salir)
+            if (next != null ? next.cued : waveCued) return;
+            if (next != null) next.cued = true; else waveCued = true;
+            Game.Audio?.Play("tell_tick", null, 0.8f, 0.03f);
+            GameEvents.RaiseStrikeCue(next != null ? (Component)next : this, false);
+        }
+
+        Vector3 WaveDirection(int i, int n) => Quaternion.Euler(0f, (i - (n - 1) * 0.5f) * 22f, 0f) * transform.forward;
 
         protected override void TickSpecial(AttackDef a, float dt)
         {
             bool active = stepNorm >= a.activeStart && stepNorm <= a.activeEnd;
             switch (a.special)
             {
-                case "slam":
-                    if (!specialFired && stepNorm >= a.activeStart)
-                    {
-                        specialFired = true;
-                        Vector3 c = transform.position + transform.forward * Mathf.Max(0.5f, a.range * 0.4f);
-                        float radius = a.specialParam > 0f ? a.specialParam : 4f;
-                        Game.FX?.Shockwave(c, radius, new Color(1f, 0.75f, 0.45f));
-                        Game.FX?.GroundCrack(c, radius);
-                        Game.Camera?.Shake(0.75f);
-                        Game.Audio?.Play("slam", c, 1f);
-                        Game.Input?.Rumble(0.9f, 0.6f, 0.3f);
-                        if (target != null && CombatMath.FlatDistance(target.transform.position, c) <= radius + target.Radius)
-                            HitPlayer(a, c);
-                    }
-                    break;
-
                 case "spin":
                     if (active)
                     {
@@ -186,25 +219,10 @@ namespace Nindo
                         int n = Mathf.Max(1, Mathf.RoundToInt(a.specialParam));
                         for (int i = 0; i < n; i++)
                         {
-                            float ang = (i - (n - 1) * 0.5f) * 22f;
-                            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * transform.forward;
-                            WaveProjectile.Spawn(this, transform.position + dir * 1.2f + Vector3.up * 0.4f, dir, a);
+                            Vector3 dir = WaveDirection(i, n);
+                            WaveProjectile.Spawn(this, transform.position + dir * 1.2f + Vector3.up * 0.4f, dir, a, waveCued);
                         }
                         Game.Audio?.Play("wave", transform.position, 1f);
-                    }
-                    break;
-
-                case "charge":
-                    if (active)
-                    {
-                        float speed = a.specialParam > 0f ? a.specialParam : 14f;
-                        MoveBy(transform.forward * speed * dt);
-                        if (!stepHit && target != null && CombatMath.FlatDistance(target.transform.position, transform.position) <= Radius + target.Radius + 0.6f)
-                        {
-                            stepHit = true;
-                            HitPlayer(a, transform.position);
-                        }
-                        Game.FX?.DustTrail(transform.position);
                     }
                     break;
 
@@ -327,21 +345,57 @@ namespace Nindo
     /// <summary>Proyectil de agua (Mizuchi). Se puede desviar con parry o esquivar con dash.</summary>
     public class WaveProjectile : MonoBehaviour
     {
+        /// <summary>Olas en vuelo: el jefe calcula con ellas cuándo llega la próxima a Kaito (aviso a sus pies).</summary>
+        public static readonly List<WaveProjectile> Active = new List<WaveProjectile>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => Active.Clear();
+
+        /// <summary>Distancia a la que la ola alcanza a Kaito (m).</summary>
+        public const float HitRadius = 1.1f;
+        public Enemy Owner => owner;
+        /// <summary>Ya sonó el aviso "¡ya!" de esta ola.</summary>
+        [System.NonSerialized] public bool cued;
+
         Enemy owner;
         AttackDef attack;
         Vector3 dir;
         float speed = 11f, life = 2.2f;
         bool done;
 
-        public static void Spawn(Enemy owner, Vector3 pos, Vector3 dir, AttackDef a)
+        public static float SpeedFor(AttackDef a) => a.specialParam > 4f ? a.specialParam : 11f;
+
+        public static void Spawn(Enemy owner, Vector3 pos, Vector3 dir, AttackDef a, bool cued)
         {
             var go = Game.FX != null ? Game.FX.MakeWave(pos, dir) : new GameObject("Wave");
             go.transform.position = pos;
             var w = go.GetComponent<WaveProjectile>();
             if (w == null) w = go.AddComponent<WaveProjectile>();
-            w.owner = owner; w.attack = a; w.dir = dir.Flat().normalized; w.done = false; w.life = 2.2f;
-            w.speed = a.specialParam > 0 && a.specialParam > 4 ? a.specialParam : 11f;
+            w.owner = owner; w.attack = a; w.dir = dir.Flat().normalized; w.done = false; w.life = 2.2f; w.cued = cued;
+            w.speed = SpeedFor(a);
+            if (!Active.Contains(w)) Active.Add(w);
         }
+
+        /// <summary>Segundos hasta que una ola que sale de 'from' hacia 'dir' pase a HitRadius de 'p' (infinito si no lo toca).</summary>
+        public static float TimeToHit(Vector3 from, Vector3 dir, float speed, Vector3 p)
+        {
+            Vector3 d = (p - from).Flat();
+            float along = Vector3.Dot(d, dir);
+            float lat2 = d.sqrMagnitude - along * along;
+            if (lat2 >= HitRadius * HitRadius) return float.PositiveInfinity;
+            float reach = along - Mathf.Sqrt(HitRadius * HitRadius - lat2);
+            if (reach < -HitRadius) return float.PositiveInfinity;   // ya pasó
+            return Mathf.Max(0f, reach) / Mathf.Max(0.1f, speed);
+        }
+
+        /// <summary>Segundos hasta que esta ola alcance a 'p' (infinito si no va a tocarlo antes de deshacerse).</summary>
+        public float TimeToHit(Vector3 p)
+        {
+            if (done) return float.PositiveInfinity;
+            float t = TimeToHit(transform.position, dir, speed, p);
+            return t <= life ? t : float.PositiveInfinity;
+        }
+
+        void OnDisable() => Active.Remove(this);
 
         void Update()
         {
@@ -351,7 +405,7 @@ namespace Nindo
             transform.rotation = Quaternion.LookRotation(dir);
             life -= dt;
             var p = Game.Player;
-            if (p != null && p.IsAlive && CombatMath.FlatDistance(p.transform.position, transform.position) < 1.1f)
+            if (p != null && p.IsAlive && CombatMath.FlatDistance(p.transform.position, transform.position) < HitRadius)
             {
                 var info = new DamageInfo { damage = attack.damage, kind = AttackKind.Projectile, direction = dir, knockback = attack.knockback, sourceFaction = Faction.Enemy, source = owner, attackName = "Ola" };
                 var r = p.ReceiveHit(info);
@@ -363,6 +417,7 @@ namespace Nindo
         void Burst()
         {
             done = true;
+            Active.Remove(this);
             Game.FX?.Splash(transform.position);
             Pool.Despawn(gameObject);
         }

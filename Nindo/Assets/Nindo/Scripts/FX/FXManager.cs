@@ -13,6 +13,8 @@ namespace Nindo
     public class FXManager : MonoBehaviour
     {
         public ScreenFX Screen { get; private set; }
+        /// <summary>Avisos de ataque en el suelo (ensō).</summary>
+        public CombatTelegraphs Tells { get; private set; }
 
         GameObject sparksGold, sparksWhite, sparksRed, flashWhite, flashGold, flashRed, dust, smoke, smokeDark,
             leaves, petals, heal, rage, inward, splash, debris, embers, ink;
@@ -26,7 +28,7 @@ namespace Nindo
         {
             Game.FX = this;
             Screen = gameObject.AddComponent<ScreenFX>();
-            gameObject.AddComponent<CombatTelegraphs>();   // avisos de ataque en el suelo
+            Tells = gameObject.AddComponent<CombatTelegraphs>();   // avisos de ataque en el suelo
             BuildTemplates();
             flashLights = new Light[4];
             for (int i = 0; i < flashLights.Length; i++)
@@ -229,9 +231,14 @@ namespace Nindo
         }
 
         // ------------------------------------------------------------------ enemigos
+        /// <summary>Empieza el aviso de un golpe (el anillo se dibuja desde Enemy.TellStart, ver CombatTelegraphs).</summary>
+        public void BeginTell(Enemy e) { if (Tells != null && Tells.enabled) Tells.Begin(e); }
+        public void EndTell(Enemy e, TellOutcome outcome) { if (Tells != null && Tells.enabled) Tells.End(e, outcome); }
+
+        /// <summary>Brillo del arma en el instante en que se cierra el anillo (el "¡ahora!").</summary>
         public void BladeGlint(Vector3 p, bool danger)
         {
-            Emit(danger ? flashRed : flashWhite, p, Quaternion.identity, 0.3f, danger ? 0.9f : 0.5f);
+            Emit(danger ? flashRed : flashWhite, p, Quaternion.identity, 0.3f, danger ? 1.1f : 0.8f);
         }
 
         public void DangerTelegraph(Enemy e)

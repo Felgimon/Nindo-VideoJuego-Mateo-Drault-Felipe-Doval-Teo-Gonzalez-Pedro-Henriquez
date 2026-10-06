@@ -734,6 +734,18 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: tell_danger
+    clips:
+    - {fileID: 8300000, guid: 7fc604817b403f14b67f1de28b5a7804, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: tell_tick
+    clips:
+    - {fileID: 8300000, guid: 426d323469ef11625f9eda2a5d59741a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: ui_close
     clips:
     - {fileID: 8300000, guid: ddf15ec8951dd545fb1067c508f1d5d5, type: 3}

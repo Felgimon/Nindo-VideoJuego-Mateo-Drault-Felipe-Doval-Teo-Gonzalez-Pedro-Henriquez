@@ -63,6 +63,8 @@ namespace Nindo
         public float staggerTime = 0.32f;
         public float parriedRecoil = 0.32f;
         [Range(0, 1)] public float finisherHealth = 0.25f;
+        [Tooltip("Multiplica el windup mínimo de los golpes desviables (Kage < 1: más rápido, nunca menos de 0.38 s)")]
+        public float windupScale = 1f;
 
         [Header("Animación (nombres de estado del Animator)")]
         public string animLocomotion = "Locomotion";

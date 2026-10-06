@@ -5,18 +5,24 @@ namespace Nindo
     /// <summary>
     /// Presets de enemigos y jefes. Los nombres de estado coinciden con los AnimatorControllers
     /// generados en Assets/Nindo/Animation. Tiempos normalizados (0..1) respecto del clip.
+    /// 'apex' = pose de máxima carga del arma en cada clip (de ahí sale la suelta del golpe, ver StepTimeline).
     /// </summary>
     public static class EnemyArchetypes
     {
+        // apex medidos en las hojas de contacto de cada clip (el arma quieta y atrás, justo antes del tajo)
+        const float NinjaApex1 = 0.50f, NinjaApex2 = 0.28f, NinjaApex3 = 0.38f;
+        const float KaitoApex1 = 0.20f, KaitoApex2 = 0.15f, KaitoApex3 = 0.12f;
+        // los clips del sumo casi no tienen anticipación: el apex queda 0.12 antes del golpe
+        const float SumoApex1 = 0.58f, SumoApex2 = 0.48f, SumoApex3 = 0.68f, SumoApexSpecial = 0.23f;
+
         static AttackDef Hit(string state, float dmg, float aStart, float aEnd, float range = 2.3f, float arc = 110f,
-            AttackKind kind = AttackKind.Light, float lunge = 0.8f, float telegraph = 0f, float speed = 1f, float kb = 0.6f)
+            AttackKind kind = AttackKind.Light, float lunge = 0.8f, float telegraph = 0f, float speed = 1f, float kb = 0.6f, float apex = -1f)
         {
             return new AttackDef
             {
                 name = state, state = state, damage = dmg, activeStart = aStart, activeEnd = aEnd, range = range, arc = arc,
-                kind = kind, lunge = lunge, lungeStart = Mathf.Max(0f, aStart - 0.25f), lungeEnd = aStart + 0.05f,
-                telegraph = telegraph, speed = speed, knockback = kb, hitStop = kind == AttackKind.Light ? 0.07f : 0.12f,
-                timing = AttackDef.Snappy(0.85f, 1.35f, aStart, 1f), sfx = kind == AttackKind.Light ? "enemy_swing" : "enemy_swing_heavy",
+                kind = kind, lunge = lunge, telegraph = telegraph, speed = speed, knockback = kb, apex = apex,
+                hitStop = kind == AttackKind.Light ? 0.07f : 0.12f, sfx = kind == AttackKind.Light ? "enemy_swing" : "enemy_swing_heavy",
             };
         }
 
@@ -50,14 +56,17 @@ namespace Nindo
                 animGuard = "Guard", animCounter = "Counter", animExhausted = "Exhausted", animHit = "Hit",
                 animSpotted = "Spotted", animDeath = "Death", animParried = "Hit",
             };
-            var a1 = Hit("Attack1", 12, 0.6f, 0.78f, telegraph: 0.12f);
-            var a2 = Hit("Attack2", 12, 0.42f, 0.62f);
-            var a3 = Hit("Attack3", 15, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.4f, kb: 1.2f);
+            var a1 = Hit("Attack1", 12, 0.6f, 0.78f, telegraph: 0.12f, apex: NinjaApex1);
+            var a2 = Hit("Attack2", 12, 0.42f, 0.62f, apex: NinjaApex2);
+            var a3 = Hit("Attack3", 15, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.4f, kb: 1.2f, apex: NinjaApex3);
+            // la estocada arranca de lejos: el aviso dura más para que se lea antes de que llegue
+            var thrust = Hit("Attack3", 16, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 3.2f, range: 2.6f, apex: NinjaApex3);
+            thrust.windup = 0.7f;
             c.patterns = new[]
             {
                 new AttackPattern { name = "Combo de 3", steps = new[] { a1, a2, a3 }, weight = 2f, maxRange = 2.8f },
                 new AttackPattern { name = "Doble", steps = new[] { a1, a2 }, weight = 1.5f, maxRange = 2.8f },
-                new AttackPattern { name = "Estocada", steps = new[] { Hit("Attack3", 16, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 3.2f, range: 2.6f) }, weight = 1f, minRange = 2.6f, maxRange = 5.5f, cooldown = 4f },
+                new AttackPattern { name = "Estocada", steps = new[] { thrust }, weight = 1f, minRange = 2.6f, maxRange = 5.5f, cooldown = 4f },
             };
             return c;
         }
@@ -69,9 +78,9 @@ namespace Nindo
             c.maxHealth = 90; c.runSpeed = 5.6f; c.maxImbalance = 4; c.guardTime = 1.8f; c.poiseHits = 1;
             c.tint = new Color(0.75f, 0.18f, 0.15f); c.tintStrength = 0.55f;
             c.ScaleSteps(1.25f, 1.12f); // a1/a2 del ninja están en dos patrones: se escalan una sola vez
-            var a1 = Hit("Attack1", 14, 0.6f, 0.78f, telegraph: 0.1f, speed: 1.12f);
-            var a2 = Hit("Attack2", 14, 0.42f, 0.62f, speed: 1.12f);
-            var a3 = Hit("Attack3", 18, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.4f, speed: 1.1f);
+            var a1 = Hit("Attack1", 14, 0.6f, 0.78f, telegraph: 0.1f, speed: 1.12f, apex: NinjaApex1);
+            var a2 = Hit("Attack2", 14, 0.42f, 0.62f, speed: 1.12f, apex: NinjaApex2);
+            var a3 = Hit("Attack3", 18, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.4f, speed: 1.1f, apex: NinjaApex3);
             var list = new System.Collections.Generic.List<AttackPattern>(c.patterns);
             list.Add(new AttackPattern { name = "Combo largo", steps = new[] { a1, a2, a1, a3 }, weight = 1.2f, maxRange = 2.8f });
             c.patterns = list.ToArray();
@@ -89,10 +98,11 @@ namespace Nindo
                 animGuard = "Idle", animCounter = "Attack1", animExhausted = "Exhausted", animHit = "Hit",
                 animSpotted = "Spotted", animDeath = "Exhausted", animParried = "Hit",
             };
-            var slap1 = Hit("Attack1", 18, 0.7f, 0.9f, range: 2.8f, arc: 120, kind: AttackKind.Heavy, lunge: 0.6f, kb: 1.6f);
-            var slap2 = Hit("Attack2", 20, 0.6f, 0.82f, range: 2.8f, arc: 130, kind: AttackKind.Heavy, lunge: 0.6f, kb: 1.6f);
-            var stomp = Hit("Attack3", 26, 0.8f, 0.92f, range: 3.4f, arc: 360, kind: AttackKind.Heavy, lunge: 0.2f, kb: 2.2f);
-            var charge = Hit("Special", 30, 0.35f, 0.85f, range: 2.4f, arc: 90, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.45f, kb: 3f);
+            var slap1 = Hit("Attack1", 18, 0.7f, 0.9f, range: 2.8f, arc: 120, kind: AttackKind.Heavy, lunge: 0.6f, kb: 1.6f, apex: SumoApex1);
+            var slap2 = Hit("Attack2", 20, 0.6f, 0.82f, range: 2.8f, arc: 130, kind: AttackKind.Heavy, lunge: 0.6f, kb: 1.6f, apex: SumoApex2);
+            var stomp = Hit("Attack3", 26, 0.8f, 0.92f, range: 3.4f, arc: 360, kind: AttackKind.Heavy, lunge: 0.2f, kb: 2.2f, apex: SumoApex3);
+            // embestida: el windup mínimo de un imparable (0.8 s) ya alcanza; el resto lo da el recorrido
+            var charge = Hit("Special", 30, 0.35f, 0.85f, range: 2.4f, arc: 90, kind: AttackKind.Unblockable, lunge: 0f, kb: 3f, apex: SumoApexSpecial);
             charge.special = "charge"; charge.specialParam = 11f; charge.tracking = true;
             c.patterns = new[]
             {
@@ -125,12 +135,14 @@ namespace Nindo
                 animGuard = "Idle", animCounter = "Combo1", animExhausted = "StunSpin", animHit = "Parried",
                 animSpotted = "Spotted", animDeath = "StunSpin", animParried = "Parried",
             };
-            var c1 = Hit("Combo1", 22, 0.48f, 0.62f, range: 3.4f, arc: 130, kind: AttackKind.Heavy, lunge: 1.2f, telegraph: 0.2f, kb: 1.8f);
-            var c2 = Hit("Combo2", 24, 0.5f, 0.64f, range: 3.4f, arc: 130, kind: AttackKind.Heavy, lunge: 1.2f, kb: 1.8f);
-            var c3 = Hit("Combo3", 28, 0.45f, 0.62f, range: 3.6f, arc: 160, kind: AttackKind.Heavy, lunge: 1.0f, kb: 2.4f);
-            var slam = Hit("Heavy", 38, 0.55f, 0.62f, range: 3.4f, arc: 360, kind: AttackKind.Unblockable, lunge: 0.5f, telegraph: 0.3f, kb: 3f);
+            // frames de daño medidos en Blender (velocidad de la cabeza del martillo, Minijefe.fbx): antes pegaba
+            // con el martillo todavía arriba (Combo1 0.19 s antes, el pisotón 0.65 s antes del impacto en el suelo)
+            var c1 = Hit("Combo1", 22, 0.66f, 0.80f, range: 3.4f, arc: 130, kind: AttackKind.Heavy, lunge: 1.2f, telegraph: 0.2f, kb: 1.8f, apex: 0.58f);
+            var c2 = Hit("Combo2", 24, 0.52f, 0.62f, range: 3.4f, arc: 130, kind: AttackKind.Heavy, lunge: 1.2f, kb: 1.8f, apex: 0.42f);
+            var c3 = Hit("Combo3", 28, 0.63f, 0.74f, range: 3.6f, arc: 160, kind: AttackKind.Heavy, lunge: 1.0f, kb: 2.4f, apex: 0.55f);
+            var slam = Hit("Heavy", 38, 0.77f, 0.80f, range: 3.4f, arc: 360, kind: AttackKind.Unblockable, lunge: 0.5f, telegraph: 0.3f, kb: 3f, apex: 0.68f);
             slam.special = "slam"; slam.specialParam = 4.6f;
-            var spin = Hit("Spin", 20, 0.2f, 0.85f, range: 2.8f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.35f, kb: 2.5f);
+            var spin = Hit("Spin", 20, 0.2f, 0.85f, range: 2.8f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.15f, kb: 2.5f, apex: 0.15f);
             spin.special = "spin"; spin.specialParam = 3.8f;
             var slam2 = slam.Clone(); slam2.specialParam = 6f; slam2.damage = 42;
             c.patterns = new[]
@@ -152,10 +164,10 @@ namespace Nindo
             c.id = "mizuchi"; c.displayName = "Mizuchi"; c.maxHealth = 420; c.scale = 1.3f; c.runSpeed = 6.2f;
             c.maxImbalance = 5; c.exhaustedTime = 3f; c.guardTime = 1.6f; c.poiseHits = 2; c.detectRadius = 30; c.loseRadius = 80;
             c.finisherHealth = 0.12f; c.tint = new Color(0.2f, 0.65f, 0.8f); c.tintStrength = 0.5f; c.hyperArmor = false;
-            var a1 = Hit("Attack1", 16, 0.6f, 0.78f, telegraph: 0.08f, speed: 1.15f);
-            var a2 = Hit("Attack2", 16, 0.42f, 0.62f, speed: 1.15f);
-            var a3 = Hit("Attack3", 20, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.6f, speed: 1.1f, kb: 1.5f);
-            var wave = Hit("Attack3", 18, 0.5f, 0.6f, kind: AttackKind.Light, lunge: 0f, telegraph: 0.25f);
+            var a1 = Hit("Attack1", 16, 0.6f, 0.78f, telegraph: 0.08f, speed: 1.15f, apex: NinjaApex1);
+            var a2 = Hit("Attack2", 16, 0.42f, 0.62f, speed: 1.15f, apex: NinjaApex2);
+            var a3 = Hit("Attack3", 20, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.6f, speed: 1.1f, kb: 1.5f, apex: NinjaApex3);
+            var wave = Hit("Attack3", 18, 0.5f, 0.6f, kind: AttackKind.Light, lunge: 0f, telegraph: 0.25f, apex: NinjaApex3);
             wave.special = "wave"; wave.specialParam = 1;
             var wave3 = wave.Clone(); wave3.specialParam = 3;
             var summon = Hit("Spotted", 0, 0.5f, 0.55f, lunge: 0f); summon.special = "summon"; summon.specialParam = 2;
@@ -178,11 +190,11 @@ namespace Nindo
             c.id = "ozeki"; c.displayName = "Ōzeki"; c.maxHealth = 560; c.scale = 1.35f; c.maxImbalance = 3;
             c.detectRadius = 30; c.loseRadius = 80; c.finisherHealth = 0.12f; c.exhaustedTime = 4.5f;
             c.tint = new Color(0.55f, 0.15f, 0.12f); c.tintStrength = 0.35f;
-            var slap1 = Hit("Attack1", 22, 0.7f, 0.9f, range: 3.2f, arc: 130, kind: AttackKind.Heavy, lunge: 0.8f, kb: 2f);
-            var slap2 = Hit("Attack2", 24, 0.6f, 0.82f, range: 3.2f, arc: 130, kind: AttackKind.Heavy, lunge: 0.8f, kb: 2f);
-            var stomp = Hit("Attack3", 30, 0.8f, 0.92f, range: 3.6f, arc: 360, kind: AttackKind.Unblockable, lunge: 0.2f, telegraph: 0.25f, kb: 3f);
+            var slap1 = Hit("Attack1", 22, 0.7f, 0.9f, range: 3.2f, arc: 130, kind: AttackKind.Heavy, lunge: 0.8f, kb: 2f, apex: SumoApex1);
+            var slap2 = Hit("Attack2", 24, 0.6f, 0.82f, range: 3.2f, arc: 130, kind: AttackKind.Heavy, lunge: 0.8f, kb: 2f, apex: SumoApex2);
+            var stomp = Hit("Attack3", 30, 0.8f, 0.92f, range: 3.6f, arc: 360, kind: AttackKind.Unblockable, lunge: 0.2f, telegraph: 0.25f, kb: 3f, apex: SumoApex3);
             stomp.special = "slam"; stomp.specialParam = 5f;
-            var charge = Hit("Special", 32, 0.35f, 0.85f, range: 2.6f, arc: 90, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.4f, kb: 3.5f);
+            var charge = Hit("Special", 32, 0.35f, 0.85f, range: 2.6f, arc: 90, kind: AttackKind.Unblockable, lunge: 0f, kb: 3.5f, apex: SumoApexSpecial);
             charge.special = "charge"; charge.specialParam = 13f;
             c.patterns = new[]
             {
@@ -203,17 +215,18 @@ namespace Nindo
                 id = "kage", displayName = "Kage", maxHealth = 600, runSpeed = 6.8f, walkSpeed = 2.6f, turnSpeed = 14f,
                 radius = 0.4f, height = 1.6f, scale = 1.05f, maxImbalance = 5, exhaustedTime = 2.6f, guardTime = 1.8f,
                 poiseHits = 1, preferredDistance = 3.2f, detectRadius = 30f, loseRadius = 80f, finisherHealth = 0.1f,
-                attackCooldown = new Vector2(0.35f, 1.0f),
+                attackCooldown = new Vector2(0.35f, 1.0f), windupScale = 0.873f,
                 tint = new Color(0.12f, 0.08f, 0.2f), tintStrength = 0.8f,
                 animGuard = "ParryStance", animCounter = "ParrySuccess", animExhausted = "Blocked", animHit = "Hit",
                 animSpotted = "Blocked", animDeath = "Hit", animParried = "Blocked",
             };
-            // usa los clips de Kaito (0.3-0.6 s): rápidos, así que el aviso es más largo para que el parry sea legible
-            var a1 = Hit("Attack1", 14, 0.3f, 0.6f, range: 2.4f, telegraph: 0.24f, speed: 0.8f);
-            var a2 = Hit("Attack2", 14, 0.25f, 0.6f, range: 2.4f, telegraph: 0.2f, speed: 0.8f);
-            var a3 = Hit("Attack3", 20, 0.22f, 0.45f, range: 2.7f, kind: AttackKind.Heavy, lunge: 1.8f, telegraph: 0.26f, speed: 0.85f, kb: 1.6f);
+            // usa los clips de Kaito (0.3-0.6 s): casi no tienen anticipación, la pone StepTimeline. Kage es el más
+            // rápido del juego (windup 0.48 s / 0.38 s encadenado, windupScale) pero el aviso sigue siendo exacto
+            var a1 = Hit("Attack1", 14, 0.3f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex1);
+            var a2 = Hit("Attack2", 14, 0.25f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex2);
+            var a3 = Hit("Attack3", 20, 0.22f, 0.45f, range: 2.7f, kind: AttackKind.Heavy, lunge: 1.8f, speed: 0.85f, kb: 1.6f, apex: KaitoApex3);
             var tp = Hit("Dash", 0, 0.2f, 0.25f, lunge: 0f); tp.special = "teleport"; tp.specialParam = 2.2f;
-            var ws = Hit("Attack3", 30, 0.3f, 0.35f, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.5f, kb: 2f);
+            var ws = Hit("Attack3", 30, 0.3f, 0.35f, kind: AttackKind.Unblockable, lunge: 0f, kb: 2f, apex: KaitoApex3);
             ws.special = "windslash"; ws.specialParam = 10f;
             var clones = Hit("ParrySuccess", 0, 0.5f, 0.55f, lunge: 0f); clones.special = "clones"; clones.specialParam = 2;
             c.patterns = new[]
@@ -233,8 +246,9 @@ namespace Nindo
             var c = Kage();
             c.id = "kage_clone"; c.displayName = "Sombra"; c.maxHealth = 1; c.poiseHits = 99; c.guardTime = 0.1f;
             c.tint = new Color(0.25f, 0.1f, 0.4f); c.tintStrength = 0.9f; c.scale = 1f; c.detectRadius = 40f;
-            var a1 = Hit("Attack1", 10, 0.3f, 0.6f, range: 2.4f, telegraph: 0.28f, speed: 0.8f);
-            var a3 = Hit("Attack3", 12, 0.22f, 0.45f, range: 2.7f, lunge: 1.6f, telegraph: 0.28f, speed: 0.8f);
+            c.windupScale = 1f;   // los clones son más lentos que Kage: se distinguen por el ritmo
+            var a1 = Hit("Attack1", 10, 0.3f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex1);
+            var a3 = Hit("Attack3", 12, 0.22f, 0.45f, range: 2.7f, lunge: 1.6f, speed: 0.8f, apex: KaitoApex3);
             c.patterns = new[] { new AttackPattern { name = "Eco", steps = new[] { a1, a3 }, weight = 1f, maxRange = 3f } };
             return c;
         }
