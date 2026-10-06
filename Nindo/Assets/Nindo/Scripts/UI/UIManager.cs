@@ -19,6 +19,8 @@ namespace Nindo
         // jefe
         RectTransform bossRoot, bossBack, bossNameRt;
         CanvasGroup bossGroup;
+        /// <summary>0..1: cuánto se ve la barra del jefe (los paneles de abajo se corren para no pisarla).</summary>
+        float BossBarAlpha => bossGroup != null ? bossGroup.alpha : 0f;
         Image bossFill, bossGhost, bossGlow, bossHanko;
         Image[] bossPips = new Image[0];
         TextMeshProUGUI bossName, bossSub, bossPostureLabel;

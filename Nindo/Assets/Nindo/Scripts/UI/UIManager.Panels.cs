@@ -29,7 +29,7 @@ namespace Nindo
         CanvasGroup bannerGroup;
         Image bannerIcon;
         TextMeshProUGUI bannerText;
-        float bannerT, bannerLife;
+        float bannerT, bannerLife, bannerY = -260f;
         bool bannerActive;
 
         // ---- título de zona
@@ -143,7 +143,18 @@ namespace Nindo
                 var b = bannerQueue.Dequeue();
                 bannerActive = true; bannerT = 0f; bannerLife = b.life + 0.6f;
                 bannerText.text = b.text; bannerText.color = b.color;
+                // en pelea el aviso sube a la franja del HUD (el objetivo se esconde en combate) y se achica para
+                // pasar entre la cabeza del dragón y el borde derecho: a -260 caía justo sobre la cabeza del jefe,
+                // que con la cámara de pelea queda en el tercio de arriba (los gritos de Kokuyō la tapaban)
+                bool fight = Game.Combat != null && Game.Combat.InCombat;
+                bannerY = fight ? -122f : -260f;
+                bannerText.fontSize = 40f;
                 float tw = bannerText.GetPreferredValues(b.text, 9999f, 70f).x;
+                if (fight)
+                {
+                    bannerText.fontSize = Mathf.Clamp(40f * 560f / Mathf.Max(1f, tw), 24f, 32f);
+                    tw = bannerText.GetPreferredValues(b.text, 9999f, 70f).x;
+                }
                 bannerIcon.sprite = b.icon;
                 bannerIcon.enabled = b.icon != null;
                 bannerIcon.color = b.color;
@@ -156,7 +167,7 @@ namespace Nindo
             // baja 40 px en 0.2 s, queda y se apaga en 0.4 s
             float a = bannerT < 0.2f ? UIAnim.OutCubic(bannerT / 0.2f) : bannerT > bannerLife - 0.4f ? Mathf.Clamp01((bannerLife - bannerT) / 0.4f) : 1f;
             bannerGroup.alpha = a;
-            bannerRoot.anchoredPosition = new Vector2(0f, -260f - 40f * UIAnim.OutCubic(bannerT / 0.2f));
+            bannerRoot.anchoredPosition = new Vector2(0f, bannerY - 40f * UIAnim.OutCubic(bannerT / 0.2f));
             if (bannerT >= bannerLife) { bannerActive = false; bannerGroup.alpha = 0f; }
         }
 
@@ -321,6 +332,9 @@ namespace Nindo
             // debajo del velo y asomaba bajo la tarjeta de controles
             bool show = tutorialVisible && !DialogueOpen && !PauseOpen && !deathPanel.activeSelf && !endPanel.activeSelf;
             tutorialGroup.SetAlpha(Mathf.MoveTowards(tutorialGroup.alpha, show ? 1f : 0f, dt * 5f));
+            // con la barra del jefe abajo el consejo sube: a 150 su borde de abajo pisaba el nombre del jefe
+            float ty = Mathf.Lerp(150f, 290f, BossBarAlpha);
+            if (Mathf.Abs(tutorialRoot.anchoredPosition.y - ty) > 0.5f) tutorialRoot.anchoredPosition = new Vector2(0f, ty);
             // se desenrolla de 0 al ancho y el texto entra después (quieto, no se toca: no rehace el canvas)
             if (tutorialOpenT > 0.5f) return;
             tutorialOpenT += dt;

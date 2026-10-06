@@ -194,7 +194,9 @@ namespace Nindo
         public static EnemyConfig Ozeki()
         {
             var c = Sumo();
-            c.id = "ozeki"; c.displayName = "Ōzeki"; c.maxHealth = 560; c.scale = 1.35f; c.maxImbalance = 4;
+            // 760: con 560 el bot de pruebas lo terminaba en 22 s (las pausas de la sal y el agarre esquivado regalan
+            // golpes libres) y la fase 2 casi no llegaba a verse; Kokuyō, con 900 y sus actos, dura ~2 min
+            c.id = "ozeki"; c.displayName = "Ōzeki"; c.maxHealth = 760; c.scale = 1.35f; c.maxImbalance = 4;
             c.detectRadius = 30; c.loseRadius = 80; c.finisherHealth = 0.12f; c.exhaustedTime = 4f; c.guardTime = 0.8f;
             c.runSpeed = 3.8f; c.walkSpeed = 1.8f; c.turnSpeed = 6.5f; c.preferredDistance = 4.4f;
             c.attackCooldown = new Vector2(0.6f, 1.3f);
