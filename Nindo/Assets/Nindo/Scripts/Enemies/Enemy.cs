@@ -28,7 +28,7 @@ namespace Nindo
         public float Imbalance01 => config.maxImbalance > 0 ? Imbalance / config.maxImbalance : 0f;
         public bool IsAlive => State != EnemyState.Dead && State != EnemyState.Executed;
         public bool IsAggro { get; protected set; }
-        public bool Targetable => IsAlive && gameObject.activeInHierarchy && State != EnemyState.Scripted;
+        public virtual bool Targetable => IsAlive && gameObject.activeInHierarchy && State != EnemyState.Scripted;
         public Faction Faction => Faction.Enemy;
         public Transform Root => transform;
         public float Radius => config.radius * Mathf.Max(0.5f, config.scale);
@@ -61,6 +61,8 @@ namespace Nindo
         public const float TrackingStopLead = 0.20f;
         /// <summary>Golpes que aguanta agotado antes de volver a la guardia.</summary>
         public const int ExhaustedMaxHits = 4;
+        /// <summary>Golpes que aguanta agotado este enemigo (un jefe puede dar una ventana más larga).</summary>
+        protected virtual int ExhaustedHitCap => ExhaustedMaxHits;
         /// <summary>Desequilibrio mínimo al terminar el combo para quedar agotado: un parry entero (la guardia
         /// imperfecta y los golpes contra la guardia suman de a poco, solos no alcanzan).</summary>
         public const float ExhaustThreshold = 1f;
@@ -1015,7 +1017,7 @@ namespace Nindo
 
             if (State == EnemyState.Exhausted)
             {
-                if (exhaustedHits >= ExhaustedMaxHits) EndExhaustion();
+                if (exhaustedHits >= ExhaustedHitCap) EndExhaustion();
                 else anim.Play(config.animHit, 0.03f);
             }
             else if (State == EnemyState.Attack && (config.hyperArmor && info.kind != AttackKind.Ability || armored && info.kind == AttackKind.Light && !info.riposte))
@@ -1116,7 +1118,7 @@ namespace Nindo
             StartCoroutine(DeathRoutine(info.direction));
         }
 
-        IEnumerator DeathRoutine(Vector3 dir)
+        protected virtual IEnumerator DeathRoutine(Vector3 dir)
         {
             // cae hacia atrás y se desvanece en humo (sin ragdoll: barato y legible)
             float t = 0f;

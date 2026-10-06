@@ -23,6 +23,7 @@ namespace Nindo
     ///   talk [max]             espera un diálogo (hasta 'max' s) y lo avanza hasta que no quede ninguno
     ///   waitcontrol [max]      espera a que no haya cinemática ni diálogo
     ///   goto X Z [max]         camina hasta el punto (x, z) del mundo (o hasta 'max' s)
+    ///   kokuyo act N           en plena pelea con Kokuyō, salta al acto N (2, 3; 4 = última resistencia)
     /// ACT = nombre de <see cref="Act"/> (Attack, Parry, Dash, Lock, Finisher, Interact, Ability1,
     /// Ability2, Pause, LockNext, LockPrev, Submit, Cancel).
     /// Ej.: AutoPilot.Run("tap Submit x4 0.5; move 0 1 1.5; tap Attack x3 0.3; hold Parry 0.4")
@@ -171,8 +172,9 @@ namespace Nindo
                 if (e == null || !e.IsAlive) continue;
                 float d = CombatMath.FlatDistance(e.transform.position, p.transform.position);
                 if (d < best) { best = d; nearest = e; }
-                // un anillo de aviso a la vista: mejor no empezar un ataque (no se puede desviar a mitad del tajo)
-                if (e.InTell && d < 7f) threatened = true;
+                // un anillo de aviso a la vista: mejor no empezar un ataque (no se puede desviar a mitad del tajo).
+                // Con el alcance del golpe: la estocada de Kokuyō llega desde 8 m
+                if (e.InTell && d < Mathf.Max(7f, e.StrikeReach + 2f)) threatened = true;
             }
             // defensa: aprieta cuando se cumple su tiempo de reacción (no depende del cooldown de acciones)
             for (int i = pending.Count - 1; i >= 0; i--)
@@ -234,6 +236,13 @@ namespace Nindo
                     Bot = t.Length < 2 || t[1].ToLowerInvariant() != "off";
                     if (!Bot) InputReader.VirtualMove = Vector2.zero;
                     return null;
+                case "kokuyo":
+                {
+                    var k = Game.Combat != null ? Game.Combat.ActiveBoss as KokuyoBoss : null;
+                    if (k == null || t.Length < 3 || t[1].ToLowerInvariant() != "act") throw new System.ArgumentException("uso: kokuyo act N (en plena pelea)");
+                    k.DebugJump(int.Parse(t[2], CultureInfo.InvariantCulture));
+                    return null;
+                }
                 case "move":
                 {
                     InputReader.VirtualMove = new Vector2(F(t, 1, 0f), F(t, 2, 0f));

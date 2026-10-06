@@ -6,7 +6,7 @@ namespace Nindo
 {
     /// <summary>
     /// Jefe: enemigo con fases, presentación cinemática, barra de vida grande, arena cerrada y
-    /// movimientos especiales (golpe sísmico, giro, ola, embestida, teletransporte, clones...).
+    /// movimientos especiales (golpe sísmico, giro, ola, embestida, teletransporte, esbirros...).
     /// </summary>
     public class Boss : Enemy
     {
@@ -283,15 +283,7 @@ namespace Nindo
                     if (!specialFired && stepNorm >= a.activeStart)
                     {
                         specialFired = true;
-                        Summon(Mathf.Max(1, Mathf.RoundToInt(a.specialParam)), false);
-                    }
-                    break;
-
-                case "clones":
-                    if (!specialFired && stepNorm >= a.activeStart)
-                    {
-                        specialFired = true;
-                        Summon(Mathf.Max(1, Mathf.RoundToInt(a.specialParam)), true);
+                        Summon(Mathf.Max(1, Mathf.RoundToInt(a.specialParam)));
                     }
                     break;
 
@@ -342,7 +334,7 @@ namespace Nindo
             foreach (var r in model.GetComponentsInChildren<Renderer>()) r.enabled = v;
         }
 
-        void Summon(int count, bool clones)
+        void Summon(int count)
         {
             minions.RemoveAll(m => m == null || !m.IsAlive);
             if (minions.Count >= count) return;
@@ -350,7 +342,7 @@ namespace Nindo
             {
                 float ang = (360f / count) * i + Random.Range(-20f, 20f);
                 Vector3 pos = transform.position + Quaternion.Euler(0, ang, 0) * Vector3.forward * 3.5f;
-                Enemy e = clones ? EnemyFactory.SpawnClone(this, pos) : EnemyFactory.Spawn(minionArchetype, pos, Quaternion.LookRotation((transform.position - pos).Flat().normalized + Vector3.forward * 0.001f), null);
+                Enemy e = EnemyFactory.Spawn(minionArchetype, pos, Quaternion.LookRotation((transform.position - pos).Flat().normalized + Vector3.forward * 0.001f), null);
                 if (e != null)
                 {
                     minions.Add(e);

@@ -206,18 +206,19 @@ namespace Nindo
         /// Kokuyō cae. Con skyShot, pasado lo mejor del plano de su muerte (Boss.Die) un plano al cielo muestra la tinta
         /// escurriéndose de la luna: MoonReturn llega cuando el plano ya está arriba, así el golpe de luz se ve. Sin
         /// él, la luna vuelve en el acto. Después se encienden los braseros y las cuerdas del abuelo se deshacen a los
-        /// ~4.4 s, ya en el plano del final de StoryDirector (Kaito y el abuelo): "está libre" se ve.
+        /// ~4.4 s, ya en el plano del final de StoryDirector (Kaito y el abuelo): "está libre" se ve. Con ropesAt
+        /// negativo las cuerdas quedan para quien arma el final (StoryDirector las suelta en su plano).
         /// </summary>
-        public void Finale(bool skyShot = true)
+        public void Finale(bool skyShot = true, float ropesAt = 4.4f)
         {
             finale = true;
             if (Shadow != null) { Shadow.Release(); Shadow = null; }
             var g = Game.Player != null ? Game.Player.GetComponent<BandanaGlow>() : null;
             if (g != null) g.Disable(2.5f);
-            StartCoroutine(FinaleRoutine(skyShot && Moon != null && Game.Camera != null));
+            StartCoroutine(FinaleRoutine(skyShot && Moon != null && Game.Camera != null, ropesAt));
         }
 
-        IEnumerator FinaleRoutine(bool sky)
+        IEnumerator FinaleRoutine(bool sky, float ropesAt)
         {
             float t = 0f;
             if (sky)
@@ -233,6 +234,8 @@ namespace Nindo
             if (Braziers != null) { Braziers.SetStyle(FlameStyle.Fire, 0f); Braziers.IgniteAll(0.25f, 0, true); }
             yield return new WaitForSecondsRealtime(1.4f);
             skyShot = -1;
+            if (ropesAt < 0f) yield break;
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, ropesAt - 4.4f));
             if (Ropes != null) Ropes.Dissolve(1.6f);
         }
 

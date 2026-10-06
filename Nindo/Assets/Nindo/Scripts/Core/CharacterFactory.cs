@@ -322,7 +322,7 @@ namespace Nindo
             {
                 case "sumo": case "sumo_mountain": case "ozeki": return "sumo";
                 case "goro": return "goro";
-                case "kage": case "kage_clone": return "kage";
+                case "kage": return "kokuyo";
                 default: return "ninja";
             }
         }
@@ -354,7 +354,7 @@ namespace Nindo
             Enemy e;
             if (IsBoss(archetype))
             {
-                var b = root.AddComponent<Boss>();
+                var b = archetype == "kage" ? root.AddComponent<KokuyoBoss>() : root.AddComponent<Boss>();
                 ConfigureBoss(b, archetype);
                 e = b;
             }
@@ -382,9 +382,10 @@ namespace Nindo
                     b.introAnim = "Spotted"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.5f };
                     break;
                 case "kage":
-                    b.bossId = "kage"; b.title = "Kage"; b.subtitle = "La Sombra del Clan";
-                    b.introAnim = "ParryStance"; b.phaseAnim = "Blocked"; b.musicKey = "boss_final"; b.phaseThresholds = new[] { 0.6f, 0.25f };
-                    b.phaseSpeedBonus = 0.1f;
+                    // Kokuyō: los actos (65 % y 30 %) y su ritmo los maneja KokuyoBoss, sin la aceleración genérica
+                    b.bossId = "kage"; b.title = "Kokuyō"; b.subtitle = "Señor del Clan Kurokage";
+                    b.introAnim = "Intro"; b.phaseAnim = "Roar"; b.musicKey = "boss_final"; b.phaseThresholds = new[] { 0.65f, 0.30f };
+                    b.phaseSpeedBonus = 0f;
                     break;
             }
             b.hasSeal = BossSeal(archetype, out b.seal);
@@ -400,13 +401,6 @@ namespace Nindo
                 case "ozeki": seal = SealId.Bambu; return true;
                 default: seal = SealId.Montana; return false;
             }
-        }
-
-        /// <summary>Clon de sombra de Kage (1 golpe lo destruye).</summary>
-        public static Enemy SpawnClone(Boss owner, Vector3 pos)
-        {
-            var e = Spawn("kage_clone", pos, owner.transform.rotation, null);
-            return e;
         }
     }
 
