@@ -274,6 +274,9 @@ namespace Nindo
             // el panel crece con el texto (los consejos largos de dos renglones se salían)
             tutorialHeight = Mathf.Max(110f, tutorialText.GetPreferredValues(tutorialText.text, 860f, 400f).y + 56f);
             tutorialRoot.sizeDelta = new Vector2(1100, tutorialHeight);
+            tutorialPanel.rectTransform.SetSize(new Vector2(tutorialPanel.rectTransform.sizeDelta.x, tutorialHeight));
+            // los extremos de pincel escalan con el alto (hasta 160: más alto ya no engorda las puntas)
+            if (UISprites.InkPanel != null) tutorialPanel.pixelsPerUnitMultiplier = UISprites.InkPanel.rect.height / Mathf.Min(tutorialHeight, 160f);
         }
 
         public void HideTutorial() => tutorialVisible = false;
@@ -281,12 +284,12 @@ namespace Nindo
         void UpdateTutorial(float dt)
         {
             bool show = tutorialVisible && !DialogueOpen;
-            tutorialGroup.alpha = Mathf.MoveTowards(tutorialGroup.alpha, show ? 1f : 0f, dt * 5f);
-            // se desenrolla de 0 al ancho y el texto entra después
+            tutorialGroup.SetAlpha(Mathf.MoveTowards(tutorialGroup.alpha, show ? 1f : 0f, dt * 5f));
+            // se desenrolla de 0 al ancho y el texto entra después (quieto, no se toca: no rehace el canvas)
+            if (tutorialOpenT > 0.5f) return;
             tutorialOpenT += dt;
             float w = UIAnim.OutBack(tutorialOpenT / UIAnim.Medium);
-            tutorialPanel.rectTransform.sizeDelta = new Vector2(Mathf.Max(260f, 1100f * w), tutorialHeight);
-            tutorialPanel.pixelsPerUnitMultiplier = UISprites.InkPanel != null ? UISprites.InkPanel.rect.height / Mathf.Min(tutorialHeight, 160f) : 1f;
+            tutorialPanel.rectTransform.SetSize(new Vector2(Mathf.Max(260f, 1100f * w), tutorialHeight));
             tutorialText.alpha = Mathf.Clamp01((tutorialOpenT - 0.1f) / 0.15f);
         }
 
@@ -383,8 +386,8 @@ namespace Nindo
         void UpdateDialogue(float dt)
         {
             // entra subiendo 24 px y apareciendo en 0.18 s
-            dialogueGroup.alpha = Mathf.MoveTowards(dialogueGroup.alpha, DialogueOpen ? 1f : 0f, dt / 0.18f);
-            dialogueRoot.anchoredPosition = new Vector2(0f, 40f - 24f * (1f - UIAnim.OutCubic(dialogueGroup.alpha)));
+            dialogueGroup.SetAlpha(Mathf.MoveTowards(dialogueGroup.alpha, DialogueOpen ? 1f : 0f, dt / 0.18f));
+            dialogueRoot.SetPos(new Vector2(0f, 40f - 24f * (1f - UIAnim.OutCubic(dialogueGroup.alpha))));
             if (speakerSwipe < 1f)
             {
                 // con cada cambio de quien habla la cinta se vuelve a desenrollar desde el nudo
@@ -392,7 +395,7 @@ namespace Nindo
                 speakerRibbonRt.sizeDelta = new Vector2(Mathf.Lerp(110f, speakerWidth, UIAnim.OutBack(speakerSwipe)), 62f);
                 dialogueSpeaker.alpha = Mathf.Clamp01((speakerSwipe - 0.4f) / 0.4f);
             }
-            dialogueHint.enabled = lineComplete;
+            if (dialogueHint.enabled != lineComplete) dialogueHint.enabled = lineComplete;
             if (lineComplete) dialogueHintRt.anchoredPosition = new Vector2(-64f, 34f + 6f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2.8f));
         }
 

@@ -323,19 +323,19 @@ namespace Nindo
         void UpdateHUD(float dt)
         {
             var p = Game.Player;
-            if (p == null) { hudGroup.alpha = 0f; return; }
+            if (p == null) { hudGroup.SetAlpha(0f); return; }
             bool hide = HideHud;
-            hudGroup.alpha = 1f;
-            leftGroup.alpha = Mathf.MoveTowards(leftGroup.alpha, hide ? 0f : 1f, dt * 4f);
+            hudGroup.SetAlpha(1f);
+            leftGroup.SetAlpha(Mathf.MoveTowards(leftGroup.alpha, hide ? 0f : 1f, dt * 4f));
             // en combate el HUD es solo la bandana y el dragón: sellos y objetivo (información para recorrer)
             // se apartan y vuelven al terminar la pelea. Los sellos siguen a la vista mientras vuela el que se
             // acaba de ganar (pasa en una cinemática)
             bool inCombat = Game.Combat != null && Game.Combat.InCombat;
             bool sealsShow = (!hide && !inCombat) || Time.unscaledTime < sealVisibleUntil;
-            rightGroup.alpha = Mathf.MoveTowards(rightGroup.alpha, sealsShow ? 1f : 0f, dt * (sealsShow ? 2f : 4f));
+            rightGroup.SetAlpha(Mathf.MoveTowards(rightGroup.alpha, sealsShow ? 1f : 0f, dt * (sealsShow ? 2f : 4f)));
             // el objetivo, además, espera a que se vaya el título de zona (antes competía con todo)
             bool objShow = !hide && objective.Length > 0 && !inCombat && titleGroup.alpha < 0.01f;
-            objectiveGroup.alpha = Mathf.MoveTowards(objectiveGroup.alpha, objShow ? 1f : 0f, dt * (objShow ? 2f : 5f));
+            objectiveGroup.SetAlpha(Mathf.MoveTowards(objectiveGroup.alpha, objShow ? 1f : 0f, dt * (objShow ? 2f : 5f)));
             float t = Time.unscaledTime;
             UpdateHealth(p, dt, t);
             UpdateDragon(p, dt, t);
@@ -581,15 +581,17 @@ namespace Nindo
             for (int i = 0; i < 3; i++)
             {
                 bool has = Game.Save.HasSeal((SealId)i);
-                // recién obtenido sin pasar por ShowSealObtained (o en otra partida cargada): golpe de sello igual
-                if (has && !sealHad[i] && !sealFlying[i]) StampSeal(i);
+                // recién obtenido sin pasar por ShowSealObtained: golpe de sello igual, con un respiro para que
+                // el vuelo (que arranca en la cinemática del sello) llegue a empezar
+                if (has && !sealHad[i] && !sealFlying[i]) { sealWait[i] += dt; if (sealWait[i] > 0.3f) StampSeal(i); }
+                else sealWait[i] = 0f;
                 if (!has) sealHad[i] = false;
                 bool shown = sealHad[i];
                 sealPop[i] = Mathf.MoveTowards(sealPop[i], 0f, dt / 0.25f);
                 float pop = sealPop[i];
                 sealDiscs[i].color = shown ? Color.Lerp(SealGold, new Color(1f, 0.95f, 0.7f, 1f), pop) : UIFactory.Lacquer;
                 sealIcons[i].color = shown ? SealIconHas : SealIconEmpty;
-                sealDiscs[i].rectTransform.localScale = Vector3.one * (1f + 0.35f * pop * pop);
+                sealDiscs[i].rectTransform.SetScale(1f + 0.35f * pop * pop);
                 // aro dorado que se abre
                 sealRingT[i] += dt;
                 float rk = sealRingT[i] / 0.5f;
@@ -611,6 +613,7 @@ namespace Nindo
         }
 
         readonly bool[] sealFlying = new bool[3];
+        readonly float[] sealWait = new float[3];
 
         void StampSeal(int i)
         {

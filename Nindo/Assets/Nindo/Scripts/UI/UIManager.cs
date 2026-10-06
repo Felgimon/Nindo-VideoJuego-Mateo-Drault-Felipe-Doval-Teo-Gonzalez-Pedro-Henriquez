@@ -159,14 +159,13 @@ namespace Nindo
         void UpdateBossBar(float dt)
         {
             bool show = boss != null && boss.IsAlive && !HideHud;
-            bossGroup.alpha = Mathf.MoveTowards(bossGroup.alpha, show ? 1f : 0f, dt * 3f);
+            bossGroup.SetAlpha(Mathf.MoveTowards(bossGroup.alpha, show ? 1f : 0f, dt * 3f));
             if (boss == null) return;
             float t = Time.unscaledTime;
             // entrada: el trazo se pinta de izquierda a derecha y después la vida "se vierte"
             bossIntro += dt;
             float wipe = UIAnim.OutCubic(bossIntro / 0.4f);
-            bossBack.sizeDelta = new Vector2(Mathf.Lerp(120f, 1400f, wipe), 56f);
-            bossBack.anchoredPosition = Vector2.zero;
+            bossBack.SetSize(new Vector2(Mathf.Lerp(120f, 1400f, wipe), 56f));
             float hp = boss.Health01;
             float pour = Mathf.Clamp01((bossIntro - 0.35f) / 0.6f);
             // lo que se perdió queda en papel medio segundo y después se vacía despacio
@@ -202,7 +201,7 @@ namespace Nindo
                 Color c = f >= 0.99f ? UIFactory.Gold : Color.Lerp(PipEmpty, UIFactory.Gold, f * 0.55f);
                 if (exhausted) c = Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(t * 16f));
                 bossPips[i].color = c;
-                bossPips[i].rectTransform.localScale = Vector3.one * (1f + 0.4f * bossPipPop[i]);
+                bossPips[i].rectTransform.SetScale(1f + 0.4f * bossPipPop[i]);
             }
             bossLastPosture = imb;
             var gc = bossGlow.color;
@@ -280,6 +279,12 @@ namespace Nindo
 
     static class RectExt
     {
+        // solo si cambia: asignar el mismo valor igual marca sucio el canvas y se rehacía la malla cada cuadro
+        public static void SetAlpha(this CanvasGroup g, float a) { if (g.alpha != a) g.alpha = a; }
+        public static void SetPos(this RectTransform rt, Vector2 p) { if (rt.anchoredPosition != p) rt.anchoredPosition = p; }
+        public static void SetSize(this RectTransform rt, Vector2 s) { if (rt.sizeDelta != s) rt.sizeDelta = s; }
+        public static void SetScale(this Transform t, float s) { var v = new Vector3(s, s, s); if (t.localScale != v) t.localScale = v; }
+
         public static void Fill(this RectTransform rt, Vector2 offsetMin, Vector2 offsetMax)
         {
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(0.5f, 0.5f);
