@@ -24,6 +24,7 @@ P_ANIM = os.path.join(N, "Animation")
 P_PROPS = os.path.join(ART, "Models", "Props")
 P_WORLD = os.path.join(ART, "Models", "World")
 P_CHARS = os.path.join(ART, "Models", "Characters")
+P_KITS = os.path.join(ART, "Characters", "Kits")
 P_RES = os.path.join(N, "Resources")
 P_DATA = os.path.join(N, "Data")
 P_AUDIO = os.path.join(N, "Audio")
@@ -602,6 +603,24 @@ def character_fbx_metas():
     write_meta(os.path.join(P_CHARS, "Grandpa.fbx.json"), TEXT_META)
 
 
+def kit_metas(mats):
+    """Kits de accesorios por zona (Tools/Blender/characters/kits/build_kits.py): el esqueleto del personaje y una
+    malla con skin; CharacterKits los cuelga de los huesos vivos por nombre. Generic sin tomas, como los personajes,
+    pero sin 'Optimize Bones': las puntas de las cadenas y las esferas de colisión no tienen pesos y SpringChain
+    las necesita."""
+    remap = {"Nindo_Palette": mats["palette"], "Nindo_Emissive": mats["emissive"]}
+    for p in sorted(glob.glob(os.path.join(P_KITS, "Kit_*.fbx"))):
+        body = model_meta(remap=remap, readable=False, anim_type=2).replace("optimizeBones: 1", "optimizeBones: 0")
+        write_meta(p, body, force=True)
+    if os.path.exists(os.path.join(P_KITS, "kits.json")):
+        write_meta(os.path.join(P_KITS, "kits.json"), TEXT_META)
+
+
+def kit_guids():
+    """id del kit (Kit_<id>.fbx) -> guid, para NindoContent.kits."""
+    return {os.path.splitext(os.path.basename(p))[0][4:]: ensure_guid(p) for p in sorted(glob.glob(os.path.join(P_KITS, "Kit_*.fbx")))}
+
+
 # ============================================================================ props y mundo
 def model_metas(mats):
     remap = {"Nindo_Palette": mats["palette"], "Nindo_Emissive": mats["emissive"], "Nindo_Foliage": mats["foliage"], "Nindo_Water": mats["water"]}
@@ -732,6 +751,8 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
         return "\n".join(rows)
 
     prop_rows = ("\n" + "\n".join(f"  - id: {pid}\n    model: {ref(g, MODEL, 3)}" for pid, g in sorted(props.items()))) if props else " []"
+    kits = kit_guids()
+    kit_rows = ("\n" + "\n".join(f"  - id: {kid}\n    model: {ref(g, MODEL, 3)}" for kid, g in sorted(kits.items()))) if kits else " []"
     zone_rows = ("\n" + "\n".join(f"  - {ref(g, MODEL, 3)}" for g in zones)) if zones else " []"
 
     def vfx(name):
@@ -765,6 +786,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   characters:
 {chars()}
+  kits:{kit_rows}
   zones:{zone_rows}
   props:{prop_rows}
   propsManifest: {ref(manifest, 4900000, 3)}
@@ -1037,6 +1059,7 @@ def main():
     character_fbx_metas()
     ctrls = controllers()
     props, zones = model_metas(mats)
+    kit_metas(mats)
     manifest = props_manifest()
     audio = audio_entries()
     for p in glob.glob(os.path.join(P_AUDIO, "**", "*.wav"), recursive=True) + glob.glob(os.path.join(P_AUDIO, "**", "*.ogg"), recursive=True):

@@ -1,0 +1,182 @@
+{
+ "kaito_bandana": {
+  "bytes": 164716,
+  "chains": [
+   "TailA",
+   "TailB"
+  ],
+  "character": "kaito",
+  "colliders": 2,
+  "groups": 9,
+  "tris": 136
+ },
+ "ninja_bamboo": {
+  "bytes": 292716,
+  "chains": [
+   "TassetFL",
+   "TassetFR",
+   "TassetBL",
+   "TassetBR",
+   "LeafA",
+   "LeafB"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 25,
+  "tris": 2824
+ },
+ "ninja_bamboo_elite": {
+  "bytes": 292412,
+  "chains": [
+   "TassetFL",
+   "TassetFR",
+   "TassetBL",
+   "TassetBR",
+   "LeafA",
+   "LeafB"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 25,
+  "tris": 2824
+ },
+ "ninja_default": {
+  "bytes": 193020,
+  "chains": [
+   "TailA",
+   "TailB"
+  ],
+  "character": "ninja",
+  "colliders": 3,
+  "groups": 11,
+  "tris": 700
+ },
+ "ninja_elite": {
+  "bytes": 211164,
+  "chains": [
+   "TailA",
+   "TailB"
+  ],
+  "character": "ninja",
+  "colliders": 3,
+  "groups": 13,
+  "tris": 1312
+ },
+ "ninja_lake": {
+  "bytes": 247836,
+  "chains": [
+   "Flap",
+   "Float"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 17,
+  "tris": 2022
+ },
+ "ninja_lake_elite": {
+  "bytes": 266076,
+  "chains": [
+   "Flap",
+   "Float"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 17,
+  "tris": 2634
+ },
+ "ninja_mountain": {
+  "bytes": 302556,
+  "chains": [
+   "CapeL",
+   "CapeC",
+   "CapeR",
+   "Shide0",
+   "Shide1",
+   "TailA",
+   "TailB"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 40,
+  "tris": 2228
+ },
+ "ninja_mountain_elite": {
+  "bytes": 320796,
+  "chains": [
+   "CapeL",
+   "CapeC",
+   "CapeR",
+   "Shide0",
+   "Shide1",
+   "TailA",
+   "TailB"
+  ],
+  "character": "ninja",
+  "colliders": 5,
+  "groups": 40,
+  "tris": 2840
+ },
+ "ozeki": {
+  "bytes": 380764,
+  "chains": [
+   "Shide00",
+   "Shide01",
+   "Shide10",
+   "Shide11",
+   "Apron"
+  ],
+  "character": "sumo",
+  "colliders": 4,
+  "groups": 23,
+  "tris": 5588
+ },
+ "sumo_bamboo": {
+  "bytes": 239324,
+  "chains": [
+   "Chimes",
+   "TieA",
+   "TieB"
+  ],
+  "character": "sumo",
+  "colliders": 4,
+  "groups": 19,
+  "tris": 2052
+ },
+ "sumo_default": {
+  "bytes": 178908,
+  "chains": [
+   "TieA",
+   "TieB"
+  ],
+  "character": "sumo",
+  "colliders": 4,
+  "groups": 9,
+  "tris": 532
+ },
+ "sumo_lake": {
+  "bytes": 313324,
+  "chains": [
+   "Apron",
+   "Float",
+   "TieA",
+   "TieB"
+  ],
+  "character": "sumo",
+  "colliders": 4,
+  "groups": 23,
+  "tris": 3428
+ },
+ "sumo_mountain": {
+  "bytes": 269884,
+  "chains": [
+   "TasselL",
+   "TasselR",
+   "Shide0",
+   "Shide1"
+  ],
+  "character": "sumo",
+  "colliders": 4,
+  "groups": 21,
+  "tris": 2472
+ }
+}
