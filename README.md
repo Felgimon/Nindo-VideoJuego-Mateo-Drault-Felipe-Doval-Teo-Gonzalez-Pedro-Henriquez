@@ -7,7 +7,7 @@ Felipe Doval, Teo González, Mateo Drault y Pedro Henríquez.
 > sola a la frente y la guadaña se convierte en katana: Kaito hereda todo lo que su abuelo
 > sabía. Para abrir las puertas del Dojo Kurokage tiene que vencer a los tres guardianes
 > —Goro en la Montaña Kodoyama, Mizuchi en el Lago Kohan y Ozeki en el Bosque de Bambú—,
-> recuperar sus tres sellos y enfrentar a Kage.
+> recuperar sus tres sellos y enfrentar a Kokuyō, el Señor del Clan Kurokage.
 
 ![Mapa de Nindō](Docs/img/mapa.jpg)
 
@@ -159,6 +159,7 @@ Nindo/Assets/Nindo/
     Combat/       tipos de ataque, CombatDirector (tokens), CharacterAnimator (CrossFade por código)
     Player/       PlayerController (+ .Combat), PlayerConfig
     Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…)
+      Bosses/     jefes con pelea propia: KokuyoBoss (jefe final: actos, sombra adelantada, Kage, eclipse)
     Camera/       CameraDirector (tomas mezclables, fijado, perfiles de jefe, golpe de FOV, oído sobre
                   Kaito), CameraOcclusion (disolución de lo que tapa, shader Nindo/Occluder Fade)
     FX/           partículas, hit-stop, post-proceso en runtime (URP Volume)
@@ -205,6 +206,8 @@ python3 Tools/UI/build_ui_art.py [--preview carpeta]
 python3 Tools/Unity/generate_assets.py
 # vocales con macrón en las fuentes (lo llama también generate_assets.py; necesita fontTools)
 python3 Tools/Fonts/add_macrons.py
+# tiempos de los golpes de Kokuyō (KokuyoTimings.cs) desde el .fbx.json de su build de Blender
+python3 Tools/Unity/kokuyo_timings.py
 ```
 
 Convenciones de Blender en `Tools/Blender/STYLE.md`. Los GUIDs de Unity se generan de forma

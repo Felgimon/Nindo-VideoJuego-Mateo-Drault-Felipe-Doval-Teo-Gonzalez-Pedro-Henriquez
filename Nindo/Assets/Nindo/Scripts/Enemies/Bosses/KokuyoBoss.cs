@@ -187,8 +187,13 @@ namespace Nindo
                 knockExtra -= s;
                 MoveBy(s);
             }
-            // el contraataque siempre es el gyakugiri (el Counter termina en LOW_L, de donde sale ese corte)
-            if (State == EnemyState.Counter && pattern != counterPattern) pattern = counterPattern;
+            // el contraataque siempre es el gyakugiri (el Counter termina en LOW_L, de donde sale ese corte). Si la
+            // sombra está por pegar, espera en la pose final del Counter: nunca dos golpes a menos de 0.9 s
+            if (State == EnemyState.Counter)
+            {
+                if (pattern != counterPattern) pattern = counterPattern;
+                if (kage != null && kage.Busy && stateTime < 1.8f) stateDuration = Mathf.Max(stateDuration, stateTime + 0.05f);
+            }
             if (State != EnemyState.Attack)
             {
                 if (sinking) EndSink();
@@ -256,6 +261,13 @@ namespace Nindo
             }
             afterRecoil = false;
             if (a.special == KokuyoMoves.Sink) BeginSink(); else if (sinking) EndSink();
+            if (a.state == KokuyoTimings.ShadowEmerge.State)
+            {
+                // sale del charco: la tinta salta y el patio tiembla (el anillo dorado ya marca dónde)
+                Game.FX?.Shockwave(transform.position, 2.6f, KokuyoLook.Violet);
+                Game.FX?.Dust(transform.position, 1.2f);
+                Game.Audio?.Play("teleport", transform.position, 0.9f);
+            }
             hazards.Core(transform.position, a.special == KokuyoMoves.Sweep ? KokuyoMoves.SweepCore + 0.35f : 0f);
         }
 
@@ -348,11 +360,22 @@ namespace Nindo
         protected override float ComputeStrikeEta(AttackDef a)
         {
             if (a.special != KokuyoMoves.Rift) return base.ComputeStrikeEta(a);
-            // Rompecascos: primero la hoja; después la grieta, que llega a Kaito si está en su carril
+            // Rompecascos: la hoja (si Kaito está a su alcance) o la grieta, que llega más tarde cuanto más lejos esté en
+            // su carril. El aviso, el hyōshigi y el dash se miden contra lo que de verdad lo va a tocar: contra la hoja,
+            // un dash al cierre del anillo terminaba sus i-frames antes de que la grieta llegara a 6 m
             if (stepHit || riftHit || target == null) return float.PositiveInfinity;
-            if (stepClock < tl.T) return tl.T - stepClock;
-            if (!riftOn) return 0f;
-            RiftCoords(target.transform.position, out float along, out float lateral);
+            Vector3 tp = target.transform.position;
+            if (!riftOn)
+            {
+                float pre = Mathf.Max(0f, tl.T - stepClock);
+                if (clip != null && CombatMath.InArc(transform, tp, clip.Reach + 0.3f, a.arc, target.Radius)) return pre;
+                Vector3 fwd = transform.forward.Flat().normalized;
+                Vector3 to = (tp - (transform.position + fwd * 1.2f)).Flat();
+                float al = Vector3.Dot(to, fwd), lat = Mathf.Abs(Vector3.Dot(to, Vector3.Cross(Vector3.up, fwd)));
+                bool inLane = lat <= KokuyoMoves.RiftHalfWidth + target.Radius && al <= KokuyoMoves.RiftLength;
+                return inLane ? pre + Mathf.Max(0f, al) / KokuyoMoves.RiftSpeed : pre;
+            }
+            RiftCoords(tp, out float along, out float lateral);
             float front = (Time.time - riftStart) * KokuyoMoves.RiftSpeed;
             if (lateral > KokuyoMoves.RiftHalfWidth + target.Radius || along > KokuyoMoves.RiftLength || along < front - 1f) return float.PositiveInfinity;
             return Mathf.Max(0f, along - front) / KokuyoMoves.RiftSpeed;
@@ -461,6 +484,7 @@ namespace Nindo
             if (colliders.Count > 0 && colliders[0] != null && colliders[0].enabled) foreach (var col in colliders) if (col != null) col.enabled = false;
             if (!sinkArrived)
             {
+                hazards.Boil(20f);
                 Vector3 dest = ClampToArena(target.transform.position + emergeDir * 3f, 1.5f);
                 Vector3 d = (dest - transform.position).Flat();
                 float m = d.magnitude;
@@ -472,7 +496,6 @@ namespace Nindo
                     hazards.Boil(60f);
                     Game.Audio?.Play("summon", transform.position, 0.7f);
                 }
-                hazards.Boil(20f);
             }
             hazards.Puddle(transform.position, 1.6f);
             ScriptedFace(target.transform.position);
@@ -551,7 +574,6 @@ namespace Nindo
                     AddImbalance(1f);
                     look.FlareCrack(Mathf.Clamp(before, 0, 4), AimPoint);
                 }
-                Game.FX?.Clash(info.point != Vector3.zero ? info.point : AimPoint, -info.direction, false);
             }
             return r;
         }
@@ -665,6 +687,7 @@ namespace Nindo
 
         IEnumerator TransitionRoutine(int next, bool quick)
         {
+            bool fromKneel = State == EnemyState.Exhausted;
             ReleaseToken();
             if (sinking) EndSink();
             SetState(EnemyState.Alert);   // mira a Kaito; los golpes rebotan; sigue fijable (no se pierde el fijado)
@@ -674,6 +697,12 @@ namespace Nindo
             config.finisherHealth = 0f;
             hazards.Core(Vector3.zero, 0f);
             if (!quick) Game.UI?.BossEnraged(this);
+            if (fromKneel)
+            {
+                // de rodillas: primero arranca la hoja del piso (si no, el fundido la saca de la piedra en 0.15 s)
+                anim.Play(KokuyoTimings.KneelRise.State, 0.08f);
+                yield return new WaitForSeconds(KokuyoTimings.KneelRise.Seconds * 0.9f);
+            }
             if (next == 2) yield return ShadowTear(quick);
             else if (next == 3) yield return Eclipse();
             else yield return LastStandRise();
@@ -707,6 +736,8 @@ namespace Nindo
             Act = 2;
             config.patterns = KokuyoMoves.Act(2);
             counterPattern = KokuyoMoves.Counter(2);
+            // lo nuevo de este acto se dice una vez: la katana no la toca, las habilidades sí
+            if (!shadowTipShown) { shadowTipShown = true; ShowTip(StoryText.Hint("kage_shadow")); }
         }
 
         /// <summary>2 → 3: la sombra vuelve a sus pies, clava la nodachi y cierra el puño sobre la luna.</summary>
@@ -906,14 +937,22 @@ namespace Nindo
         public override void Execute(PlayerController by)
         {
             if (finisherShot >= 0) { Game.Camera?.CancelShot(finisherShot); finisherShot = -1; }
-            // dos tajos dorados cruzados, la luz y una campana
+            // dos tajos dorados cruzados, la luz y la campana del templo
             Vector3 c = AimPoint;
             Vector3 right = Vector3.Cross(Vector3.up, (c - by.transform.position).Flat().normalized);
             Game.FX?.SlashLine(c - right * 2.4f + Vector3.up * 1.6f, c + right * 2.4f - Vector3.up * 1.2f);
             Game.FX?.SlashLine(c + right * 2.4f + Vector3.up * 1.6f, c - right * 2.4f - Vector3.up * 1.2f);
             Game.FX?.FlashLight(c, new Color(1f, 0.85f, 0.45f), 9f, 16f, 0.5f);
-            Game.Audio?.Play("seal", c, 1f);
             base.Execute(by);
+            StartCoroutine(BellWhenTimeReturns(c));
+        }
+
+        /// <summary>La campana suena cuando termina la cámara lenta de la muerte (Boss.Die, 2.2 s): en cámara lenta el
+        /// audio baja de tono y una campana deslizándose de 0.55 a 1 suena a cinta gastada. Llega con la luna.</summary>
+        IEnumerator BellWhenTimeReturns(Vector3 at)
+        {
+            yield return new WaitForSecondsRealtime(2.3f);
+            Game.Audio?.Play("temple_bell", at, 0.9f);
         }
 
         protected override void Die(in DamageInfo info, bool finisher = false)

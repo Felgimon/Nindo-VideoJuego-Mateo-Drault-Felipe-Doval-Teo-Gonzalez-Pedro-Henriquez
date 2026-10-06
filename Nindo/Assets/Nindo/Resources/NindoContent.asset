@@ -909,6 +909,14 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: kokuyo_crack
+    clips:
+    - {fileID: 8300000, guid: 6e4de815421e8762fcbac658d5d3a196, type: 3}
+    - {fileID: 8300000, guid: 1d838d09f2e6c170ba262e9c786ad488, type: 3}
+    - {fileID: 8300000, guid: 5d49dee93a3949dc105215b90741df42, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: kokuyo_whisper
     clips:
     - {fileID: 8300000, guid: 9ff24f84425effbac7c68924d90a6116, type: 3}
@@ -1067,6 +1075,12 @@ MonoBehaviour:
   - key: tell_tick
     clips:
     - {fileID: 8300000, guid: 426d323469ef11625f9eda2a5d59741a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: temple_bell
+    clips:
+    - {fileID: 8300000, guid: 9dabc0d60a4c1cbbd03e26b139e7f92d, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1

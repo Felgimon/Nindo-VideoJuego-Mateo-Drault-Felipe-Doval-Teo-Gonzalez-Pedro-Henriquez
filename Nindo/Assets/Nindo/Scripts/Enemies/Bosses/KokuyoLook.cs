@@ -95,6 +95,7 @@ namespace Nindo
             if (index < 0 || index >= 5) return;
             crackFlare[index] = 1f;
             Game.FX?.Clash(at, Vector3.up, false);
+            Game.Audio?.Play("kokuyo_crack", at, 0.75f);
         }
 
         public void FlareAll()
@@ -165,10 +166,13 @@ namespace Nindo
         {
             edgeShown = Mathf.MoveTowards(edgeShown, edgeTarget, dt * 12f);
             float edge = edgeShown * Boost;
-            if (glint != null && (Mathf.Abs(edge - edgeApplied) > 0.01f || edgeColor != edgeColorApplied))
+            Color col = edgeColor;
+            // en el eclipse el filo violeta queda prendido aun quieto: es lo que se ve de él en la oscuridad
+            if (eclipse && edge < 1.2f) { if (edgeShown < 0.05f) col = Violet; edge = 1.2f; }
+            if (glint != null && (Mathf.Abs(edge - edgeApplied) > 0.01f || col != edgeColorApplied))
             {
-                edgeApplied = edge; edgeColorApplied = edgeColor;
-                glint.SetGlow(EdgeSlot, edgeColor, edge);
+                edgeApplied = edge; edgeColorApplied = col;
+                glint.SetGlow(EdgeSlot, col, edge);
             }
             for (int i = 0; i < 5; i++) crackFlare[i] = Mathf.MoveTowards(crackFlare[i], 0f, dt * 2.5f);
             float breath = kneeling ? 0.75f + 0.25f * Mathf.Sin(Time.time * 7f) : 1f;

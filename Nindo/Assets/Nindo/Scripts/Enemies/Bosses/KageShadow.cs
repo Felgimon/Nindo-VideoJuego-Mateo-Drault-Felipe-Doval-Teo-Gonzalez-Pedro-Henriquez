@@ -136,11 +136,13 @@ namespace Nindo
 
         void Hunt(float dt)
         {
-            // ronda del lado opuesto al cuerpo: dos cazadores que encierran (y desde la cámara se ven los dos)
+            // ronda a un costado de Kaito en pantalla (un poco hacia arriba): el cuerpo suele estar arriba y la cámara
+            // mira hacia allá; del lado opuesto al cuerpo quedaba debajo del cuadro y el segundo cazador no se veía
             Vector3 kp = target.transform.position;
-            Vector3 away = (kp - owner.transform.position).Flat();
-            if (away.sqrMagnitude < 0.01f) away = Vector3.back;
-            Vector3 dest = kp + Quaternion.Euler(0f, 35f * sideSign, 0f) * away.normalized * HuntDistance;
+            Vector3 right = Game.Camera != null ? Game.Camera.transform.right.Flat().normalized : Vector3.right;
+            if (right.sqrMagnitude < 0.01f) right = Vector3.right;
+            Vector3 up = Vector3.Cross(right, Vector3.up);
+            Vector3 dest = kp + (right * sideSign * 0.92f + up * 0.38f) * HuntDistance;
             Glide(ClampToArena(dest), GlideSpeed, dt);
             FaceFlat(kp, dt);
             if (ink != null) ink.SampleAhead(KokuyoTimings.Idle.State, Mathf.Repeat(Time.time / KokuyoTimings.Idle.Seconds, 1f));
@@ -177,7 +179,8 @@ namespace Nindo
             slideTime = 0f;
             StartAttack(false);
             if (State != EnemyState.Attack) return;
-            owner.ReserveAfterShadow(Time.time + a.windup);
+            // el deslizamiento puede durar hasta SlideMax si Kaito corre: el cuerpo espera lo peor
+            owner.ReserveAfterShadow(Time.time + SlideMax + NuiHold);
             if (ink != null) ink.RiseTo(0f, 0.25f);   // se acuesta: es tinta en el piso que corre hacia Kaito
             hazards?.Boil(25f);
             Game.Audio?.Play("kokuyo_whisper", transform.position, 1f);
@@ -197,6 +200,7 @@ namespace Nindo
         protected override void OnStepStarted(AttackDef a)
         {
             base.OnStepStarted(a);
+            // después de cada golpe ronda del otro costado (o del mismo): no se lo ve venir siempre igual
             sideSign = Random.value < 0.5f ? -1 : 1;
         }
 
