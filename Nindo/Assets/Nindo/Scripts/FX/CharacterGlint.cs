@@ -58,6 +58,15 @@ namespace Nindo
                 if (s.name == GlintSlot) { s.glow = c; Apply(s); }
         }
 
+        /// <summary>Emisión fija de cualquier slot por nombre (el filo de Kokuyō, sus ojos): como SetGlint pero sin
+        /// depender de que el material se llame 'Glint'. 0 apaga.</summary>
+        public void SetGlow(string slotName, Color color, float intensity)
+        {
+            Color c = color * Mathf.Max(0f, intensity); c.a = 1f;
+            foreach (var s in slots)
+                if (s.name == slotName) { s.glow = c; Apply(s); }
+        }
+
         /// <summary>Tapa un slot con el material que tiene ahora otro slot del mismo renderer (la bandana con
         /// el pelo, ya levantado por LiftBlacks); withSlot null le devuelve su material propio.</summary>
         public void CoverSlot(string slotName, string withSlot)

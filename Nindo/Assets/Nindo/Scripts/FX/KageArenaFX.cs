@@ -206,33 +206,38 @@ namespace Nindo
         /// Kokuyō cae. Con skyShot, pasado lo mejor del plano de su muerte (Boss.Die) un plano al cielo muestra la tinta
         /// escurriéndose de la luna: MoonReturn llega cuando el plano ya está arriba, así el golpe de luz se ve. Sin
         /// él, la luna vuelve en el acto. Después se encienden los braseros y las cuerdas del abuelo se deshacen a los
-        /// ~4.4 s, ya en el plano del final de StoryDirector (Kaito y el abuelo): "está libre" se ve.
+        /// ~4.4 s, ya en el plano del final de StoryDirector (Kaito y el abuelo): "está libre" se ve. Con ropesAt
+        /// negativo las cuerdas quedan para quien arma el final (StoryDirector las suelta en su plano). skyAt corre el
+        /// plano del cielo (y con él la luna y los braseros) para que no tape lo que pasa en el patio.
         /// </summary>
-        public void Finale(bool skyShot = true)
+        public void Finale(bool skyShot = true, float ropesAt = 4.4f, float skyAt = 1.8f)
         {
             finale = true;
             if (Shadow != null) { Shadow.Release(); Shadow = null; }
             var g = Game.Player != null ? Game.Player.GetComponent<BandanaGlow>() : null;
             if (g != null) g.Disable(2.5f);
-            StartCoroutine(FinaleRoutine(skyShot && Moon != null && Game.Camera != null));
+            StartCoroutine(FinaleRoutine(skyShot && Moon != null && Game.Camera != null, ropesAt, skyAt));
         }
 
-        IEnumerator FinaleRoutine(bool sky)
+        IEnumerator FinaleRoutine(bool sky, float ropesAt, float skyAt)
         {
             float t = 0f;
             if (sky)
             {
-                const float wait = 1.8f, blendIn = 0.6f;
-                yield return new WaitForSecondsRealtime(wait);
+                const float blendIn = 0.6f;
+                yield return new WaitForSecondsRealtime(skyAt);
                 skyShot = Moon.PlaySkyShot(1.0f, blendIn, 0.8f);
                 yield return new WaitForSecondsRealtime(blendIn);
-                t = wait + blendIn;
+                t = skyAt + blendIn;
             }
             if (Moon != null) Moon.MoonReturn(3f, 9f);
-            yield return new WaitForSecondsRealtime(Mathf.Max(0f, 3.0f - t));
+            // los braseros, 0.6 s después de que vuelve la luna (sin cielo, a los 3 s como siempre)
+            yield return new WaitForSecondsRealtime(sky ? 0.6f : Mathf.Max(0f, 3.0f - t));
             if (Braziers != null) { Braziers.SetStyle(FlameStyle.Fire, 0f); Braziers.IgniteAll(0.25f, 0, true); }
             yield return new WaitForSecondsRealtime(1.4f);
             skyShot = -1;
+            if (ropesAt < 0f) yield break;
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, ropesAt - 4.4f));
             if (Ropes != null) Ropes.Dissolve(1.6f);
         }
 

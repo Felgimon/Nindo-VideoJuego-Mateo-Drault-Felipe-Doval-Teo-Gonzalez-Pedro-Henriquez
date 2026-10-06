@@ -13,6 +13,7 @@ namespace Nindo
         public const string Abuelo = "Abuelo";
         public const string Ninja = "Ninja Kurokage";
         public const string Kage = "Kage";
+        public const string Kokuyo = "Kokuyō";
 
         public static string CheckpointName(string id)
         {
@@ -180,10 +181,30 @@ namespace Nindo
                     };
                 case "kage_intro":
                     return new List<DialogueLine> {
-                        L(Kage, "Así que el viejo te dio su bandana. Yo fui su alumno, ¿sabías? Hasta que me dejó solo."),
-                        L(Kage, "Soy la sombra de lo que vos vas a ser. Veamos si sos digno de ese camino."),
+                        L(Kokuyo, "Así que el viejo te dio su cinta."),
+                        L(Kokuyo, "Yo también llevé una. Fui su mejor alumno... hasta que eligió una granja antes que su camino."),
+                        L(Kokuyo, "La corté en dos el día que se fue. Desde entonces camino solo, y nada me sigue. Ni siquiera mi sombra."),
                         L(Kaito, "No estoy solo. Nunca lo estuve."),
                     };
+                case "kage_intro_abuelo":
+                    return new List<DialogueLine> {
+                        L(Abuelo, "¡Kaito! ¡Su sombra se mueve antes que él! ¡Mirá el suelo!"),
+                    };
+                // frases de Kokuyō en plena pelea (avisos arriba, sin pausar)
+                case "kokuyo_bark_tear":
+                    return new List<DialogueLine> {
+                        L(Kokuyo, "¿Ves? Hasta mi sombra me traiciona."),
+                        L(Kokuyo, "¡Que pelee por su cuenta!"),
+                    };
+                case "kokuyo_bark_eclipse":
+                    return new List<DialogueLine> {
+                        L(Kokuyo, "Sin luz no hay sombra. Sin sombra no hay aviso."),
+                        L(Abuelo, "¡No estás solo, Kaito! ¡La cinta ve por vos!"),
+                    };
+                case "kokuyo_bark_last":
+                    return new List<DialogueLine> { L(Kokuyo, "¡Todavía no!") };
+                case "kokuyo_hint_suelo":
+                    return new List<DialogueLine> { L(Abuelo, "El suelo, Kaito. Su sombra golpea primero.") };
                 case "seal_mountain":
                     return new List<DialogueLine> { L(Kaito, "El Sello de la Montaña. Un portal apareció: me lleva de vuelta al dojo.") };
                 case "seal_lake":
@@ -192,9 +213,17 @@ namespace Nindo
                     return new List<DialogueLine> { L(Kaito, "El Sello del Bambú. Hasta el campeón terminó doblándose.") };
                 case "ending":
                     return new List<DialogueLine> {
-                        L(Abuelo, "Kaito... viniste. Sabía que la bandana te elegiría."),
-                        L(Kaito, "Abuelo... ¿estás bien? ¿Quién era él?"),
-                        L(Abuelo, "Alguien que eligió caminar solo. El verdadero poder nace del lazo que nos une a los nuestros."),
+                        L(Abuelo, "Kaito... viniste. Sabía que la cinta te elegiría."),
+                        L(Kokuyo, "...Te eligió a vos. Como a él."),
+                        L(Abuelo, "No te dejé solo, Kokuyō. Vos cortaste la cinta."),
+                        L(Abuelo, "El verdadero poder nace del lazo que nos une a los nuestros."),
+                    };
+                case "ending_ribbon":
+                    return new List<DialogueLine> {
+                        L(Kaito, "Tomá. Es tuya."),
+                    };
+                case "ending_final":
+                    return new List<DialogueLine> {
                         L(Abuelo, "Vamos a casa, nieto. Ese es tu nindō: el camino ninja."),
                     };
                 case "grandpa_home":
@@ -214,6 +243,16 @@ namespace Nindo
             {
                 case "fase2": return "Ōzeki: «¡Basta de jugar! ¡Que la sal limpie mi dohyō!»";
                 case "choque": return "Ōzeki: «¡Grr! ¡Bambú maldito!»";
+                default: return "";
+            }
+        }
+
+        /// <summary>Pistas de una línea que aparecen como tutorial en plena pelea (las teclas van entre llaves).</summary>
+        public static string Hint(string id)
+        {
+            switch (id)
+            {
+                case "kage_shadow": return "La sombra no se corta con la katana: clavala con {Ability1} o {Ability2}";
                 default: return "";
             }
         }

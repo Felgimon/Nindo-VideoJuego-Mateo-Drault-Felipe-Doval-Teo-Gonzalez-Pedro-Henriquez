@@ -569,6 +569,27 @@ def _shadow_rope_free(i):
     return reverb(x, 0.45, 2.4, 0.8)
 
 
+@sfx("kokuyo_crack", 3)
+def _kokuyo_crack(i):
+    """una grieta del pecho de Kokuyō se enciende (un punto de postura): vidrio volcánico que se raja, seco y agudo,
+    con un toc grave de la coraza debajo; tres afinaciones para que dos puntos seguidos no suenen iguales."""
+    d = 0.7
+    snap = filt(noise(0.04, 470 + i), 2500, 12000) * env_exp(0.04, 0.006)
+    glass = partials(1500 * (1 + 0.12 * i), [1, 1.73, 2.41, 3.37], [1, 0.6, 0.4, 0.25], [0.18, 0.12, 0.08, 0.05], d, seed=473 + i, detune=0.01)
+    tock = thump(220, 140, 0.25, 0.06, seed=476 + i)
+    return reverb(mix((snap, 0, 1.0), (glass, 0.004, 0.45), (tock, 0, 0.5)), 0.22, 1.0, 0.3)
+
+
+@sfx("temple_bell")
+def _temple_bell(i):
+    """la campana del final: el tajo que vence a Kokuyō y la noche que vuelve a respirar (grave, larga, con el batido
+    lento de las campanas grandes)."""
+    d = 6.0
+    b = bell(130.8, d, decay=2.6, bright=0.8, seed=480)
+    sub = thump(70, 55, 2.0, 0.9, seed=481)
+    return reverb(mix((b, 0, 1.0), (sub, 0, 0.35)), 0.35, 3.0, 0.9)
+
+
 # pico de normalización por clave (los clips cortos de interfaz no deben sonar como un golpe)
 PEAK = {"ui_move": -10, "ui_open": -7, "ui_close": -7, "dialogue": -12, "denied": -8, "lock": -8,
         "step": -4, "step_snow": -4, "step_wood": -4, "step_stone": -4, "parry_ready": -6, "area_title": -4,

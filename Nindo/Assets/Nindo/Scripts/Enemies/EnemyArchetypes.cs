@@ -11,7 +11,6 @@ namespace Nindo
     {
         // apex medidos en las hojas de contacto de cada clip (el arma quieta y atrás, justo antes del tajo)
         const float NinjaApex1 = 0.50f, NinjaApex2 = 0.28f, NinjaApex3 = 0.38f;
-        const float KaitoApex1 = 0.20f, KaitoApex2 = 0.15f, KaitoApex3 = 0.12f;
         // los clips del sumo casi no tienen anticipación: el apex queda 0.12 antes del golpe
         const float SumoApex1 = 0.58f, SumoApex2 = 0.48f, SumoApex3 = 0.68f, SumoApexSpecial = 0.23f;
 
@@ -38,7 +37,6 @@ namespace Nindo
                 case "mizuchi": return Mizuchi();
                 case "ozeki": return Ozeki();
                 case "kage": return Kage();
-                case "kage_clone": return KageClone();
                 default:
                     Debug.LogWarning($"[Nindo] Arquetipo desconocido '{id}', uso ninja.");
                     return Ninja();
@@ -337,50 +335,11 @@ namespace Nindo
             if (c.patterns != null) foreach (var p in c.patterns) if (p != null && p.name == pattern) p.weight = w;
         }
 
-        /// <summary>Kage, la Sombra (jefe final): espejo de Kaito. Rápido, desvía mucho, se teletransporta y crea clones.</summary>
-        public static EnemyConfig Kage()
-        {
-            var c = new EnemyConfig
-            {
-                id = "kage", displayName = "Kage", maxHealth = 600, runSpeed = 6.8f, walkSpeed = 2.6f, turnSpeed = 14f,
-                radius = 0.4f, height = 1.6f, scale = 1.05f, maxImbalance = 5, exhaustedTime = 2.6f, guardTime = 1.8f,
-                poiseHits = 1, preferredDistance = 3.2f, detectRadius = 30f, loseRadius = 80f, finisherHealth = 0.1f,
-                attackCooldown = new Vector2(0.35f, 1.0f), windupScale = 0.873f,
-                tint = new Color(0.12f, 0.08f, 0.2f), tintStrength = 0.8f,
-                animGuard = "ParryStance", animCounter = "ParrySuccess", animExhausted = "Blocked", animHit = "Hit",
-                animSpotted = "Blocked", animDeath = "Hit", animParried = "Blocked",
-            };
-            // usa los clips de Kaito (0.3-0.6 s): casi no tienen anticipación, la pone StepTimeline. Kage es el más
-            // rápido del juego (windup 0.48 s / 0.38 s encadenado, windupScale) pero el aviso sigue siendo exacto
-            var a1 = Hit("Attack1", 14, 0.3f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex1);
-            var a2 = Hit("Attack2", 14, 0.25f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex2);
-            var a3 = Hit("Attack3", 20, 0.22f, 0.45f, range: 2.7f, kind: AttackKind.Heavy, lunge: 1.8f, speed: 0.85f, kb: 1.6f, apex: KaitoApex3);
-            var tp = Hit("Dash", 0, 0.2f, 0.25f, lunge: 0f); tp.special = "teleport"; tp.specialParam = 2.2f;
-            var ws = Hit("Attack3", 30, 0.3f, 0.35f, kind: AttackKind.Unblockable, lunge: 0f, kb: 2f, apex: KaitoApex3);
-            ws.special = "windslash"; ws.specialParam = 10f;
-            var clones = Hit("ParrySuccess", 0, 0.5f, 0.55f, lunge: 0f); clones.special = "clones"; clones.specialParam = 2;
-            c.patterns = new[]
-            {
-                new AttackPattern { name = "Espejo", steps = new[] { a1, a2, a3 }, weight = 2f, maxRange = 3f },
-                new AttackPattern { name = "Rápido", steps = new[] { a1, a2 }, weight = 1.5f, maxRange = 3f },
-                new AttackPattern { name = "Sombra", steps = new[] { tp, a1, a2, a3 }, weight = 1.2f, maxRange = 14f, cooldown = 5f },
-                new AttackPattern { name = "Corte del Vacío", steps = new[] { ws }, weight = 1.1f, minRange = 3f, maxRange = 12f, cooldown = 6f },
-                new AttackPattern { name = "Clones", steps = new[] { clones }, weight = 1f, maxRange = 20f, cooldown = 22f, minPhase = 1 },
-                new AttackPattern { name = "Furia sombría", steps = new[] { a1, a2, a1, a2, a3 }, weight = 1.3f, maxRange = 3f, minPhase = 1 },
-            };
-            return c;
-        }
-
-        public static EnemyConfig KageClone()
-        {
-            var c = Kage();
-            c.id = "kage_clone"; c.displayName = "Sombra"; c.maxHealth = 1; c.poiseHits = 99; c.guardTime = 0.1f;
-            c.tint = new Color(0.25f, 0.1f, 0.4f); c.tintStrength = 0.9f; c.scale = 1f; c.detectRadius = 40f;
-            c.windupScale = 1f;   // los clones son más lentos que Kage: se distinguen por el ritmo
-            var a1 = Hit("Attack1", 10, 0.3f, 0.6f, range: 2.4f, speed: 0.8f, apex: KaitoApex1);
-            var a3 = Hit("Attack3", 12, 0.22f, 0.45f, range: 2.7f, lunge: 1.6f, speed: 0.8f, apex: KaitoApex3);
-            c.patterns = new[] { new AttackPattern { name = "Eco", steps = new[] { a1, a3 }, weight = 1f, maxRange = 3f } };
-            return c;
-        }
+        /// <summary>
+        /// Kokuyō, Señor del Clan Kurokage (jefe final). El arquetipo sigue llamándose "kage" (banderas del guardado, la
+        /// puerta y el final); sus golpes, tiempos y actos viven en Enemies/Bosses (KokuyoMoves, KokuyoBoss). Los clones
+        /// de sombra del Kage viejo se retiraron: su sombra arrancada (KageShadow) los reemplaza.
+        /// </summary>
+        public static EnemyConfig Kage() => KokuyoMoves.Kokuyo();
     }
 }

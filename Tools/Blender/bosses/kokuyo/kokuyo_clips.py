@@ -410,7 +410,7 @@ add("Ichimonji", 48, [
               r=((-0.8, 0.68, 0.44), (-10.0, 0.0, -34.0)), l=flat(*L_FOOT)), "inout"),
     (48, READY, "inout")],
     timing={"tell": [0, 21], "apex": 21, "hold": [21, 24], "contact": 28, "active": [28, 32], "recover": [32, 48],
-            "lunge": [24, 29, 0.0], "kind": "dodge", "safe_core_m": 1.4, "chain_from": "READY", "chain_to": "READY"},
+            "lunge": [24, 29, 0.0], "kind": "dodge", "safe_core_m": 1.65, "chain_from": "READY", "chain_to": "READY"},
     events=[{"frame": 21, "fn": "Apex"}, {"frame": 28, "fn": "Strike"}],
     notes="barrido de 240° a la cintura; se pasa 0.33 s (castigo). Sin embestida: la hoja ya llega a 4.4 m")
 

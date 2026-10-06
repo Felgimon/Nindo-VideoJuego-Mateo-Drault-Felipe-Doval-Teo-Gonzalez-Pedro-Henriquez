@@ -639,7 +639,7 @@
      0.0
     ],
     "kind": "dodge",
-    "safe_core_m": 1.4,
+    "safe_core_m": 1.65,
     "chain_from": "READY",
     "chain_to": "READY"
    },

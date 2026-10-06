@@ -8,9 +8,9 @@ namespace Nindo
     /// Guion del juego (según el documento de diseño): prólogo con la guadaña y la bandana,
     /// tutorial de parry en cámara lenta, el rastro hasta la muralla, el jardín del clan, el
     /// luchador de sumo (tutorial del dash mágico), los tres guardianes de los sellos, la
-    /// puerta del dojo y el combate final contra Kage para rescatar al abuelo.
+    /// puerta del dojo y el combate final contra Kokuyō para rescatar al abuelo (StoryDirector.Kokuyo.cs).
     /// </summary>
-    public class StoryDirector : MonoBehaviour
+    public partial class StoryDirector : MonoBehaviour
     {
         PlayerController P => Game.Player;
         bool parryTutorial, finisherTip;
@@ -571,6 +571,8 @@ namespace Nindo
             if (b == null) yield break;
             b.EnterScripted();
             b.ScriptedFace(P.transform.position);
+            // Kokuyō tiene su propia presentación (y su versión corta para los reintentos)
+            if (b is KokuyoBoss k) { yield return KokuyoIntro(k); yield break; }
             // reintento: la presentación entera (~6 s más el diálogo) solo la primera vez
             if (Game.Save.HasFlag(BossSeenFlag(b.bossId))) { yield return BossReintro(b); yield break; }
             Game.Audio?.StopMusic(1.5f);
@@ -665,42 +667,11 @@ namespace Nindo
         {
             Game.Save.SetFlag(Flags.FinalBossDone);
             SaveSystem.Save();
-            yield return new WaitForSecondsRealtime(3.5f);
+            // Kokuyō suelta la espada, pierde la máscara y la luna vuelve antes del fundido (KokuyoBoss.FinaleSeconds)
+            yield return new WaitForSecondsRealtime(FinalBoss() != null ? KokuyoBoss.FinaleSeconds : 3.5f);
             yield return Cutscene(EndingScene());
             Game.Audio?.PlayMusic("ending", 3f);
             Game.UI.ShowEnding();
-        }
-
-        IEnumerator EndingScene()
-        {
-            var gp = Game.World.Point("npc_grandpa_dojo");
-            NPC grandpa = gp != null ? gp.GetComponent<NPC>() : null;
-            if (grandpa == null) grandpa = NPC.Spawn("grandpa", P.transform.position + P.transform.forward * 3f, Quaternion.identity, null);
-            // la pelea con Kage puede terminar en cualquier punto del patio (36 m): si Kaito quedó lejos
-            // del abuelo el plano del final mostraba el patio vacío. En negro se lo ubica al costado del
-            // abuelo, perpendicular al plano de abajo (offset 3.5, -4.5), así se ven los dos de perfil.
-            Vector3 camOff = new Vector3(3.5f, 0f, -4.5f).normalized;
-            Vector3 dir = Vector3.Cross(Vector3.up, camOff);
-            if (CombatMath.FlatDistance(P.transform.position, grandpa.transform.position + dir * 2.4f) > 1f)
-            {
-                yield return Game.UI.Fade(1f, 0.6f);
-                Vector3 spot = grandpa.transform.position + dir * 2.4f;
-                if (UnityEngine.AI.NavMesh.SamplePosition(spot, out var hit, 2f, UnityEngine.AI.NavMesh.AllAreas)) spot = hit.position;
-                P.Teleport(spot, Quaternion.LookRotation(-dir));
-                Game.Camera?.Snap();
-                yield return Game.UI.Fade(0f, 0.8f);
-            }
-            grandpa.FaceTo(P.transform.position);
-            P.ScriptedFace(grandpa.transform.position);
-            Vector3 mid = (P.transform.position + grandpa.transform.position) * 0.5f;
-            int shot = Game.Camera.PlayStaticShot(mid + new Vector3(3.5f, 2.6f, -4.5f), mid + Vector3.up * 1f, 34f, 0f, 1.5f, 1f);
-            yield return new WaitForSecondsRealtime(1.5f);
-            Game.FX.Petals(mid + Vector3.up * 2f, 2f);
-            yield return Say("ending");
-            Game.Camera.CancelShot(shot);
-            Game.Save.SetFlag(Flags.Ending);
-            SaveSystem.Save();
-            yield return Game.UI.Fade(1f, 2f);
         }
 
         // ================================================================== muerte / viaje
