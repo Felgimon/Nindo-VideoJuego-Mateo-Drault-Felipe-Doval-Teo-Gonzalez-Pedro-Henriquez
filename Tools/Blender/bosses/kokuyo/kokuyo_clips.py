@@ -15,7 +15,10 @@ sucesión) y la cabeza un cuadro atrás. El pie de adelante apoya justo en el cu
   active [a, b]         ventana que pega (activeStart, activeEnd)
   recover [a, b]        castigo / recuperación
   lunge [a, b, m]       avance que el JUEGO aplica al transform (en el clip ya está restado)
+  release_rate          AttackDef.releaseRate con el que se midieron avance y punta (StepTimeline; 1.6 si falta)
   kind                  parry | dodge (imparable) | none
+  ground / sink / bite  cuadros con la punta clavada / con todo hundido en la sombra / el tajo que entierra la
+                        hoja cortando (ahí la entrada en la piedra puede saltar; en el resto no se corre)
 """
 import copy, math
 from mathutils import Vector, Quaternion
@@ -91,6 +94,64 @@ LEAD = {"hips": -0.6, "hips_rot": -0.6, "spine": -0.3, "head": 1.0, "neck": 0.5}
 CLIPS = []
 
 
+# --------------------------------------------------------------------------- hoja que se clava
+# Una nodachi clavada entra y sale de la piedra A LO LARGO DE SU EJE: el punto donde corta el piso no se
+# mueve. Antes de clavarla, una clave con la hoja ya en su dirección final y la punta sobre la entrada
+# ('hover'); al arrancarla, una clave con la hoja tirada hacia atrás por su eje hasta que la punta sale
+# ('free'). Los tramos rectos llevan tope en 'grip' (el Catmull-Rom no los curva) y 'sword_ground' cambia
+# con un escalón ('hold') en el cuadro en que la punta está afuera: el giro que esquiva el piso
+# (Solver.clear_floor) protege los barridos de antes y de después, nunca a la hoja clavada.
+SWORD_IN = {"sword_ground": "hold", "stop": ("grip",)}
+
+
+def tip_of(p):
+    """Punta de la hoja de una pose (espacio del personaje), igual que la ubica el Solver."""
+    K = NA.compose(Vector(p["grip"]) + Vector((0.0, 0.0, p.get("lift") or 0.0)),
+                   NA.basis_yz(p["blade"], -Vector(p["edge"])))
+    return K @ KR.TIP_LOCAL
+
+
+def along(p, tip_z, ground, **kw):
+    """La pose 'p' (con cambios 'kw' en el cuerpo) con la hoja corrida por su propio eje hasta que la
+    punta quede a 'tip_z' del piso; 'ground' = 1 si desde esta clave la hoja va clavada. El eje es la
+    cuerda empuñadura -> punta, no el hueso: la hoja es curva (la punta va 14 cm hacia el lomo) y por el
+    hueso la entrada se corría 3.5 cm por metro hundido."""
+    t = tip_of(p)
+    d = (t - Vector(p["grip"]) - Vector((0.0, 0.0, p.get("lift") or 0.0))).normalized()
+    q = mod(p, **kw)
+    q["grip"] = tuple(Vector(p["grip"]) + d * ((tip_z - t.z) / d.z))
+    q["sword_ground"] = ground
+    return q
+
+
+def tip_above(p, tip_z):
+    """La pose con la empuñadura subida o bajada en vertical hasta que la punta quede a 'tip_z' (hojas
+    sueltas que cuelgan cerca del piso: que la clave ya lo esquive y no dependa de clear_floor)."""
+    q = mod(p)
+    g = Vector(q["grip"])
+    q["grip"] = (g.x, g.y, g.z + tip_z - tip_of(p).z)
+    return q
+
+
+READY0 = mod(READY, sword_ground=0.0)      # guardia con la hoja suelta explícita (después de un tramo clavado)
+
+
+def mix(p, q, w):
+    """Pose intermedia entre dos claves (w = 0 -> p, 1 -> q): un cuadro en el aire del salto que no es
+    ninguna de las dos. Posiciones y giros en línea recta, direcciones renormalizadas."""
+    out = mod(p)
+    for k, vb in q.items():
+        va = p.get(k)
+        if k == "extra" or va is None or vb is None:
+            out[k] = copy.deepcopy(vb if va is None else va)
+        elif isinstance(vb, (int, float)):
+            out[k] = va + (vb - va) * w
+        else:
+            v = Vector(va).lerp(Vector(vb), w)
+            out[k] = tuple(v.normalized() if k in NA.DIR_CHANNELS else v)
+    return out
+
+
 def add(name, frames, keys, loop=False, lag=None, timing=None, events=None, notes="", root_vel=(0, 0, 0)):
     """keys: (cuadro, pose, curva) o (cuadro, pose, curva, {canal: curva}); en ese dict, "stop": (canales,)
     hace de la clave un tope del arco en esos canales (ver nindo_anim.Key)."""
@@ -136,18 +197,22 @@ _k_impact = feet(mod(HIGH_R, hips=(0.05, -0.44, -0.6), hips_rot=(0.0, 0.0, 24.0)
                      grip=(0.34, -1.44, 1.84), blade=(0.58, -0.67, -0.46), edge=(0.55, 0.3, -0.78), elbow_r=(-0.5, 0.1, -0.85),
                      elbow_l=(0.8, 0.3, -0.5), travel=0.72),
                  r=toe(-0.62, -0.12, -28.0, 26.0), l=flat(0.52, -2.08, 14.0))
+# después del impacto el juego toca el clip a ~3x (StepTimeline) y vuelve a 1x en 0.1 s: el resto del avance
+# (0.48 m) va en línea recta hasta f21 y frena hasta f25, así el cuerpo sigue a la velocidad del tajo
+# (~10 m/s) y se detiene; en un solo cuadro era un tirón de 28 m/s
 _k_over = feet(mod(_k_impact, hips=(0.06, -0.2, -0.54), hips_rot=(0.0, 0.0, 22.0), spine=(28.0, 0.0, 10.0), chest=(12.0, 0.0, 6.0),
-                   grip=(0.45, -1.2, 1.4), blade=(0.72, -0.4, -0.57), edge=(0.6, 0.45, -0.66), travel=1.2),
+                   grip=(0.45, -1.2, 1.4), blade=(0.72, -0.4, -0.57), edge=(0.6, 0.45, -0.66), travel=1.03),
                r=toe(-0.62, -0.58, -30.0, 18.0))
 _k_rec_a = mod(_k_over, hips=(0.05, -0.08, -0.42), hips_rot=(0.0, 0.0, 18.0), spine=(22.0, 0.0, 8.0),
-               grip=(0.4, -0.84, 1.56), blade=(0.66, -0.4, -0.62))
+               grip=(0.4, -0.84, 1.56), blade=(0.66, -0.4, -0.62), travel=1.2)
 _low_l_w = at_travel(LOW_L, 1.2)
 _k_step = feet(mod(_low_l_w, hips=(0.05, -0.08, -0.38)), r=toe(-0.62, -0.58, -30.0, 6.0))
 add("Kesagiri", 36, [
     (0, READY, "sine"), (8, _k_dip, "sine"), (14, HIGH_R, "inout"), (16, _k_settle, "sine"), (17, _k_mid, "expo_in"),
-    (18, _k_impact, "lin"), (21, _k_over, "expo_out", {"foot_r": "snap", "foot_r_rot": "snap"}), (25, _k_rec_a, "sine"), (30, _k_step, "inout"), (36, _low_l_w, "inout")],
+    (18, _k_impact, "lin"), (21, _k_over, "expo_out", {"foot_r": "out2", "foot_r_rot": "out2", "travel": "lin"}),
+    (25, _k_rec_a, "sine", {"travel": "out2"}), (30, _k_step, "inout"), (36, _low_l_w, "inout")],
     timing={"tell": [0, 14], "apex": 14, "hold": [14, 16], "contact": 18, "active": [18, 21], "recover": [21, 36],
-            "lunge": [14, 20, 1.2], "kind": "parry", "chain_from": "READY", "chain_to": "LOW_L"},
+            "lunge": [14, 25, 1.2], "kind": "parry", "chain_from": "READY", "chain_to": "LOW_L"},
     events=[{"frame": 14, "fn": "Apex"}, {"frame": 18, "fn": "Strike"}, {"frame": 18, "fn": "Step"}, {"frame": 34, "fn": "Step"}],
     notes="apex HIGH_R (hoja alta y afuera, atrás del hombro derecho); el pie izquierdo apoya en el impacto")
 
@@ -214,43 +279,85 @@ add("Gyakugiri", 30, [
 # AVISO en hanmi: gira la cadera 56° a su derecha y RECOGE la nodachi atrás de la cadera derecha, con la
 # hoja horizontal abierta hacia afuera y el brazo izquierdo estirado APUNTANDO a Kaito. Desde la cámara del
 # jefe se ve el cambio de forma: la empuñadura asoma arriba a la derecha (detrás) y la hoja sale de la
-# silueta por su derecha. La anticipación es un solo arco lento (la punta no pasa de un cuarto del pico de
-# la estocada: un barrido rápido que no pega es un aviso de parry falso).
+# silueta por su derecha. La recogida es un solo arco lento: la hoja gira 120° desde colgar atrás, la punta
+# recorre ~5 m y tiene que quedar bajo el 30 % del pico de la estocada (un barrido rápido que no pega es un
+# aviso de parry falso). El juego toca la anticipación con un seno (arranca a 1.3x y llega al apex frenando):
+# la hoja avanza poco en los primeros cuadros (f0-4), parejo en el medio y frena en f20-22; así, con el reloj
+# del juego, la punta va pareja todo el arco.
 # La embestida (3.5 m) es un salto: empuja con el pie de atrás, los dos pies dejan el piso y el de adelante
-# cae en el impacto; después se desliza apenas 30 cm sobre ese pie ya clavado (lo mueve el juego).
+# cae en el impacto; después se desliza apenas 30 cm sobre ese pie ya clavado (lo mueve el juego). La hoja
+# viaja recogida en el aire y la estocada se estira de golpe al caer: lo más rápido del clip es el golpe.
+# Reloj del juego: la suelta (apex -> impacto) se toca con u² (StepTimeline), así que los cuadros del clip
+# justo después del apex duran mucho y los del final poco. Con release_rate 0.4 la suelta dura 0.42 s: la
+# espera f22-23 se ve 0.15 s, el empuje f23-24 0.1 s (de 4 a 9 m/s) y el vuelo f24-27 0.17 s a 13-16 m/s.
+# El avance por cuadro del clip va decreciendo en el vuelo (0.99, 0.79, 0.7 m) para compensar la u². Con la
+# suelta por defecto (1.6) el salto entero dura 0.1 s y el gigante se teletransporta (chequeo de 20 m/s).
+TSUKI_RELEASE = 0.4
+_T_APEX_SWORD = dict(grip=(-0.92, 1.08, 1.98), blade=(-0.5, -0.86, -0.08), edge=(0.0, 0.0, -1.0))
+
+
+def _t_sword(w):
+    """La hoja a la fracción w del arco de la recogida (0 = colgando atrás en la guardia, 1 = el aviso): la
+    dirección y el filo giran por el arco más corto y la empuñadura se abre un poco hacia afuera al pasar
+    junto a la cadera."""
+    bulge = math.sin(math.pi * w)
+    g = Vector(READY["grip"]).lerp(Vector(_T_APEX_SWORD["grip"]), w) + Vector((-0.14 * bulge, 0.0, 0.08 * bulge))
+    return dict(grip=tuple(g), blade=tuple(NA.slerp_dir(READY["blade"], _T_APEX_SWORD["blade"], w)),
+                edge=tuple(NA.slerp_dir(READY["edge"], _T_APEX_SWORD["edge"], w)))
+
+
+_t_turn = mod(READY, hips=(0.0, 0.07, -0.2), hips_rot=(0.0, 0.0, -22.0), spine=(5.0, 0.0, -2.0), chest=(2.0, 0.0, -2.0),
+              neck=(-4.0, 0.0, 6.0), head=(-6.0, 0.0, 8.0),
+              hand_l=(0.8, -0.85, 1.95), hand_l_dir=(-0.05, -0.95, 0.3), hand_l_up=(-1.0, 0.0, 0.0), **_t_sword(0.07))
 _t_under = mod(READY, hips=(0.0, 0.14, -0.3), hips_rot=(0.0, 0.0, -30.0), spine=(4.0, 0.0, -6.0), chest=(0.0, 0.0, -6.0),
-               neck=(-4.0, 0.0, 14.0), head=(-6.0, 0.0, 16.0),
-               grip=(-1.12, 0.6, 1.78), blade=(-0.88, -0.2, -0.3), edge=(0.0, -0.3, -0.95), elbow_r=(-0.7, 0.6, -0.2),
-               hand_l=(0.62, -1.2, 2.3), hand_l_dir=(-0.05, -0.95, 0.3), hand_l_up=(-1.0, 0.0, 0.0), elbow_l=(0.6, 0.2, -0.6))
+               neck=(-4.0, 0.0, 14.0), head=(-6.0, 0.0, 16.0), elbow_r=(-0.7, 0.6, -0.2),
+               hand_l=(0.62, -1.2, 2.3), hand_l_dir=(-0.05, -0.95, 0.3), hand_l_up=(-1.0, 0.0, 0.0), elbow_l=(0.6, 0.2, -0.6),
+               **_t_sword(0.44))
 _t_gather = mod(_t_under, hips=(0.0, 0.28, -0.42), hips_rot=(0.0, 0.0, -52.0), spine=(8.0, 0.0, -11.0), chest=(2.0, 0.0, -11.0),
-                neck=(-6.0, 0.0, 30.0), head=(-8.0, 0.0, 34.0),
-                grip=(-0.92, 1.02, 1.96), blade=(-0.52, -0.85, -0.08), edge=(0.0, 0.0, -1.0), elbow_r=(-0.6, 0.8, 0.1),
-                hand_l=(0.3, -2.1, 2.85), hand_l_dir=(-0.05, -0.97, 0.2), elbow_l=(0.6, 0.1, -0.6))
+                neck=(-6.0, 0.0, 30.0), head=(-8.0, 0.0, 34.0), elbow_r=(-0.6, 0.8, 0.1),
+                hand_l=(0.3, -2.1, 2.85), hand_l_dir=(-0.05, -0.97, 0.2), elbow_l=(0.6, 0.1, -0.6), **_t_sword(0.93))
 TSUKI_APEX = mod(_t_gather, hips=(0.0, 0.3, -0.45), hips_rot=(0.0, 0.0, -56.0), spine=(8.0, 0.0, -12.0), chest=(2.0, 0.0, -12.0),
-                 neck=(-6.0, 0.0, 32.0), head=(-8.0, 0.0, 36.0),
-                 grip=(-0.92, 1.08, 1.98), blade=(-0.5, -0.86, -0.08), hand_l=(0.22, -2.25, 2.9))
-_t_hold = mod(TSUKI_APEX, hips=(0.0, 0.31, -0.46), grip=(-0.92, 1.1, 1.97), hand_l=(0.22, -2.27, 2.89), travel=0.12)
-# empuje: el pie de atrás se para en punta (la punta no se mueve) y el izquierdo ya se levanta
+                 neck=(-6.0, 0.0, 32.0), head=(-8.0, 0.0, 36.0), hand_l=(0.22, -2.25, 2.9), **_T_APEX_SWORD)
+# la espera carga el peso sobre el pie de atrás (apenas baja y se adelanta 3 cm)
+_t_hold = mod(TSUKI_APEX, hips=(0.0, 0.31, -0.48), grip=(-0.92, 1.1, 1.96), hand_l=(0.22, -2.27, 2.88), travel=0.03)
+# empuje: el pie de atrás se para en punta (la punta no se mueve) y el izquierdo ya se levanta; el tronco
+# empieza a desenroscarse pero la hoja sigue recogida junto a la cadera
 _t_launch = feet(mod(TSUKI_APEX, hips=(0.0, 0.08, -0.42), hips_rot=(0.0, 0.0, -24.0), spine=(14.0, 0.0, -4.0),
-                     grip=(-0.66, 0.1, 2.0), blade=(-0.2, -0.97, -0.12), hand_l=(0.5, -1.4, 2.5), travel=0.8),
+                     grip=(-0.84, 0.8, 1.98), blade=(-0.42, -0.9, -0.1), hand_l=(0.5, -1.4, 2.5), travel=0.72),
                  r=toe(*R_FOOT, heel=48.0), l=((0.52, -1.5, 0.5), (-12.0, 0.0, 12.0)))
-# en el aire: los dos pies despegados, la hoja ya alineada con Kaito
-_t_fly = feet(mod(THRUST_END, hips=(0.0, -0.12, -0.42), hips_rot=(0.0, 0.0, 8.0), spine=(14.0, 0.0, 4.0),
-                  grip=(-0.42, -1.1, 2.02), blade=(-0.04, -0.97, -0.24), hand_l=(0.9, 0.2, 2.2), travel=1.9),
-              r=((-0.62, 0.78 - 1.9, 0.62), (36.0, 0.0, -26.0)), l=((0.52, -2.75, 0.44), (-8.0, 0.0, 14.0)))
+
+
+def _air(x, y, z, rot, travel):
+    """Pie en el aire a (x, y, z) RELATIVO al transform (los pies del salto viajan con el cuerpo)."""
+    return (x, y - travel, z), rot
+
+
+# en el aire: los dos pies despegados (la cadera sube un poco en el medio del salto), la hoja apuntando a
+# Kaito y todavía recogida: se estira entera recién en el último cuadro, al caer
+_t_fly = feet(mod(THRUST_END, hips=(0.0, -0.12, -0.4), hips_rot=(0.0, 0.0, 8.0), spine=(14.0, 0.0, 4.0),
+                  grip=(-0.6, -0.45, 2.02), blade=(-0.08, -0.97, -0.22), hand_l=(0.9, 0.2, 2.2), travel=2.5),
+              r=_air(-0.62, 0.8, 0.62, (36.0, 0.0, -26.0), 2.5), l=_air(0.52, -1.05, 0.46, (-8.0, 0.0, 14.0), 2.5))
+_t_fly_a = feet(mod(mix(_t_launch, _t_fly, 0.5), hips=(0.0, -0.02, -0.36), grip=(-0.74, 0.5, 2.0), blade=(-0.26, -0.95, -0.16),
+                    travel=1.71),
+                r=_air(-0.62, 1.1, 0.7, (44.0, 0.0, -28.0), 1.71), l=_air(0.52, -0.82, 0.62, (-14.0, 0.0, 12.0), 1.71))
 _t_impact = at_travel(feet(mod(THRUST_END, hips=(0.0, -0.36, -0.58)), r=((-0.62, 0.5, 0.52), (30.0, 0.0, -28.0)),
                            l=flat(0.52, -1.38, 14.0)), 3.2)
 _t_end = at_travel(THRUST_END, 3.5)
 _t_end_hold = mod(_t_end, hips=(0.0, -0.33, -0.6), grip=(-0.3, -1.66, 1.98))
-add("Tsuki", 42, [
-    (0, READY, "sine"), (9, _t_under, "sine"), (15, _t_gather, "sine"), (18, TSUKI_APEX, "out"), (20, _t_hold, "sine"),
-    (21, _t_launch, "expo_in", {"travel": "in2"}), (22, _t_fly, "lin", {"travel": "lin"}),
-    (23, _t_impact, "lin", {"travel": "lin"}), (26, _t_end, "expo_out", {"travel": "out"}), (42, _t_end_hold, "sine")],
-    timing={"tell": [0, 18], "apex": 18, "hold": [18, 20], "contact": 23, "active": [23, 26], "recover": [26, 42],
-            "lunge": [20, 26, 3.5], "kind": "parry", "chain_from": "READY", "chain_to": "THRUST_END"},
-    events=[{"frame": 18, "fn": "Apex"}, {"frame": 21, "fn": "Step"}, {"frame": 23, "fn": "Strike"}, {"frame": 23, "fn": "Step"}],
+_T_ARC = {"grip": "lin", "blade": "lin", "edge": "lin"}
+add("Tsuki", 46, [
+    (0, READY, "sine"), (4, _t_turn, "sine", {"grip": "in2", "blade": "in2", "edge": "in2"}), (12, _t_under, "sine", _T_ARC),
+    (20, _t_gather, "sine", _T_ARC), (22, TSUKI_APEX, "out", {"grip": "out2", "blade": "out2", "edge": "out2"}),
+    (23, _t_hold, "sine"),
+    (24, _t_launch, "in2"), (25, _t_fly_a, "lin"), (26, _t_fly, "lin"), (27, _t_impact, "lin"),
+    (30, _t_end, "expo_out", {"travel": "out"}), (46, _t_end_hold, "sine")],
+    timing={"tell": [0, 22], "apex": 22, "hold": [22, 23], "contact": 27, "active": [27, 30], "recover": [30, 46],
+            "lunge": [23, 30, 3.5], "release_rate": TSUKI_RELEASE, "kind": "parry", "chain_from": "READY", "chain_to": "THRUST_END"},
+    events=[{"frame": 22, "fn": "Apex"}, {"frame": 24, "fn": "Step"}, {"frame": 27, "fn": "Strike"}, {"frame": 27, "fn": "Step"}],
     notes="estocada desde hanmi: la nodachi recogida atrás de la cadera derecha y el brazo izquierdo apunta a Kaito; "
-          "salta 3.2 m (los pies dejan el piso) y cae sobre el pie de adelante en el impacto; la punta llega a ~1.1 m de alto")
+          "empuja f23-24, vuela f24-27 (3.2 m) con la hoja recogida y la estira al caer sobre el pie de adelante en el "
+          "impacto; la punta llega a ~1.1 m de alto. AttackDef.releaseRate = release_rate (0.4): el salto dura 0.27 s a "
+          "~14 m/s; con 1.6 dura 0.1 s")
 # el pie de adelante vuelve atrás de un paso y el de atrás se arrastra hasta la guardia
 _tr_a = feet(mod(THRUST_END, hips=(0.0, -0.18, -0.42), hips_rot=(0.0, 0.0, 10.0), spine=(10.0, 0.0, 4.0),
                  grip=(-0.7, -1.2, 2.0), blade=(-0.1, -0.95, -0.3), hand_l=(1.0, 0.2, 1.9)),
@@ -330,13 +437,28 @@ _kw_a = feet(mod(KW_APEX, hips=(0.0, -0.05, -0.12), spine=(6.0, 0.0, 0.0), chest
 _kw_b = feet(mod(KW_APEX, hips=(0.0, -0.18, -0.36), spine=(18.0, 0.0, 0.0), chest=(8.0, 0.0, 0.0), neck=(-8.0, 0.0, 0.0),
                  head=(-10.0, 0.0, 0.0), grip=(0.0, -1.25, 2.6), blade=(0.0, -0.55, 0.83), edge=(0.0, -0.83, -0.55)),
              r=toe(*R_FOOT, heel=10.0), l=((0.52, -1.55, 0.34), (-6.0, 0.0, 14.0)))
-KW_TIP = Vector((0.0, -3.98, -0.42))      # donde queda clavada la punta (0.4 m bajo el piso)
+KW_TIP = Vector((0.0, -3.98, -0.42))      # donde queda clavada la punta en el impacto (0.4 m bajo el piso)
+
+
+def _kw_chord(d):
+    """Dirección y filo de la hoja, y el vector empuñadura -> punta (la hoja es curva: no es el eje del hueso)."""
+    d = Vector(d).normalized()
+    e = Vector((0.0, -d.z, d.y))
+    return d, e, NA.basis_yz(d, -e) @ KR.TIP_LOCAL
+
+
+# la ranura que abre en la piedra: los tirones hacen palanca ahí (no en la punta enterrada, que se corre)
+_c0 = _kw_chord((0.0, -0.8, -0.6))[2]
+_g0 = KW_TIP - _c0                         # empuñadura del impacto
+_r0 = _g0.z / -_c0.z                       # fracción de la cuerda que queda sobre el piso
+KW_ENTRY = _g0 + _c0 * _r0
+KW_ABOVE = _c0.length * _r0
 
 
 def _kw_stuck(d):
-    """Empuñadura y hoja con la punta clavada en KW_TIP y la hoja en la dirección d."""
-    d = Vector(d).normalized()
-    return dict(grip=tuple(KW_TIP - d * KR.TIP_LOCAL.y), blade=tuple(d), edge=(0.0, -d.z, d.y))
+    """Empuñadura y hoja clavadas en la dirección d, pivotando en la ranura KW_ENTRY."""
+    d, e, c = _kw_chord(d)
+    return dict(grip=tuple(KW_ENTRY - c.normalized() * KW_ABOVE), blade=tuple(d), edge=tuple(e))
 
 
 KW_IMPACT = feet(mod(KW_APEX, hips=(0.0, -0.4, -0.7), spine=(36.0, 0.0, 0.0), chest=(12.0, 0.0, 0.0), neck=(-12.0, 0.0, 0.0),
@@ -349,6 +471,9 @@ _kw_slack = mod(KW_IMPACT, hips=(0.0, -0.34, -0.68), spine=(32.0, 0.0, 0.0))
 _kw_tug2 = mod(KW_IMPACT, hips=(0.0, -0.33, -0.62), spine=(16.0, 0.0, 0.0), chest=(-2.0, 0.0, 0.0), neck=(-2.0, 0.0, 0.0),
                head=(-12.0, 0.0, 0.0), **_kw_stuck((0.0, -0.76, -0.65)))
 _kw_yank0 = mod(_kw_tug2, hips=(0.0, -0.34, -0.6), spine=(22.0, 0.0, 0.0), **_kw_stuck((0.0, -0.72, -0.69)))
+# el tercer tirón la saca por su eje (antes giraba hacia arriba con la punta enterrada: la entrada en la
+# piedra se corría casi un metro en un cuadro); recién afuera la levanta
+_kw_out = along(_kw_yank0, 0.08, 0.0, hips=(0.0, -0.3, -0.5), spine=(14.0, 0.0, 0.0), chest=(-4.0, 0.0, 0.0), head=(-12.0, 0.0, 0.0))
 _kw_lift = feet(mod(_kw_yank0, hips=(0.0, -0.32, -0.5), spine=(16.0, 0.0, 0.0), grip=(-0.2, -1.25, 1.9), blade=(-0.1, -0.85, 0.5),
                     edge=(0.0, -0.5, -0.86)), r=toe(*R_FOOT, heel=18.0), l=flat(0.52, -1.72, 14.0))
 _kw_lift["sword_ground"] = 0.0
@@ -358,11 +483,13 @@ _kw_free = feet(mod(READY, hips=(0.0, 0.0, -0.32), spine=(4.0, 0.0, 0.0), chest=
                 r=flat(*R_FOOT), l=((0.52, -1.1, 0.46), (-10.0, 0.0, 14.0)))
 add("KabutoWari", 60, [
     (0, READY, "sine"), (12, _kw_crouch, "inout"), (17, _kw_rise, "out"), (20, KW_APEX, "out"), (23, _kw_hold, "sine"),
-    (25, _kw_a, "expo_in"), (26, _kw_b, "lin"), (27, KW_IMPACT, "lin", {"foot_l": "snap"}), (33, _kw_tug1, "inout"),
-    (36, _kw_slack, "inout"), (39, _kw_tug2, "inout"), (44, _kw_yank0, "sine"), (48, _kw_lift, "inout"),
-    (54, _kw_free, "inout"), (60, READY, "inout")],
+    (25, _kw_a, "expo_in"), (26, _kw_b, "lin"), (27, KW_IMPACT, "lin", {"foot_l": "snap", "stop": ("grip",)}), (33, _kw_tug1, "inout"),
+    (36, _kw_slack, "inout"), (39, _kw_tug2, "inout"), (44, _kw_yank0, "sine", {"stop": ("grip",)}),
+    (48, _kw_out, "inout", SWORD_IN),
+    (52, _kw_lift, "out"), (56, _kw_free, "inout"), (60, READY0, "inout")],
     timing={"tell": [0, 20], "apex": 20, "hold": [20, 24], "contact": 27, "active": [27, 29], "recover": [29, 60],
-            "stuck": [28, 44], "rift_start": 27, "ground": [[26, 48]], "kind": "dodge", "chain_from": "READY", "chain_to": "READY"},
+            "stuck": [28, 44], "rift_start": 27, "ground": [[27, 46]], "bite": [27], "kind": "dodge", "chain_from": "READY",
+            "chain_to": "READY"},
     events=[{"frame": 20, "fn": "Apex"}, {"frame": 27, "fn": "Strike"}, {"frame": 27, "fn": "RiftStart"},
             {"frame": 33, "fn": "Tug"}, {"frame": 39, "fn": "Tug"}, {"frame": 47, "fn": "BladeFree"}],
     notes="la hoja queda clavada f28-44 (0.55 s de golpes libres); la grieta de obsidiana arranca en f27")
@@ -456,26 +583,34 @@ add("Roar", 39, [(0, READY, "sine"), (9, _r_crouch, "inout"), (14, _r_out, "expo
 # =========================================================================== rodilla en el piso (agotado)
 # cae sobre la rodilla derecha clavando la nodachi adelante; jadea 3 veces (las grietas laten con la
 # respiración: evento Breath) y se levanta. Dura exhaustedTime (3.6 s)
-_kn_drop = feet(mod(READY, hips=(0.0, 0.12, -0.5), spine=(14.0, 0.0, 0.0), chest=(6.0, 0.0, 0.0), head=(6.0, 0.0, 0.0),
-                    grip=(-0.9, -0.55, 2.3), blade=(-0.25, -0.45, -0.86), edge=(-0.3, -0.85, 0.4),
-                    hand_l=(0.7, -0.75, 1.6), knee_r=(0.0, -0.6, -0.8)),
-                r=((-0.52, 0.66, 0.58), (30.0, 0.0, -10.0)), l=flat(*L_FOOT))
 KNEEL_W = feet(mod(KNEEL), l=flat(*L_FOOT))
+# cae con la hoja YA en la dirección en que la va a clavar y la punta a 20 cm de la piedra, y la hunde por
+# su eje con el golpe de la rodilla (antes la punta entraba y se arrastraba 76 cm bajo el piso)
+_kn_drop = along(feet(mod(KNEEL_W, hips=(0.0, 0.12, -0.5), spine=(14.0, 0.0, 0.0), chest=(6.0, 0.0, 0.0), neck=(2.0, 0.0, 0.0),
+                          head=(6.0, 0.0, 0.0), hand_l=(0.7, -0.75, 1.6), knee_r=(0.0, -0.6, -0.8)),
+                      r=((-0.52, 0.66, 0.58), (30.0, 0.0, -10.0)), l=flat(*L_FOOT)), 0.2, 1.0)
 _kn_in = mod(KNEEL_W, breath=1.0, hips=(0.0, 0.17, -0.8), spine=(18.0, 0.0, 2.0), head=(10.0, 0.0, 2.0), clav_r=(0.0, 9.0, 0.0),
              clav_l=(0.0, -7.0, 0.0))
-_kn_rise = feet(mod(READY, hips=(0.0, 0.1, -0.45), spine=(20.0, 0.0, 0.0), chest=(6.0, 0.0, 0.0),
-                    grip=(-1.0, -0.4, 2.0), blade=(-0.3, 0.1, -0.95), hand_l=(0.62, -0.72, 1.5)),
-                r=((-0.55, 0.64, 0.48), (20.0, 0.0, -20.0)), l=flat(*L_FOOT))
-_kn_keys = [(0, READY, "sine"), (5, _kn_drop, "in2"), (10, KNEEL_W, "snap")]
+# para levantarse primero arranca la hoja por su eje empujándose en la rodilla (la punta sale de la piedra
+# donde entró) y recién afuera la lleva colgando a su derecha hacia la guardia; el tronco sigue inclinado
+# mientras tira (si se endereza de golpe la melena salta por encima del casco)
+_kn_free = along(mod(KNEEL_W, hips=(0.0, 0.16, -0.68), spine=(18.0, 0.0, 0.0), chest=(7.0, 0.0, 0.0), neck=(3.0, 0.0, 0.0),
+                     head=(6.0, 0.0, 0.0)), 0.08, 0.0)
+_kn_rise = tip_above(feet(mod(READY, hips=(0.0, 0.1, -0.45), spine=(20.0, 0.0, 0.0), chest=(6.0, 0.0, 0.0),
+                              grip=(-1.0, -0.4, 2.2), blade=(-0.35, 0.55, -0.76), edge=(-0.2, -0.75, -0.6), hand_l=(0.62, -0.72, 1.5)),
+                          r=((-0.55, 0.64, 0.48), (20.0, 0.0, -20.0)), l=flat(*L_FOOT)), 0.12)
+_kn_keys = [(0, READY0, "sine"), (5, _kn_drop, "in2", SWORD_IN), (10, KNEEL_W, "snap")]
 for i, f in enumerate((23, 36, 49, 62, 75, 88)):
     _kn_keys.append((f, _kn_in if i % 2 == 0 else KNEEL_W, "sine"))
-_kn_keys += [(97, _kn_rise, "inout"), (108, READY, "out")]
+_kn_keys += [(93, _kn_free, "inout", SWORD_IN), (100, _kn_rise, "inout"), (108, READY0, "out")]
 add("Kneel", 108, _kn_keys, lag={"head": 2.0, "neck": 1.0},
-    timing={"kneel": [10, 90], "ground": [[3, 98]], "chain_from": "READY", "chain_to": "READY"},
+    timing={"kneel": [10, 90], "ground": [[6, 91]], "chain_from": "READY", "chain_to": "READY"},
     events=[{"frame": 10, "fn": "Armor"}] + [{"frame": f, "fn": "Breath"} for f in (23, 49, 75)],
-    notes="agotado: 3 respiraciones (las grietas del pecho laten); se levanta en f90-108")
-add("KneelRise", 15, [(0, KNEEL_W, "sine"), (7, _kn_rise, "inout"), (15, READY, "out")],
-    timing={"chain_from": "KNEEL", "chain_to": "READY", "ground": [[0, 8]]}, notes="cuando el agotamiento termina antes (que Guard no salte)")
+    notes="agotado: clava la nodachi al caer, 3 respiraciones (las grietas del pecho laten); la arranca por su eje en "
+          "f88-93 y se levanta hasta f108")
+add("KneelRise", 15, [(0, KNEEL_W, "sine"), (4, _kn_free, "inout", SWORD_IN), (10, _kn_rise, "inout"), (15, READY0, "out")],
+    timing={"chain_from": "KNEEL", "chain_to": "READY", "ground": [[0, 3]]},
+    notes="cuando el agotamiento termina antes (que Guard no salte): arranca la hoja por su eje y se para")
 
 # =========================================================================== arranca su sombra (acto 1 -> 2)
 _st_down = feet(mod(READY, hips=(0.0, 0.0, -0.74), hips_rot=(0.0, 0.0, -6.0), spine=(40.0, 0.0, 6.0), chest=(14.0, 0.0, 4.0),
@@ -502,33 +637,45 @@ add("ShadowTear", 54, [(0, READY, "sine"), (10, _st_down, "inout", {"stop": ("ha
 _ec_plant = feet(mod(READY, hips=(0.0, 0.05, -0.3), spine=(10.0, 0.0, 0.0), chest=(2.0, 0.0, 0.0),
                      grip=(-0.58, -1.0, 2.15), blade=(0.03, -0.12, -0.99), edge=(0.0, -1.0, 0.0), elbow_r=(-0.8, 0.3, -0.3),
                      hand_l=(0.7, -0.6, 1.8), sword_ground=1.0), r=flat(*R_FOOT), l=flat(*L_FOOT))
-_ec_lift = mod(READY, grip=(-0.9, -0.6, 2.7), blade=(-0.1, -0.3, -0.95), edge=(0.0, -1.0, 0.3))
+# levanta la nodachi con la punta abajo YA sobre el punto donde la va a clavar (60 cm arriba) y la hunde
+# por su eje: el expo_in hace que la sostenga arriba y la baje de golpe en los últimos cuadros
+_ec_lift = along(mod(_ec_plant, hips=(0.0, 0.05, -0.18), spine=(-2.0, 0.0, 0.0), chest=(-6.0, 0.0, 0.0), neck=(-4.0, 0.0, 0.0),
+                     head=(-12.0, 0.0, 0.0), elbow_r=(-0.8, 0.3, 0.2), hand_l=(0.86, -0.52, 1.9)), 0.6, 1.0)
 _ec_reach = mod(_ec_plant, hips=(0.0, 0.1, -0.24), spine=(-10.0, 0.0, 0.0), chest=(-12.0, 0.0, 2.0), neck=(-10.0, 0.0, 0.0),
                 head=(-26.0, 0.0, 4.0), clav_l=(0.0, -16.0, 0.0),
                 hand_l=(0.42, 0.2, 4.3), hand_l_dir=(0.0, 0.2, 0.98), hand_l_up=(0.0, -1.0, 0.0), elbow_l=(0.9, 0.0, 0.2))
 _ec_close = mod(_ec_reach, hand_l=(0.44, 0.15, 4.25), hand_l_dir=(0.05, 0.4, 0.92))
 _ec_pull = mod(_ec_plant, hips=(0.0, 0.05, -0.34), spine=(6.0, 0.0, 0.0), chest=(-4.0, 0.0, 0.0), head=(-6.0, 0.0, 0.0),
                hand_l=(0.62, -0.45, 3.2), hand_l_dir=(0.0, -0.3, 0.95), hand_l_up=(0.0, -1.0, 0.0), elbow_l=(0.9, 0.3, -0.2))
-add("Eclipse", 72, [(0, READY, "sine"), (10, _ec_lift, "inout"), (20, _ec_plant, "expo_in"), (30, _ec_reach, "inout"),
-                    (34, _ec_close, "snap"), (44, _ec_pull, "inout"), (56, _ec_lift, "inout"), (72, READY, "inout")],
+# con la luna en el puño arranca la hoja por su eje y la deja volver colgando a la guardia
+_ec_out = along(mod(_ec_pull, hips=(0.0, 0.05, -0.26), spine=(4.0, 0.0, 0.0), chest=(-2.0, 0.0, 0.0), head=(-4.0, 0.0, 0.0),
+                    hand_l=(0.7, -0.5, 2.6)), 0.08, 0.0)
+add("Eclipse", 72, [(0, READY0, "sine"), (10, _ec_lift, "inout", SWORD_IN), (20, _ec_plant, "expo_in"), (30, _ec_reach, "inout"),
+                    (34, _ec_close, "snap"), (44, _ec_pull, "inout"), (50, _ec_out, "inout", SWORD_IN), (72, READY0, "inout")],
     lag={"head": 2.0, "hand_l": 1.0},
     events=[{"frame": 20, "fn": "SwordPlant"}, {"frame": 30, "fn": "MoonFade"}, {"frame": 34, "fn": "FistClose"}],
-    timing={"chain_from": "READY", "chain_to": "READY", "ground": [[16, 52]]},
+    timing={"chain_from": "READY", "chain_to": "READY", "ground": [[20, 48]]},
     notes="clava la nodachi y cierra el puño sobre la luna (las luces empiezan a bajar en f30)")
 
 # =========================================================================== último desfile: "¡Todavía no!"
 _ls_slump = feet(mod(KNEEL_W, hips=(0.0, 0.2, -0.86), spine=(30.0, 0.0, 4.0), head=(22.0, 0.0, 0.0)), l=flat(*L_FOOT))
 _ls_slump["sword_ground"] = 1.0
+# se empuja hacia arriba apoyado en la empuñadura: la hoja no se mueve de donde quedó clavada (antes la
+# clave la corría 21 cm y al soltarla en f16 saltaba fuera del piso en un cuadro); la arranca por su eje
+# mientras termina de pararse y recién afuera la levanta rugiendo
 _ls_push = feet(mod(READY, hips=(0.0, 0.1, -0.45), spine=(24.0, 0.0, 0.0), chest=(8.0, 0.0, 0.0), head=(4.0, 0.0, 0.0),
-                    grip=(-0.75, -0.85, 2.05), blade=(0.02, -0.15, -0.99), edge=(0.0, -1.0, 0.0), hand_l=(0.6, -0.75, 1.55)),
+                    grip=KNEEL["grip"], blade=KNEEL["blade"], edge=KNEEL["edge"], elbow_r=KNEEL["elbow_r"], sword_ground=1.0,
+                    hand_l=(0.6, -0.75, 1.55)),
                 r=toe(-0.45, 0.62, -6.0, 40.0), l=flat(*L_FOOT))
+_ls_free = along(mod(_ls_push, hips=(0.0, 0.08, -0.3), spine=(12.0, 0.0, 0.0), chest=(2.0, 0.0, 0.0), head=(-4.0, 0.0, 0.0),
+                     hand_l=(0.8, -0.5, 1.9)), 0.08, 0.0)
 _ls_roar = feet(mod(_r_out, hips=(0.0, 0.06, -0.2)), r=flat(*R_FOOT), l=flat(*L_FOOT))
 add("LastStand", 45, [(0, _ls_slump, "lin"), (8, mod(_ls_slump, hips=(0.0, 0.22, -0.9), head=(26.0, 0.0, 0.0)), "sine"),
-                      (16, _ls_push, "inout"), (22, _ls_roar, "expo_out"), (26, _r_tr[0], "sine"), (30, _r_tr[1], "sine"),
-                      (45, READY, "inout")],
+                      (15, _ls_push, "inout"), (19, _ls_free, "inout", SWORD_IN), (23, _ls_roar, "expo_out"),
+                      (27, _r_tr[0], "sine"), (31, _r_tr[1], "sine"), (45, READY0, "inout")],
     lag={"head": 2.0},
-    timing={"chain_to": "READY", "ground": [[0, 18]]}, events=[{"frame": 22, "fn": "Roar"}],
-    notes="al 10 %: se apoya en la espada, se levanta rugiendo y arranca el último desfile")
+    timing={"chain_to": "READY", "ground": [[0, 18]]}, events=[{"frame": 23, "fn": "Roar"}],
+    notes="al 10 %: se apoya en la espada para pararse, la arranca de la piedra, ruge y arranca el último desfile")
 
 # =========================================================================== derrota, máscara que cae, seiza
 # la nodachi queda clavada donde la soltó y la máscara rueda hasta el piso: ambas viven en el clip (así
@@ -671,15 +818,21 @@ add("Intro", 96, [(0, SEIZA, "sine"), (24, SEIZA, "sine"), (30, _in_look, "inout
 _ty_plant = feet(mod(READY, hips=(0.0, 0.1, -0.3), spine=(12.0, 0.0, 0.0), chest=(4.0, 0.0, 0.0),
                      grip=(-0.12, -1.05, 2.3), blade=(0.02, -0.05, -0.998), edge=(0.0, -1.0, 0.0), grip_l=1.0,
                      elbow_r=(-0.8, 0.0, -0.3), elbow_l=(0.8, 0.0, -0.3), sword_ground=1.0), r=flat(*R_FOOT), l=flat(*L_FOOT))
-_ty_up = mod(_ty_plant, hips=(0.0, 0.12, -0.12), spine=(2.0, 0.0, 0.0), grip=(-0.12, -1.05, 2.45), head=(-10.0, 0.0, 0.0))
-_ty_slam = mod(_ty_plant, hips=(0.0, 0.05, -0.5), spine=(24.0, 0.0, 0.0), chest=(10.0, 0.0, 0.0), grip=(-0.12, -1.05, 2.12))
-_ty = [(0, READY, "sine"), (14, _ty_plant, "inout")]
+# alza la nodachi a dos manos con la punta abajo sobre el punto donde la clava y la baja por su eje; los tres
+# golpes la suben y la hunden por la misma recta; al final la arranca por su eje antes de volver a la guardia
+# (antes giraba desde la guardia con la punta bajo el piso: el piso la cortaba mientras entraba)
+_ty_hover = along(_ty_plant, 0.25, 1.0, hips=(0.0, 0.12, -0.2), spine=(4.0, 0.0, 0.0), chest=(-2.0, 0.0, 0.0), head=(-8.0, 0.0, 0.0))
+_ty_up = along(_ty_plant, -0.3, 1.0, hips=(0.0, 0.12, -0.12), spine=(2.0, 0.0, 0.0), head=(-10.0, 0.0, 0.0))
+_ty_slam = along(_ty_plant, -0.62, 1.0, hips=(0.0, 0.05, -0.5), spine=(24.0, 0.0, 0.0), chest=(10.0, 0.0, 0.0))
+_ty_rebound = along(_ty_plant, -0.58, 1.0, hips=(0.0, 0.05, -0.46), spine=(24.0, 0.0, 0.0), chest=(10.0, 0.0, 0.0))
+_ty_free = along(_ty_plant, 0.08, 0.0, hips=(0.0, 0.1, -0.24), spine=(6.0, 0.0, 0.0), chest=(0.0, 0.0, 0.0), head=(-6.0, 0.0, 0.0))
+_ty = [(0, READY0, "sine"), (10, _ty_hover, "inout", SWORD_IN), (14, _ty_plant, "in2")]
 for f in (30, 45, 60):
-    _ty += [(f - 6, _ty_up, "inout"), (f, _ty_slam, "expo_in"), (f + 3, mod(_ty_slam, hips=(0.0, 0.05, -0.46)), "out")]
-_ty += [(75, READY, "inout")]
-add("Tsukuyomi", 75, _ty, timing={"rings": [30, 45, 60], "ground": [[2, 72]], "chain_from": "READY", "chain_to": "READY"},
-    events=[{"frame": f, "fn": "RingSlam"} for f in (30, 45, 60)],
-    notes="clava la espada al frente y la hunde tres veces: un anillo por golpe")
+    _ty += [(f - 6, _ty_up, "inout"), (f, _ty_slam, "expo_in"), (f + 3, _ty_rebound, "out")]
+_ty += [(67, _ty_free, "inout", SWORD_IN), (75, READY0, "inout")]
+add("Tsukuyomi", 75, _ty, timing={"rings": [30, 45, 60], "ground": [[12, 66]], "chain_from": "READY", "chain_to": "READY"},
+    events=[{"frame": 14, "fn": "SwordPlant"}] + [{"frame": f, "fn": "RingSlam"} for f in (30, 45, 60)],
+    notes="clava la espada al frente (f14) y la hunde tres veces: un anillo por golpe; la arranca en f63-67")
 
 
 # =========================================================================== locomoción (ciclos procedurales)

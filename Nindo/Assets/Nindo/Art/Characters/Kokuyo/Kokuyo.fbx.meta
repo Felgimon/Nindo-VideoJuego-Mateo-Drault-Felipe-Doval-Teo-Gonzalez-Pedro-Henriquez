@@ -217,7 +217,7 @@ ModelImporter:
       takeName: Scene
       internalID: 371609952875553488
       firstFrame: 216
-      lastFrame: 258
+      lastFrame: 262
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -245,8 +245,8 @@ ModelImporter:
       name: TsukiRecover
       takeName: Scene
       internalID: 356412317201108859
-      firstFrame: 268
-      lastFrame: 286
+      firstFrame: 272
+      lastFrame: 290
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -274,8 +274,8 @@ ModelImporter:
       name: Ichimonji
       takeName: Scene
       internalID: 694575530450946146
-      firstFrame: 296
-      lastFrame: 344
+      firstFrame: 300
+      lastFrame: 348
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -303,8 +303,8 @@ ModelImporter:
       name: KabutoWari
       takeName: Scene
       internalID: 240974747572153561
-      firstFrame: 354
-      lastFrame: 414
+      firstFrame: 358
+      lastFrame: 418
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -332,8 +332,8 @@ ModelImporter:
       name: ShadowSink
       takeName: Scene
       internalID: 822921835346742139
-      firstFrame: 424
-      lastFrame: 445
+      firstFrame: 428
+      lastFrame: 449
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -361,8 +361,8 @@ ModelImporter:
       name: ShadowEmerge
       takeName: Scene
       internalID: 661306768564563211
-      firstFrame: 455
-      lastFrame: 488
+      firstFrame: 459
+      lastFrame: 492
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -390,8 +390,8 @@ ModelImporter:
       name: Parried
       takeName: Scene
       internalID: 617703174581185974
-      firstFrame: 498
-      lastFrame: 528
+      firstFrame: 502
+      lastFrame: 532
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -419,8 +419,8 @@ ModelImporter:
       name: Flinch
       takeName: Scene
       internalID: 153441022749047382
-      firstFrame: 538
-      lastFrame: 553
+      firstFrame: 542
+      lastFrame: 557
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -448,8 +448,8 @@ ModelImporter:
       name: Guard
       takeName: Scene
       internalID: 649053065608797759
-      firstFrame: 563
-      lastFrame: 599
+      firstFrame: 567
+      lastFrame: 603
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -477,8 +477,8 @@ ModelImporter:
       name: Counter
       takeName: Scene
       internalID: 893062818465057338
-      firstFrame: 609
-      lastFrame: 624
+      firstFrame: 613
+      lastFrame: 628
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -506,8 +506,8 @@ ModelImporter:
       name: Roar
       takeName: Scene
       internalID: 1080502457882184487
-      firstFrame: 634
-      lastFrame: 673
+      firstFrame: 638
+      lastFrame: 677
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -535,8 +535,8 @@ ModelImporter:
       name: Kneel
       takeName: Scene
       internalID: 35286690238008013
-      firstFrame: 683
-      lastFrame: 791
+      firstFrame: 687
+      lastFrame: 795
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -564,8 +564,8 @@ ModelImporter:
       name: KneelRise
       takeName: Scene
       internalID: 33276572548416444
-      firstFrame: 801
-      lastFrame: 816
+      firstFrame: 805
+      lastFrame: 820
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -593,8 +593,8 @@ ModelImporter:
       name: ShadowTear
       takeName: Scene
       internalID: 942184443168152764
-      firstFrame: 826
-      lastFrame: 880
+      firstFrame: 830
+      lastFrame: 884
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -622,8 +622,8 @@ ModelImporter:
       name: Eclipse
       takeName: Scene
       internalID: 76448757516316655
-      firstFrame: 890
-      lastFrame: 962
+      firstFrame: 894
+      lastFrame: 966
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -651,8 +651,8 @@ ModelImporter:
       name: LastStand
       takeName: Scene
       internalID: 607047236408853247
-      firstFrame: 972
-      lastFrame: 1017
+      firstFrame: 976
+      lastFrame: 1021
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -680,8 +680,8 @@ ModelImporter:
       name: Defeat
       takeName: Scene
       internalID: 754638713696816874
-      firstFrame: 1027
-      lastFrame: 1117
+      firstFrame: 1031
+      lastFrame: 1121
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -709,8 +709,8 @@ ModelImporter:
       name: DefeatLoop
       takeName: Scene
       internalID: 997105439644312037
-      firstFrame: 1127
-      lastFrame: 1187
+      firstFrame: 1131
+      lastFrame: 1191
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -738,8 +738,8 @@ ModelImporter:
       name: SeizaBow
       takeName: Scene
       internalID: 247754020667533096
-      firstFrame: 1197
-      lastFrame: 1257
+      firstFrame: 1201
+      lastFrame: 1261
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -767,8 +767,8 @@ ModelImporter:
       name: SeizaIdle
       takeName: Scene
       internalID: 272997179133006542
-      firstFrame: 1267
-      lastFrame: 1357
+      firstFrame: 1271
+      lastFrame: 1361
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -796,8 +796,8 @@ ModelImporter:
       name: Intro
       takeName: Scene
       internalID: 915447069405152703
-      firstFrame: 1367
-      lastFrame: 1463
+      firstFrame: 1371
+      lastFrame: 1467
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -825,8 +825,8 @@ ModelImporter:
       name: Tsukuyomi
       takeName: Scene
       internalID: 877102694116268503
-      firstFrame: 1473
-      lastFrame: 1548
+      firstFrame: 1477
+      lastFrame: 1552
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -854,8 +854,8 @@ ModelImporter:
       name: Walk
       takeName: Scene
       internalID: 937358083253854595
-      firstFrame: 1558
-      lastFrame: 1594
+      firstFrame: 1562
+      lastFrame: 1598
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -883,8 +883,8 @@ ModelImporter:
       name: Stalk
       takeName: Scene
       internalID: 565945238422827887
-      firstFrame: 1604
-      lastFrame: 1634
+      firstFrame: 1608
+      lastFrame: 1638
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -912,8 +912,8 @@ ModelImporter:
       name: StrafeL
       takeName: Scene
       internalID: 637614546505535313
-      firstFrame: 1644
-      lastFrame: 1680
+      firstFrame: 1648
+      lastFrame: 1684
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -941,8 +941,8 @@ ModelImporter:
       name: StrafeR
       takeName: Scene
       internalID: 559431076825835002
-      firstFrame: 1690
-      lastFrame: 1726
+      firstFrame: 1694
+      lastFrame: 1730
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

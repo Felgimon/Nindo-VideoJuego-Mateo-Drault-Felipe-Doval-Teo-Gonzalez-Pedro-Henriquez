@@ -16,8 +16,9 @@ todos los personajes. La idea es la de un animador que trabaja pose a pose, pero
   movimiento ya resuelto, en espacio de mundo (incluye el avance del golpe), así la melena se
   atrasa cuando el personaje embiste.
 * Las **mediciones** (deriva de pies apoyados, velocidad de la punta del arma, costura de los
-  loops, altura máxima de la silueta) se calculan sobre el resultado y fallan la exportación si
-  no cumplen: lo que llega a Unity está medido.
+  loops, altura máxima de la silueta, hoja clavada que se corre en el piso) se calculan sobre el
+  resultado y fallan la exportación si no cumplen: lo que llega a Unity está medido. Las de los
+  ataques se miden con el reloj con el que el juego los toca (StepTimeline), no a 30 fps.
 
 Convenciones (las mismas de Tools/Blender/STYLE.md): metros, Blender Z arriba, el FRENTE del
 personaje mira a -Y (en Unity +Z con la exportación de acá), la DERECHA del personaje es -X.
@@ -698,6 +699,97 @@ def tip_speeds(rig, frames, roots, bone, local_tip):
     """Velocidad (m/s) de un punto del arma por cuadro (índice i = tramo i-1 -> i)."""
     pts = [W[bone] @ V(local_tip) + r for W, r in zip(frames, roots)]
     return [0.0] + [(pts[i] - pts[i - 1]).length * FPS for i in range(1, len(pts))], pts
+
+
+def blade_floor_slide(frames, roots, bone, local_tip, below=-0.05, skip=()):
+    """Una hoja clavada entra y sale del piso a lo largo de su propio eje: el punto donde la recta
+    empuñadura -> punta corta el piso (z = 0) no se mueve mientras la punta está abajo. Mide cuánto se
+    corre ese punto (m, en el plano del piso) entre cada par de cuadros en el que la punta de alguno de
+    los dos está bajo 'below'; si en uno de ellos la hoja no apunta hacia abajo (sale o entra girando)
+    el corrimiento es infinito. 'skip' = cuadros que no cuentan (se hunde entero en su sombra).
+    Devuelve [(cuadro, corrimiento, z de la punta)] de los pares medidos."""
+    grip = [W[bone].translation + r for W, r in zip(frames, roots)]
+    tip = [W[bone] @ V(local_tip) + r for W, r in zip(frames, roots)]
+
+    def hit(i):
+        a, b = grip[i], tip[i]
+        if a.z - b.z < 0.05:
+            return None
+        return a + (b - a) * (a.z / (a.z - b.z))
+    out = []
+    for i in range(1, len(tip)):
+        if i in skip or i - 1 in skip or min(tip[i].z, tip[i - 1].z) >= below:
+            continue
+        p0, p1 = hit(i - 1), hit(i)
+        d = Vector((p1.x - p0.x, p1.y - p0.y)).length if p0 is not None and p1 is not None else float("inf")
+        out.append((i, d, min(tip[i].z, tip[i - 1].z)))
+    return out
+
+
+class StepTimeline:
+    """Copia en Python de Nindo/Scripts/Enemies/StepTimeline.cs (mismas constantes): con qué reloj toca
+    el juego un clip de ataque. Anticipación hasta el apex que desacelera (seno), pausa en el apex que
+    apenas avanza ('creep'), suelta del apex al golpe acelerando (u²) a 'release_rate' veces la velocidad
+    del clip y seguimiento que vuelve a 1. Sirve para medir lo que se VE en el juego: un avance de raíz
+    autorado a 30 fps puede ser un teletransporte con la suelta comprimida."""
+    ANTICIPATION_RATE, MAX_HOLD, FOLLOW_TAU = 0.85, 0.45, 0.06
+
+    def __init__(self, frames, apex, contact, release_rate=1.6, windup_min=0.65, extra_hold=0.0, speed=1.0):
+        n = float(frames)
+        self.step_len = max(0.05, n / FPS) / max(0.05, speed)
+        self.active = min(1.0, max(0.02, contact / n))
+        self.apex = min(max(0.0, apex / n), self.active - 0.02)
+        rel = release_rate if release_rate > 0.1 else 1.6
+        self.tA = self.apex * self.step_len / self.ANTICIPATION_RATE
+        self.tR = (self.active - self.apex) * self.step_len / rel
+        extra = max(0.0, windup_min - (self.tA + self.tR))
+        self.hold = min(extra, self.MAX_HOLD)
+        self.tA += extra - self.hold
+        self.hold += max(0.0, extra_hold)
+        self.T = self.tA + self.hold + self.tR
+        self.creep = min(0.01, (self.active - self.apex) * 0.25)
+
+    def norm_at(self, t):
+        """Tiempo normalizado del clip a 't' segundos del inicio del paso (NormAt de C#)."""
+        if t <= 0.0:
+            return 0.0
+        if t < self.tA:
+            return self.apex * math.sin(t / self.tA * math.pi * 0.5)
+        t -= self.tA
+        if t < self.hold:
+            return self.apex + self.creep * t / self.hold
+        t -= self.hold
+        frm = self.apex + self.creep
+        if t < self.tR:
+            u = t / self.tR
+            return frm + (self.active - frm) * u * u
+        t -= self.tR
+        r0 = max(1.0, 2.0 * (self.active - frm) / self.tR * self.step_len)
+        return self.active + (t + (r0 - 1.0) * self.FOLLOW_TAU * (1.0 - math.exp(-t / self.FOLLOW_TAU))) / self.step_len
+
+
+def clock_speeds(samples, timeline, hz=60.0):
+    """Velocidad (m/s) en cada cuadro de juego de algo medido en cada cuadro entero del clip (el avance
+    de raíz en metros que el juego aplica al transform, o la punta del arma como Vector en mundo),
+    interpolado en línea recta entre cuadros y tocado con el reloj de 'timeline' (StepTimeline).
+    Devuelve [(segundo, cuadro del clip al final del tramo, m/s)] hasta el final del clip."""
+    n = len(samples) - 1
+
+    def at(f):
+        f = min(max(f, 0.0), float(n))
+        i = min(int(f), n - 1)
+        return samples[i] + (samples[i + 1] - samples[i]) * (f - i)
+    out, k, prev = [], 1, at(0.0)
+    while True:
+        t = k / hz
+        f = min(1.0, timeline.norm_at(t)) * n
+        x = at(f)
+        d = x - prev
+        out.append((round(t, 4), round(f, 2), (d.length if isinstance(d, Vector) else abs(d)) * hz))
+        prev = x
+        if f >= n:
+            return out
+        k += 1
 
 
 def plant_report(rig, frames, roots, foot_bones, ground_pts, thresh=0.02, pivots=None):

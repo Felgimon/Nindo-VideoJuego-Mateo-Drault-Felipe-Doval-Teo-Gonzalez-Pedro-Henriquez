@@ -317,7 +317,10 @@ class Review:
             if "max_height_m" in report:
                 bits.append(f"alto máx {report['max_height_m']} m")
             if "tip_peak_mps" in report:
-                bits.append(f"punta pico {report['tip_peak_mps']} m/s, fuera del golpe {int(report['tip_outside_ratio'] * 100)} %")
+                bits.append(f"punta con el reloj del juego: pico {report['tip_peak_mps']} m/s, fuera del golpe "
+                            f"{int(report['tip_outside_ratio'] * 100)} %")
+            if "root_peak_mps_60hz" in report:
+                bits.append(f"avance pico {report['root_peak_mps_60hz']} m/s")
             if "loop_seam_deg" in report:
                 bits.append(f"costura {report['loop_seam_deg']}°")
             sub = "  |  " + ", ".join(bits)

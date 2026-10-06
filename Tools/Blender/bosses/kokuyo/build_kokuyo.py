@@ -8,9 +8,11 @@ Un solo comando, determinista:
     --model-only        sin animaciones (iterar el modelado)
     --blend PATH        guarda el .blend resultante (para mirar a mano)
     --lineup            con --renders: solo la hoja del elenco (Kaito, ninja, sumo, Gorō, Kokuyō)
+    --report PATH       el detalle de las mediciones en JSON sin renderizar (con --renders va en DIR)
 Falla (código 1) si un chequeo no pasa: frente, apoyo en el piso, presupuesto de triángulos,
 altura máxima de la silueta (5.8 m), alcance de manos y pies, deriva de los pies apoyados,
-costura de los loops, quietud del apex y punta del arma rápida fuera del golpe.
+costura de los loops, quietud del apex, punta del arma rápida fuera del golpe (con el reloj del
+juego), hoja clavada que se corre en el piso y avance de raíz que se teletransporta con StepTimeline.
 """
 import sys, os, json, math, time
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,11 +41,14 @@ RENDERS = opt("--renders")
 ONLY = opt("--only")
 MODEL_ONLY = "--model-only" in argv
 BLEND = opt("--blend")
+REPORT = opt("--report")
 OUT_DIR = os.path.join(ROOT, "Nindo", "Assets", "Nindo", "Art", "Characters", "Kokuyo")
 FBX = os.path.join(OUT_DIR, "Kokuyo.fbx")
 HEIGHT_CAP = 5.8
 GAP = 10                 # cuadros vacíos entre clips en la toma única
 TIP_LOCAL = KR.TIP_LOCAL
+BLADE_SLIDE = 0.03       # m por cuadro que puede correrse la entrada de la hoja clavada en el piso
+ROOT_MAX = 20.0          # m/s del transform en un cuadro de juego (Enemy.cs limita la embestida a 12)
 failures, warnings = [], []
 
 
@@ -100,6 +105,41 @@ def lint_clip(rig, clip, frames, ctrls, roots, misses):
         allowed.update(range(a, b + 1))
     under = [i for i, p in enumerate(pts) if p.z < -0.05 and i not in allowed]
     check(not under, f"{clip.name}: la punta no se mete en el piso ({len(under)} cuadros, p. ej. f{under[:3]})")
+    # y cuando está clavada entra y sale a lo largo de su eje: el punto donde la hoja corta la piedra no
+    # se corre (una hoja que gira con la punta enterrada se ve atravesando el piso). 'sink' = se hunde
+    # entero en su sombra; 'bite' = el cuadro del tajo que la entierra cortando (kabuto-wari)
+    sink = set()
+    for s0, s1 in t.get("sink", []):
+        sink.update(range(s0, s1 + 1))
+    bite = set(t.get("bite", []))
+    slide = [s for s in NA.blade_floor_slide(frames, roots, "Katana", TIP_LOCAL, skip=sink) if s[0] not in bite]
+    if slide:
+        ws = max(slide, key=lambda s: s[1])
+        rep["blade_floor_slide_cm"] = round(min(ws[1], 99.0) * 100.0, 1)
+        check(ws[1] <= BLADE_SLIDE, f"{clip.name}: la hoja clavada no se corre en el piso (f{ws[0]}: "
+                                    f"{min(ws[1], 99.0) * 100:.1f} cm en un cuadro con la punta a {ws[2]:.2f} m; tope "
+                                    f"{BLADE_SLIDE * 100:.0f} cm)")
+    # avance de raíz con el reloj del juego: el ataque se toca con StepTimeline (suelta comprimida y
+    # acelerada), no a 30 fps; se prueban los windups posibles con y sin la pausa extra del acto 1
+    tr = [c.get("travel") or 0.0 for c in ctrls]
+    if any(abs(v) > 1e-4 for v in tr) and not clip.root_vel.length:
+        if "contact" in t and "apex" in t:
+            rr = t.get("release_rate", 1.6)
+            peak = (0.0, 0.0)
+            for wmin in (0.38, 0.65, 0.8):
+                for xh in (0.0, 0.42):
+                    tl = NA.StepTimeline(n, t["apex"], t["contact"], rr, wmin, xh)
+                    for s, f, v in NA.clock_speeds(tr, tl):
+                        if v > peak[0]:
+                            peak = (v, f)
+            rep["root_peak_mps_60hz"] = round(peak[0], 1)
+            rep["release_rate"] = rr
+            check(peak[0] <= ROOT_MAX, f"{clip.name}: el transform no se teletransporta en el juego (pico {peak[0]:.1f} m/s "
+                                       f"en el cuadro {peak[1]:.1f} del clip, 60 Hz, release_rate {rr}; tope {ROOT_MAX:.0f})")
+        else:
+            peak = max(abs(tr[i] - tr[i - 1]) * NA.FPS for i in range(1, len(tr)))
+            rep["root_peak_mps_60hz"] = round(peak, 1)
+            check(peak <= ROOT_MAX, f"{clip.name}: el transform no se teletransporta (pico {peak:.1f} m/s; tope {ROOT_MAX:.0f})")
     # espada soltada (derrota): queda clavada donde la dejó, no sigue a la mano
     free = [i for i, c in enumerate(ctrls) if (c.get("sword_free") or 0.0) >= 0.5]
     if free:
@@ -118,15 +158,24 @@ def lint_clip(rig, clip, frames, ctrls, roots, misses):
     if "contact" in t and t.get("kind") in ("parry", "dodge"):
         a0, a1 = t["active"]
         apex = t["apex"]
-        peak = max(sp[a0 - 1:a1 + 2])
         t0 = t.get("tell", [0])[0]
-        outside = [(sp[i], i) for i in range(t0 + 1, n + 1) if not (apex < i <= a1 + 3)]
+        # con el reloj del juego, que es lo que ve el jugador: la anticipación se toca hasta a 1.3x y la suelta
+        # a release_rate (Tsuki: 0.4x), así que la proporción a 30 fps engaña; windup mínimo = la anticipación
+        # más rápida posible
+        tl = NA.StepTimeline(n, apex, t["contact"], t.get("release_rate", 1.6), 0.38, 0.0)
+        gs = NA.clock_speeds(pts, tl)
+        peak = max(v for s, f, v in gs if a0 - 1 <= f <= a1 + 2)
+        outside = [(v, f) for s, f, v in gs if f > t0 and not (apex < f <= a1 + 3)]
         worst = max(outside) if outside else (0.0, 0)
         ratio = worst[0] / peak if peak > 0 else 0.0
         rep["tip_peak_mps"] = round(peak, 1)
         rep["tip_outside_ratio"] = round(ratio, 2)
+        rep["tip_game_mps"] = [[f, round(v, 1)] for s, f, v in gs]
         lim = t.get("tip_ratio_max", 0.3)
-        check(ratio <= lim, f"{clip.name}: punta fuera del golpe <= {lim * 100:.0f} % del pico ({ratio * 100:.0f} % en f{worst[1]})")
+        check(ratio <= lim, f"{clip.name}: punta fuera del golpe <= {lim * 100:.0f} % del pico con el reloj del juego "
+                            f"({ratio * 100:.0f} % en el cuadro {worst[1]:.1f}; pico {peak:.1f} m/s)")
+        o30 = max(sp[i] for i in range(t0 + 1, n + 1) if not (apex < i <= a1 + 3))
+        print(f"  info {clip.name}: a 30 fps la punta fuera del golpe llega al {o30 / max(sp[a0 - 1:a1 + 2]) * 100:.0f} % del pico")
         # el apex y el cuadro siguiente: la pose de aviso se tiene que poder leer quieta
         still = [sp[i] for i in (apex, apex + 1)]
         rep["apex_tip_mps"] = [round(v, 1) for v in still]
@@ -194,7 +243,9 @@ def main():
             "root_travel": "travel_m[f] = metros que el transform tiene que haber avanzado (hacia su frente; negativo = "
                            "hacia atrás) en el cuadro f del clip. Los pies apoyados quedan clavados solo si el juego mueve "
                            "el transform por deltas de travel_m(stepNorm * frames), con el reloj del paso (AttackDef.lunge = 0); "
-                           "la embestida lineal de Enemy.cs no sigue la curva y hace patinar los pies"}
+                           "la embestida lineal de Enemy.cs no sigue la curva y hace patinar los pies. travel_m está medido con "
+                           "StepTimeline y el release_rate de cada clip (AttackDef.releaseRate): con otro valor la suelta se "
+                           "comprime y el avance se ve como un teletransporte (Tsuki necesita 0.4; con 1.6 salta 3.2 m en 0.1 s)"}
 
     rv = None
     if RENDERS:
@@ -253,10 +304,11 @@ def main():
     else:
         print("  (sin Idle en --only: no se mide el cambio de silueta de los avisos)")
     scn.frame_set(1)
-    if RENDERS:
+    if RENDERS or REPORT:
         # el detalle de las mediciones (velocidad de la punta por cuadro, apoyos) para revisar a mano
-        os.makedirs(RENDERS, exist_ok=True)
-        with open(os.path.join(RENDERS, "lint_report.json"), "w", encoding="utf-8", newline=chr(10)) as fh:
+        path = REPORT or os.path.join(RENDERS, "lint_report.json")
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline=chr(10)) as fh:
             json.dump(reports, fh, indent=0)
 
     # ---------------------------------------------------------------- export
@@ -285,12 +337,15 @@ def main():
                        "strike_bone": "Katana", "tip_local_blender": list(TIP_LOCAL), "notes": clip.notes}
                 if "reach_m" in reports[clip.name]:
                     rec["reach_m"] = reports[clip.name]["reach_m"]
+                if "contact" in t:
+                    # AttackDef.releaseRate con el que se midieron el avance y la punta (StepTimeline)
+                    rec["release_rate"] = t.get("release_rate", 1.6)
                 tr = [round(c.get("travel") or 0.0, 4) for c in ctrlsd[clip.name]]
                 if any(abs(v) > 1e-4 for v in tr) and not clip.root_vel.length:
                     rec["travel_m"] = tr
                 if clip.root_vel.length > 0:
                     rec["root_velocity_mps"] = round(clip.root_vel.length, 3)
-                rec["lint"] = {k: v for k, v in reports[clip.name].items() if k not in ("tip_speed_mps", "plants")}
+                rec["lint"] = {k: v for k, v in reports[clip.name].items() if k not in ("tip_speed_mps", "tip_game_mps", "plants")}
                 clipd[clip.name] = rec
             info["clips"] = clipd
             info["springs_baked"] = KC.SPRING_CHAINS
