@@ -3,7 +3,7 @@
 Los FBX de los personajes del equipo se re-exportan EN EL MISMO LUGAR (mismo .meta y GUID): Unity
 los sigue tomando como el mismo asset y los .anim, controllers y NindoContent no se tocan. Para que
 eso sea seguro cada script:
-  1. importa el FBX y guarda la pose de cada hueso en cada frame de cada acción,
+  1. importa el FBX, guarda su pose por defecto y la pose de cada hueso en cada frame de cada acción,
   2. edita SOLO mallas y materiales (nunca huesos: ni nombres, ni padres, ni pose de bind),
   3. exporta a un archivo temporal con los ajustes del equipo (los mismos que dieron 0.0° de diferencia),
   4. valida con fbxcheck.py (nodos, bind pose, tomas, fps, texturas) y re-importando el temporal y
@@ -62,6 +62,29 @@ def load(path, anim_offset=1.0):
     bpy.ops.import_scene.fbx(filepath=path, anim_offset=anim_offset)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
     return arm
+
+
+def default_pose(path):
+    """Pose por defecto del FBX (los transforms locales de cada nodo: la pose del prefab que arma Unity y la
+    que toman los huesos que una toma no anima). Solo se lee bien importando SIN animación; con animación el
+    importador deja la pose de la primera toma. Devuelve ({hueso: matriz en espacio del armature}, matriz del
+    objeto Armature)."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=path, use_anim=False)
+    arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    bpy.context.view_layer.update()
+    return {pb.name: pb.matrix.copy() for pb in arm.pose.bones}, arm.matrix_world.copy()
+
+
+def set_pose(arm, pose):
+    """Pone la pose por defecto (de default_pose) sin acción activa, en orden de jerarquía."""
+    bones, objm = pose
+    arm.animation_data.action = None
+    arm.matrix_world = objm
+    for pb in arm.pose.bones:          # pose.bones viene padre antes que hijo
+        if pb.name in bones:
+            pb.matrix = bones[pb.name]
+            bpy.context.view_layer.update()
 
 
 def rest(arm, on=True):
@@ -465,9 +488,10 @@ def report_mesh(obj):
     return tris
 
 
-def finish(arm, src, rel, opts, export_kw=None, anim_offset=1.0, poses=None, bind_tol=0.01):
+def finish(arm, src, rel, opts, export_kw=None, anim_offset=1.0, poses=None, bind_tol=0.01, pose=None):
     """Común a todos: pesos, normales, imágenes fuera, tomas; exporta, valida contra 'src' y (con --write)
-    escribe en el lugar del repo (Assets/<rel>), aunque el origen haya sido otro archivo (--src)."""
+    escribe en el lugar del repo (Assets/<rel>), aunque el origen haya sido otro archivo (--src).
+    pose: la de default_pose(src), para exportar con la misma pose por defecto que el original."""
     dst_name = os.path.basename(rel)
     rest(arm, True)
     for o in meshes():
@@ -480,6 +504,8 @@ def finish(arm, src, rel, opts, export_kw=None, anim_offset=1.0, poses=None, bin
     if all_actions:
         take_actions(arm)
     rest(arm, False)
+    if pose is not None:
+        set_pose(arm, pose)
     print("mallas:")
     for o in meshes(): report_mesh(o)
     tmp = os.path.join(opts["out"], dst_name)

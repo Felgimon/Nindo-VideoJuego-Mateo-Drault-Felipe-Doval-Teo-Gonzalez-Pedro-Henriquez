@@ -27,6 +27,7 @@ COLORS = {
 
 o = C.args()
 src = o["src"] or os.path.join(C.ASSETS, REL)
+pose = C.default_pose(src)
 arm = C.load(src)
 poses = C.sample_poses(arm)
 C.rest(arm, True)
@@ -94,4 +95,4 @@ if C.count(body, "Motoyui") == 0:
     geo.prism((0, -0.27, 4.86), (0, -0.19, 4.915), 0.125, 0.13, "Motoyui", seg=6, up=(1, 0, 0), sy=0.8)
     print("chonmage", C.attach(body, geo, ("bone", "Cabeza")), "tris")
 
-C.finish(arm, src, REL, o, poses=poses)
+C.finish(arm, src, REL, o, poses=poses, pose=pose)

@@ -48,7 +48,7 @@ body = bpy.data.objects["Cuerpo"]
 faja = C.material("Abuelo_Faja", "#9a2c22")
 trenza = C.material("Abuelo_SombreroTrenza", "#a8814a")
 ojos = C.material("Abuelo_Ojos", "#3a2a22")
-mejilla = C.material("Abuelo_Mejilla", "#d98f78")
+mejilla = C.material("Abuelo_Mejilla", "#dc9a84")
 barba = bpy.data.materials["Abuelo_Barba"]
 
 # ------------------------------------------------------------------ faja
@@ -90,10 +90,10 @@ if C.count(body, "Abuelo_Ojos") == 0:
         # bigote: nace bajo la nariz y cae por los costados de la boca hasta la barba
         mus = on_face([(s * 0.015, 2.505), (s * 0.07, 2.485), (s * 0.12, 2.44), (s * 0.15, 2.37)], off=0.018)
         geo.ribbon(mus, [0.036, 0.042, 0.034, 0.022], "Abuelo_Barba", thick=0.028, up=(0, 1, 0))
-        # mejillas
+        # mejillas: hexágono achatado apoyado en la cara
         cx, cz = s * 0.18, 2.535
-        y = surf(cx, cz, 0.006)
-        geo.face(geo.add_verts([(cx - 0.035, y, cz - 0.022), (cx + 0.035, y, cz - 0.022), (cx + 0.035, y, cz + 0.022), (cx - 0.035, y, cz + 0.022)]), "Abuelo_Mejilla")
+        geo.face(geo.add_verts([Vector((cx + math.cos(a) * 0.036, surf(cx + math.cos(a) * 0.036, cz + math.sin(a) * 0.022, 0.013), cz + math.sin(a) * 0.022))
+                                for a in (math.pi * k / 3 for k in range(6))]), "Abuelo_Mejilla")
     print("cara", C.attach(body, geo, ("bone", "Cabeza")), "tris")
 
     # moño de la faja, atrás (el abuelo da la espalda en el secuestro)
@@ -107,6 +107,9 @@ if C.count(body, "Abuelo_Ojos") == 0:
                    [0.07, 0.065, 0.055], "Abuelo_Faja", thick=0.02, up=(0, -1, 0))
     print("moño", C.attach(body, geo, ("nearest_each", None), near_mat="Abuelo_Faja"), "tris")
 
+# la exportación original quedó parada en el último frame (la pose por defecto del FBX es el final del
+# secuestro): se exporta desde el mismo frame para no cambiarla
+scn.frame_set(f1)
 # bind_tol: Blender reconstruye el giro de los huesos de los pies (casi paralelos a -Y) con 0.07° de error;
 # las poses animadas dan exactamente igual (compare_poses) y a esa escala es menos de 0.001 u en el pie
 C.finish(arm, src, REL, o, export_kw=GRANDPA, anim_offset=0.0, poses=poses, bind_tol=0.1)

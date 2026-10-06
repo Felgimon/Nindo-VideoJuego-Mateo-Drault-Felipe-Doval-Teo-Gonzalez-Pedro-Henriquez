@@ -38,6 +38,7 @@ COLORS = {
 
 o = C.args()
 src = o["src"] or os.path.join(C.ASSETS, REL)
+pose = C.default_pose(src)
 arm = C.load(src)
 poses = C.sample_poses(arm)
 C.rest(arm, True)
@@ -131,4 +132,4 @@ for x in (-0.06, 0.20):
               sy=RZ / RY, cap0=False, cap1=False)
 print("martillo", C.replace_mesh(ham, geo), "tris")
 
-C.finish(arm, src, REL, o, poses=poses)
+C.finish(arm, src, REL, o, poses=poses, pose=pose)

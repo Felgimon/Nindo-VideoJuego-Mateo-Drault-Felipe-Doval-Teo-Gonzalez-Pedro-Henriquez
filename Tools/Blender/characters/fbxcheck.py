@@ -3,7 +3,8 @@
 Corre con el Python del sistema (sin Blender). Compara el FBX original con el re-exportado en
 lo que Unity usa para no romper prefabs, clips ni controllers:
   - nombres de todos los nodos Model (huesos, mallas, Armature): ninguno puede faltar
-  - bind pose de cada nodo (rotación <= 0.01°, traslación <= 0.005 u del archivo)
+  - transform local de cada nodo (la pose por defecto del prefab que arma Unity) y bind pose de cada
+    nodo (rotación <= 0.01°, traslación <= 0.005 u del archivo)
   - tomas de animación: mismos nombres y mismo rango de tiempo (los .meta usan firstFrame/lastFrame)
   - fps del archivo (Unity mide los frames del .meta con él)
 y avisa si quedaron texturas embebidas (el sumo pesaba 100 MB por dos PNG/JPG 4K empaquetados).
@@ -98,7 +99,7 @@ def obj_name(n):
 
 def summary(path):
     root, ver = parse(path)
-    out = {"version": ver, "models": {}, "bind": {}, "stacks": {}, "videos": 0, "video_bytes": 0, "fps": None}
+    out = {"version": ver, "models": {}, "local": {}, "bind": {}, "stacks": {}, "videos": 0, "video_bytes": 0, "fps": None}
     for e in root.elems:
         if e.id == b"GlobalSettings":
             g = props70(e)
@@ -111,6 +112,7 @@ def summary(path):
             if o.id == b"Model":
                 ids[o.props[0]] = obj_name(o)
                 out["models"][obj_name(o)] = o.props[2].decode()
+                out["local"][obj_name(o)] = _local(props70(o))
             elif o.id == b"AnimationStack":
                 p = props70(o)
                 out["stacks"][obj_name(o)] = tuple(p.get(k, [0])[0] / KTIME for k in ("LocalStart", "LocalStop"))
@@ -125,6 +127,36 @@ def summary(path):
                 mat = next((x.props[0] for x in pn.elems if x.id == b"Matrix"), None)
                 if nid in ids and mat: out["bind"][ids[nid]] = mat
     return out
+
+
+def _mul3(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def _euler(x, y, z):
+    """Matriz 3x3 de una rotación FBX en grados (orden XYZ: primero X)."""
+    cx, sx = math.cos(math.radians(x)), math.sin(math.radians(x))
+    cy, sy = math.cos(math.radians(y)), math.sin(math.radians(y))
+    cz, sz = math.cos(math.radians(z)), math.sin(math.radians(z))
+    rx = [[1, 0, 0], [0, cx, -sx], [0, sx, cx]]
+    ry = [[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]]
+    rz = [[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]]
+    return _mul3(rz, _mul3(ry, rx))
+
+
+def _local(p):
+    """Rotación local (Pre * Lcl * Post^-1, como la arma Unity) y traslación de un nodo Model."""
+    pre = _euler(*p.get("PreRotation", (0, 0, 0)))
+    lcl = _euler(*p.get("Lcl Rotation", (0, 0, 0)))
+    post = _euler(*p.get("PostRotation", (0, 0, 0)))
+    post_t = [[post[j][i] for j in range(3)] for i in range(3)]
+    r = _mul3(pre, _mul3(lcl, post_t))
+    return r, tuple(p.get("Lcl Translation", (0, 0, 0))), tuple(p.get("Lcl Scaling", (1, 1, 1)))
+
+
+def _rot3_angle(a, b):
+    tr = sum(a[i][k] * b[i][k] for i in range(3) for k in range(3))
+    return math.degrees(math.acos(max(-1.0, min(1.0, (tr - 1) / 2))))
 
 
 def _rot_angle(a, b):
@@ -162,6 +194,16 @@ def compare(src, dst, rot_tol=0.01, pos_tol=0.005, dropped_takes=()):
         if ang > rot_tol or dt > pos_tol:
             ok = False; print(f"  bind distinto {n}: {ang:.4f}° {dt:.5f}")
     print(f"bind pose: {len(A['bind'])} nodos, peor {worst[0]:.5f}° / {worst[1]:.6f} ({worst[2]})")
+    worst = (0.0, 0.0, "")
+    for n, (ra, ta, sa) in A["local"].items():
+        if n not in B["local"]: continue
+        rb, tb, sb = B["local"][n]
+        ang, dt = _rot3_angle(ra, rb), math.dist(ta, tb)
+        ds = max(abs(x - y) for x, y in zip(sa, sb))
+        if (ang, dt) > worst[:2]: worst = (ang, dt, n)
+        if ang > rot_tol or dt > pos_tol or ds > 5e-3:
+            ok = False; print(f"  transform local distinto {n}: {ang:.4f}° {dt:.5f} escala {sa} -> {sb}")
+    print(f"transform local: {len(A['local'])} nodos, peor {worst[0]:.5f}° / {worst[1]:.6f} ({worst[2]})")
     if A["fps"] != B["fps"]: ok = False; print("  FPS distinto:", A["fps"], B["fps"])
     for s, (a0, a1) in A["stacks"].items():
         if s not in B["stacks"]:

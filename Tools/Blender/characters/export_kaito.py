@@ -31,6 +31,7 @@ COLORS = {
 
 o = C.args()
 src = o["src"] or os.path.join(C.ASSETS, REL)
+pose = C.default_pose(src)
 arm = C.load(src)
 poses = C.sample_poses(arm)
 C.rest(arm, True)
@@ -91,4 +92,4 @@ C.katana(geo, CENTER + AXIS * GUARD_T, AXIS, side, up,
          handle_r=0.05, guard_r=0.095)
 print("katana", C.replace_mesh(kat, geo), "tris")
 
-C.finish(arm, src, REL, o, poses=poses)
+C.finish(arm, src, REL, o, poses=poses, pose=pose)
