@@ -16,8 +16,12 @@ namespace Nindo
     public class ThreatIndicators : MonoBehaviour
     {
         const int PoolSize = 4;
-        /// <summary>Margen al borde de la pantalla (unidades del canvas de 1920x1080).</summary>
-        const float EdgeMargin = 78f;
+        /// <summary>Margen al borde de la pantalla (unidades del canvas de 1920x1080): la flecha sale 62 hacia afuera del
+        /// centro del ensō y mide 92, así que con menos se cortaba contra el borde.</summary>
+        const float EdgeMargin = 116f;
+        /// <summary>Zonas a esquivar: la bandana y el dragón (arriba a la izquierda) y la barra del jefe (abajo al centro).</summary>
+        const float HudWidth = 620f, HudHeight = 250f, BossBarHalfWidth = 600f, BossBarHeight = 190f;
+        const float RingSize = 84f, ArrowSize = 92f, ArrowOffset = 62f;
         const float FadeOut = 0.15f;
 
         class Mark
@@ -61,6 +65,13 @@ namespace Nindo
             }
         }
 
+        static Vector2 EdgeHit(Vector2 d, float hx, float top, float bottom)
+        {
+            float kx = hx / Mathf.Max(1e-3f, Mathf.Abs(d.x));
+            float ky = (d.y > 0f ? top : bottom) / Mathf.Max(1e-3f, Mathf.Abs(d.y));
+            return d * Mathf.Min(kx, ky);
+        }
+
         static bool Contains(System.Collections.Generic.IReadOnlyList<Enemy> list, Enemy e)
         {
             for (int i = 0; i < list.Count; i++) if (list[i] == e) return true;
@@ -102,10 +113,15 @@ namespace Nindo
             if (d.sqrMagnitude < 1e-6f) d = Vector2.down;
             d.x *= size.x; d.y *= size.y;
             // intersección del rayo desde el centro con el rectángulo interior (los bordes, no una elipse: en 16:9
-            // la elipse dejaba las marcas laterales demasiado adentro)
-            float hx = size.x * 0.5f - EdgeMargin, hy = size.y * 0.5f - EdgeMargin;
-            float k = Mathf.Min(hx / Mathf.Max(1e-3f, Mathf.Abs(d.x)), hy / Mathf.Max(1e-3f, Mathf.Abs(d.y)));
-            m.root.anchoredPosition = d * k;
+            // la elipse dejaba las marcas laterales demasiado adentro). Si cae sobre el HUD o la barra del jefe, se
+            // repite con ese borde corrido para que la marca quede afuera de ellos
+            float hx = size.x * 0.5f - EdgeMargin, top = size.y * 0.5f - EdgeMargin, bottom = top;
+            Vector2 pos = EdgeHit(d, hx, top, bottom);
+            if (pos.x < -size.x * 0.5f + HudWidth && pos.y > size.y * 0.5f - HudHeight)
+                pos = EdgeHit(d, hx, size.y * 0.5f - HudHeight - RingSize * 0.5f, bottom);
+            if (Game.Combat != null && Game.Combat.ActiveBoss != null && Mathf.Abs(pos.x) < BossBarHalfWidth && pos.y < -size.y * 0.5f + BossBarHeight)
+                pos = EdgeHit(d, hx, top, size.y * 0.5f - BossBarHeight - RingSize * 0.5f);
+            m.root.anchoredPosition = pos;
             m.arrow.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
 
             float p = e.InTell ? e.TellProgress01 : 1f;
@@ -148,22 +164,22 @@ namespace Nindo
             var root = new GameObject("Amenaza" + i, typeof(RectTransform), typeof(CanvasGroup));
             m.root = (RectTransform)root.transform;
             m.root.SetParent(layer, false);
-            m.root.sizeDelta = new Vector2(120f, 120f);
+            m.root.sizeDelta = new Vector2(RingSize, RingSize);
             m.group = root.GetComponent<CanvasGroup>();
             m.group.interactable = false; m.group.blocksRaycasts = false;
             // ensō chico (tinta debajo para que se lea sobre la nieve o el lago)
-            m.ringInk = Img("TintaAnillo", m.root, ringSprite, new Color(TellStyle.Ink.r, TellStyle.Ink.g, TellStyle.Ink.b, 0.55f), 76f);
+            m.ringInk = Img("TintaAnillo", m.root, ringSprite, new Color(TellStyle.Ink.r, TellStyle.Ink.g, TellStyle.Ink.b, 0.55f), RingSize);
             m.ringInk.rectTransform.localScale = Vector3.one * 1.12f;
-            m.ring = Img("Anillo", m.root, ringSprite, TellStyle.Gold, 76f);
+            m.ring = Img("Anillo", m.root, ringSprite, TellStyle.Gold, RingSize);
             m.ring.type = Image.Type.Filled; m.ring.fillMethod = Image.FillMethod.Radial360;
             m.ring.fillOrigin = (int)Image.Origin360.Top; m.ring.fillClockwise = true;
             // la flecha gira alrededor del centro y queda del lado de afuera del anillo
             var arrow = new GameObject("Flecha", typeof(RectTransform));
             m.arrow = (RectTransform)arrow.transform;
             m.arrow.SetParent(m.root, false);
-            m.ink = Img("Tinta", m.arrow, singleInkSprite, new Color(TellStyle.Ink.r, TellStyle.Ink.g, TellStyle.Ink.b, 0.7f), 64f);
-            m.stroke = Img("Trazo", m.arrow, singleSprite, TellStyle.Gold, 64f);
-            m.ink.rectTransform.anchoredPosition = m.stroke.rectTransform.anchoredPosition = new Vector2(52f, 0f);
+            m.ink = Img("Tinta", m.arrow, singleInkSprite, new Color(TellStyle.Ink.r, TellStyle.Ink.g, TellStyle.Ink.b, 0.75f), ArrowSize);
+            m.stroke = Img("Trazo", m.arrow, singleSprite, TellStyle.Gold, ArrowSize);
+            m.ink.rectTransform.anchoredPosition = m.stroke.rectTransform.anchoredPosition = new Vector2(ArrowOffset, 0f);
             root.SetActive(false);
             return m;
         }
@@ -189,8 +205,8 @@ namespace Nindo
             if (singleSprite != null) return;
             singleSprite = Sprite.Create(Chevron(false, 0f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
             doubleSprite = Sprite.Create(Chevron(true, 0f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
-            singleInkSprite = Sprite.Create(Chevron(false, 0.05f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
-            doubleInkSprite = Sprite.Create(Chevron(true, 0.05f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
+            singleInkSprite = Sprite.Create(Chevron(false, 0.04f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
+            doubleInkSprite = Sprite.Create(Chevron(true, 0.04f), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
             ringSprite = Sprite.Create(Enso(), new Rect(0, 0, Tex, Tex), new Vector2(0.5f, 0.5f));
         }
 
@@ -209,7 +225,7 @@ namespace Nindo
                 {
                     Vector2 p = new Vector2((x + 0.5f) / Tex, (y + 0.5f) / Tex);
                     float a = Stroke(p, 0f, grow);
-                    if (twin) a = Mathf.Max(a, Stroke(p, -0.24f, grow));
+                    if (twin) a = Mathf.Max(a, Stroke(p, -0.26f, grow));
                     px[y * Tex + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
                 }
             return Upload(px);
@@ -226,13 +242,15 @@ namespace Nindo
                 Vector2 ab = tip - tail;
                 float t = Mathf.Clamp01(Vector2.Dot(p - tail, ab) / ab.sqrMagnitude);
                 float dist = (p - (tail + ab * t)).magnitude;
-                // grosor: fino en la cola, apoyo del pincel en la punta
-                float w = Mathf.Lerp(0.025f, 0.075f, t * t) + grow;
-                float edge = 1f - Mathf.SmoothStep(w * 0.75f, w, dist);
-                // pincel seco: estrías paralelas al trazo que se abren hacia la cola
+                // grosor: más fino en la cola, apoyo del pincel en la punta (grueso: a 60 px en pantalla un trazo fino
+                // desaparecía sobre el pasto)
+                float w = Mathf.Lerp(0.045f, 0.105f, Mathf.Pow(t, 1.5f)) + grow;
+                float edge = 1f - Mathf.SmoothStep(w * 0.8f, w, dist);
+                // pincel seco: estrías paralelas al trazo, solo en el primer 40 % (la cola)
                 float across = Vector2.Dot(p - tail, new Vector2(-ab.y, ab.x).normalized);
-                float streak = Mathf.PerlinNoise(across * 90f + s * 13.1f, t * 3f + shift * 7f);
-                float dry = grow > 0f ? 1f : Mathf.Lerp(1f, Mathf.SmoothStep(0.25f, 0.55f, streak), (1f - t) * 0.85f);
+                float streak = Mathf.PerlinNoise(across * 70f + s * 13.1f, t * 3f + shift * 7f);
+                float tailK = Mathf.Clamp01(1f - t / 0.4f) * 0.7f;
+                float dry = grow > 0f ? 1f : Mathf.Lerp(1f, Mathf.SmoothStep(0.2f, 0.45f, streak), tailK);
                 a = Mathf.Max(a, edge * dry);
             }
             return a;

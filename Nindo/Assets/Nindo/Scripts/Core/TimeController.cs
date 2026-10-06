@@ -7,6 +7,19 @@ namespace Nindo
     /// Controla Time.timeScale de forma segura: cámara lenta apilable, hit-stop global y pausa.
     /// Antes cada script hacía "timeScale = 0 ... restaurar el original", lo que dejaba el juego
     /// trabado en cámara lenta si dos efectos se superponían. Acá se calcula siempre el mínimo.
+    ///
+    /// Política de cámara lenta (la cámara lenta es un acento, no el ritmo de la pelea: en una pelea de tres ninjas
+    /// medio combate pasaba lento y gris y se perdía de vista el golpe siguiente):
+    ///  * Los momentos de combate van por Moment(SlowMoMoment), con los valores en un solo lugar. Los "acentos"
+    ///    (último enemigo, doble kill, postura quebrada, esquiva perfecta, Filo de Ira) no se encadenan: si uno
+    ///    llega mientras otro dura o en los 0.6 s siguientes, pasa a un hit-stop seco de 0.06 s.
+    ///  * SlowMotion() directo queda para cinemáticas y tutoriales (la duración la decide la escena).
+    ///  * Un golpe común nunca frena el mundo: hit-stop corto (0.035-0.07) y nada más.
+    ///  * Lo que reacciona a la cámara lenta (gris de ScreenFX, pitch del audio) lee SlowMoScale: el hit-stop no.
+    /// Llamadas a migrar (Player/* y Enemies/* son de combate): PlayerController.Combat (muerte de un enemigo ->
+    /// LastKill/DoubleKill, esquiva perfecta -> PerfectDodge, remate -> FinisherCinematic/FinisherQuick,
+    /// habilidades -> AbilityWind/AbilityWhirl), PlayerController (Filo de Ira -> Rage, muerte -> PlayerDeath),
+    /// Enemy.BreakPosture -> PostureBreak, Boss (derrota) -> BossDefeat. Los valores de la tabla son los de hoy.
     /// </summary>
     [DefaultExecutionOrder(-900)]
     public class TimeController : MonoBehaviour
@@ -45,6 +58,73 @@ namespace Nindo
             if (Game.Time == this) Game.Time = null;
             Time.timeScale = 1f;
             Time.fixedDeltaTime = BaseFixedDelta;
+        }
+
+        // ------------------------------------------------------------------ política
+        struct Preset
+        {
+            public float scale, duration, easeIn, easeOut;
+            public bool accent;
+            public Preset(float s, float d, float i, float o, bool a) { scale = s; duration = d; easeIn = i; easeOut = o; accent = a; }
+        }
+
+        static readonly Preset[] Presets =
+        {
+            new Preset(0.30f, 0.35f, 0.01f, 0.25f, true),    // LastKill
+            new Preset(0.30f, 0.35f, 0.01f, 0.25f, true),    // DoubleKill
+            new Preset(0.25f, 0.30f, 0.02f, 0.15f, true),    // PostureBreak
+            new Preset(0.35f, 0.40f, 0.02f, 0.15f, true),    // PerfectDodge
+            new Preset(0.35f, 0.45f, 0.02f, 0.30f, true),    // Rage
+            new Preset(0.45f, 1.60f, 0.05f, 0.30f, false),   // FinisherCinematic
+            new Preset(0.60f, 0.35f, 0.03f, 0.15f, false),   // FinisherQuick
+            new Preset(0.20f, 0.55f, 0.05f, 0.15f, false),   // AbilityWind
+            new Preset(0.35f, 0.30f, 0.03f, 0.15f, false),   // AbilityWhirl
+            new Preset(0.15f, 2.20f, 0.02f, 0.80f, false),   // BossDefeat
+            new Preset(0.25f, 1.60f, 0.02f, 0.50f, false),   // PlayerDeath
+        };
+        /// <summary>Tras un acento, cuánto esperar (s reales) antes de permitir otro.</summary>
+        const float AccentCooldown = 0.6f, AccentFallbackHitStop = 0.06f;
+        float accentFreeAt;
+
+        /// <summary>
+        /// Momento de cámara lenta con nombre (ver la política arriba). Devuelve el id para CancelSlowMotion, o -1 si
+        /// un acento se convirtió en hit-stop porque otro acababa de pasar.
+        /// </summary>
+        public int Moment(SlowMoMoment m)
+        {
+            var p = Presets[(int)m];
+            if (p.accent)
+            {
+                float now = Time.unscaledTime;
+                if (now < accentFreeAt) { HitStop(AccentFallbackHitStop); return -1; }
+                accentFreeAt = now + p.duration + AccentCooldown;
+            }
+            return SlowMotion(p.scale, p.duration, p.easeIn, p.easeOut);
+        }
+
+        // medición: qué parte de cada pelea pasa en cámara lenta (para ajustar; se loguea en el editor al terminar)
+        float fightTime, fightSlow;
+        bool wasFighting;
+
+        /// <summary>Fracción (0..1) de la pelea en curso que lleva en cámara lenta (escala < 0.9).</summary>
+        public float FightSlowShare => fightTime > 0f ? fightSlow / fightTime : 0f;
+
+        void MeasureFight(float dt)
+        {
+            bool fighting = Game.Combat != null && Game.Combat.InCombat;
+            if (fighting)
+            {
+                fightTime += dt;
+                if (SlowMoScale < 0.9f) fightSlow += dt;
+            }
+            else if (wasFighting)
+            {
+#if UNITY_EDITOR
+                if (fightTime > 3f) Debug.Log($"[Nindo] Pelea de {fightTime:0.0} s: {FightSlowShare:P0} en cámara lenta");
+#endif
+                fightTime = fightSlow = 0f;
+            }
+            wasFighting = fighting;
         }
 
         /// <summary>Cámara lenta. duration y fades en segundos reales.</summary>
@@ -99,6 +179,7 @@ namespace Nindo
                 if (k < scale) scale = k;
             }
             SlowMoScale = scale;
+            if (!paused) MeasureFight(dt);
             if (Time.unscaledTime < hitStopUntil) scale = 0f;
             GameplayScale = scale;
             Apply();
@@ -112,5 +193,12 @@ namespace Nindo
         }
 
         static float Smooth(float x) => x * x * (3f - 2f * x);
+    }
+
+    /// <summary>Momentos de cámara lenta de la política (TimeController.Moment).</summary>
+    public enum SlowMoMoment
+    {
+        LastKill, DoubleKill, PostureBreak, PerfectDodge, Rage,
+        FinisherCinematic, FinisherQuick, AbilityWind, AbilityWhirl, BossDefeat, PlayerDeath
     }
 }
