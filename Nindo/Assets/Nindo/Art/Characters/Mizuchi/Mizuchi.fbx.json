@@ -6,7 +6,7 @@
  "bones": 46,
  "tris": {
   "Body_P1": 3824,
-  "Body_P2": 4040,
+  "Body_P2": 4056,
   "Ripple": 32
  },
  "meshes": {
@@ -192,7 +192,7 @@
     ],
     "bodyTravel": 0.31,
     "minZ": [
-     -0.001,
+     -0.003,
      "whisker_L3",
      21
     ],
@@ -663,8 +663,8 @@
      15
     ],
     "maxDegPerFrame": [
-     26.1,
-     "whisker_L1",
+     25.1,
+     "barbel_R2",
      11
     ]
    }
@@ -822,9 +822,9 @@
    "lint": {
     "bodyTravel": 0.67,
     "minZ": [
-     -0.245,
-     "body",
-     16
+     -0.209,
+     "shide_R",
+     15
     ],
     "maxDegPerFrame": [
      24.1,

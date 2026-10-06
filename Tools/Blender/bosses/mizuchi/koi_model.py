@@ -625,8 +625,11 @@ class Koi:
                 gl = [mb.v(g + z * 0.028, w), mb.v(g + x * 0.022, w), mb.v(g - z * 0.022, w), mb.v(g - x * 0.022, w)]
                 mb.face(gl, "glow_moon", outward=Dir(nrm))
             else:
-                # pupila de dragón: ranura vertical
-                pts = [c + nrm * 0.08 + z * 0.085, c + nrm * 0.085 + x * 0.025, c + nrm * 0.08 - z * 0.085, c + nrm * 0.085 - x * 0.025]
+                # iris dorado que brilla y pupila de dragón (ranura vertical) apenas por encima
+                pc = mb.v(c + nrm * 0.095, w)
+                for k in range(8):
+                    mb.face([i_[k], i_[(k + 1) % 8], pc], "glow_spirit", outward=Dir(nrm))
+                pts = [c + nrm * 0.11 + z * 0.13, c + nrm * 0.115 + x * 0.035, c + nrm * 0.11 - z * 0.13, c + nrm * 0.115 - x * 0.035]
                 mb.face([mb.v(p, w) for p in pts], "black", outward=Dir(nrm))
 
     # --- opérculos: placa que se abre, con el borde trasero marcado
@@ -684,7 +687,7 @@ class Koi:
             for k in range(nseg if rr > 0 else 1):
                 a = 2 * math.pi * k / nseg
                 x, y = rr * math.cos(a), cy + rr * 0.94 * math.sin(a)
-                p = top_pt(x, y, 0.028)
+                p = top_pt(x, y, 0.016)
                 ring.append(mb.v(p, spine_w(y)))
             rings.append(ring)
         c = rings[0][0]
@@ -700,7 +703,7 @@ class Koi:
             pa = a.co - Vector((0, 0, 0.05)); pb = b.co - Vector((0, 0, 0.05))
             va = mb.v(pa, spine_w(pa.y)); vb = mb.v(pb, spine_w(pb.y))
             mid = (a.co + b.co) / 2
-            mb.face([a, b, vb, va], "maple_dark", outward=Dir(Vector((mid.x, mid.y - cy, 0))))
+            mb.face([a, b, vb, va], "flower_red", outward=Dir(Vector((mid.x, mid.y - cy, 0))))
 
     # --- bigotes
     def barbels(self):
@@ -985,13 +988,14 @@ class Koi:
 
 def build_ripple(names):
     """'Espejo de agua' bajo el koi: anillo plano en la cubierta (32 tris), 100 % al root. Marca la altura
-    a la que flota vista desde arriba y define el piso para NormalizeHeight (el punto más bajo del modelo)."""
+    a la que flota vista desde arriba y define el piso para NormalizeHeight (el punto más bajo del modelo).
+    Sale como espuma clara sin emisión; KoiBody le pone en runtime el agua transparente que brilla."""
     mb = KoiBuilder("Ripple", names)
     n = 16
     inner = [mb.v((2.28 * math.cos(2 * math.pi * k / n), 2.28 * math.sin(2 * math.pi * k / n), 0.0), {"root": 1.0}) for k in range(n)]
     outer = [mb.v((2.5 * math.cos(2 * math.pi * (k + 0.5) / n), 2.5 * math.sin(2 * math.pi * (k + 0.5) / n), 0.0), {"root": 1.0}) for k in range(n)]
     for k in range(n):
         k1 = (k + 1) % n
-        mb.face([inner[k], outer[k], inner[k1]], "glow_water", outward=Dir((0, 0, 1)))
-        mb.face([inner[k1], outer[k], outer[k1]], "glow_water", outward=Dir((0, 0, 1)))
+        mb.face([inner[k], outer[k], inner[k1]], "water_foam", outward=Dir((0, 0, 1)))
+        mb.face([inner[k1], outer[k], outer[k1]], "water_foam", outward=Dir((0, 0, 1)))
     return mb.finish()

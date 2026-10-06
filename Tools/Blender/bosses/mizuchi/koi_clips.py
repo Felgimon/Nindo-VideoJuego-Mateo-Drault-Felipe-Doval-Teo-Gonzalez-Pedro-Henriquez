@@ -262,8 +262,8 @@ def clips():
     # 14. Roar: echa la cabeza atrás, abre todo (boca, branquias, aletas, dorsal, bigotes) y tiembla.
     rear_r = merge(H, body(pitch=25, tz=0.2, ty=0.3), chain((0, 8), (5, 5, 5, 4, 3), ch="lift"), both("pec_{}1", up=10, out=10))
     roar = merge(body(pitch=18, tz=0.25, ty=0.15), chain((4, 10), (4, 4, 4, 3, 2), ch="lift"), {"jaw": {"open": 45, "fwd": 0.14}}, both("gill_{}", out=30),
-                 both("barbel_{}1", out=25, up=12), both("barbel_{}2", out=12), both("whisker_{}1", out=20, up=14),
-                 both("whisker_{}2", out=14, up=8), both("pec_{}1", up=22, out=18, fwd=8),
+                 both("barbel_{}1", out=25, up=12), both("barbel_{}2", out=12), both("whisker_{}1", out=22, up=5),
+                 both("whisker_{}2", out=14, up=-4), both("pec_{}1", up=22, out=18, fwd=8),
                  both("pec_{}2", fold=0.2, up=6), both("pec_{}3", fold=0.2), both("fluke_{}1", out=20, fold=0.3),
                  {"dorsal_1": {"rake": -16, "grow": 0.1}, "dorsal_2": {"rake": -14, "grow": 0.1}, "dorsal_3": {"rake": -12}, "dorsal_4": {"rake": -10}})
     C.append(Clip("Roar", 48, [(0, H, "lin"), (10, rear_r, "ease"), (14, roar, "out"), (34, merge(roar, body(pitch=17)), "hold"),

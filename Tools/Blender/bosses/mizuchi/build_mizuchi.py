@@ -7,6 +7,7 @@ Un solo comando, determinista (sin auto-weights ni azar sin semilla):
   --sheets         hoja del modelo (vistas, cámara del juego, fase 1 y 2) + una hoja por clip
   --model-only     solo la hoja del modelo (iterar el modelado sin animar)
   --clips a,b      limita las hojas de clips a esos nombres
+  --p2             las hojas de clips también con la malla de la fase 2 (corrompida)
   --export         escribe Nindo/Assets/Nindo/Art/Characters/Mizuchi/Mizuchi.fbx + Mizuchi.fbx.json
 Sin opciones hace todo (hojas + export). Después: python Tools/Unity/generate_assets.py (o solo las
 entradas de mizuchi_koi, ver el final de este archivo) para el .meta, el controller y NindoContent.
@@ -31,7 +32,7 @@ def opt(name, default=None):
 
 OUT = opt("--out", os.path.join(KC.TOOLS_BLENDER, "out", "mizuchi"))
 FBX = os.path.join(KC.REPO, "Nindo", "Assets", "Nindo", "Art", "Characters", "Mizuchi", "Mizuchi.fbx")
-ALL = not any(a.startswith("--") and a not in ("--out",) for a in argv)
+ALL = not any(a.startswith("--") and a not in ("--out", "--p2") for a in argv)
 DO_SHEETS = ALL or "--sheets" in argv or "--model-only" in argv
 DO_EXPORT = ALL or "--export" in argv
 MODEL_ONLY = "--model-only" in argv
@@ -313,6 +314,8 @@ def main():
         roundtrip_ref(rig, results)
     if DO_SHEETS:
         clip_sheets(arm, p1, p2, results)
+        if "--p2" in argv:
+            clip_sheets(arm, p1, p2, results, phase=2)
         model_sheet(arm, p1, p2, rip)
     print("DONE")
 
