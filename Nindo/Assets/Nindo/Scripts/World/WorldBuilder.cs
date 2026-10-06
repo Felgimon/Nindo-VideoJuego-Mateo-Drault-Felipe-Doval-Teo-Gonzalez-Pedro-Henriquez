@@ -382,6 +382,7 @@ namespace Nindo
                     a.radius = p.Length > 3 ? F(p[3], 15f) : 15f;
                     a.triggerRadius = a.radius * 0.7f;
                     arenas.Add(a);
+                    if (a.archetype == "kage") go.AddComponent<KageArenaFX>();   // braseros, luna, cuerdas y sombra viva del patio
                     break;
                 }
                 case "Boss":
