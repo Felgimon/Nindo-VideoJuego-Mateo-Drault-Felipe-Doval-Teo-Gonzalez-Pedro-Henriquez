@@ -692,7 +692,6 @@ MonoBehaviour:
   vfxDamaged: {fileID: 8926484042661614526, guid: fd533dd6244875d45aa44a62565b1cce, type: 3}
   vfxSlay: {fileID: 8926484042661614526, guid: 49211f098719aae4f96e9399834b0f4f, type: 3}
   vfxSlash: {fileID: 8926484042661614526, guid: 5a391d04969da624c9b65d4b500dc991, type: 3}
-  vfxLines: {fileID: 8926484042661614526, guid: 8a385481c95b8b44ea8c1278e0e36dd1, type: 3}
   vfxAura: {fileID: 8926484042661614526, guid: 0c48da95b202331448876216f4edf0da, type: 3}
   sfx:
   - key: ability_charge

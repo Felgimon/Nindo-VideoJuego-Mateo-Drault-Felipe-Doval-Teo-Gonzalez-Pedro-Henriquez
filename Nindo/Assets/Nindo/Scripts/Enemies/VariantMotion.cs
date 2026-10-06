@@ -39,6 +39,9 @@ namespace Nindo
     /// al entrar a un ataque, golpe o guardia se desvanece en ~0.1 s, así las poses de los golpes (y el aviso de
     /// parry que se lee en ellas) quedan exactas. Los giros van en ejes del personaje (adelante, derecha, arriba),
     /// no en los locales de cada hueso: sirve igual para el ninja y para el sumo.
+    /// También adorna los golpes propios de la zona (EnemyArchetypes.*Moves) atados al reloj del paso: el salto del
+    /// bambú va por el aire, el remolino del lago gira entero, el rompeguardia de la montaña se echa atrás antes de
+    /// soltar, y salen la nieve del shiko o el salpicón del empujón en el instante del golpe.
     /// Corre después de Enemy (que fija Animator.speed en su Update) y antes de SpringChain (que cuelga del pose).
     /// (Va en su propio archivo: Unity toma DefaultExecutionOrder del script, no de una clase de otro archivo; con
     /// el orden indefinido Enemy pisaba la velocidad y el sabor no se veía.)
@@ -65,6 +68,11 @@ namespace Nindo
         Bone lower, upper, head, shoulderL, shoulderR;
         bool hasSpeed;
         float weight, phase, scanYaw, scanTarget, nextScan;
+        // adornos de los golpes: la pose del modelo que dejó CharacterFactory y si este paso ya la movió
+        Vector3 basePos;
+        Quaternion baseRot;
+        bool moved;
+        float lastClock;
 
         void Start()
         {
@@ -88,6 +96,8 @@ namespace Nindo
             shoulderL = Find("Hombro.L");
             shoulderR = Find("Hombro.R");
             watch = GetComponentInChildren<SkinnedMeshRenderer>();
+            basePos = transform.localPosition;
+            baseRot = transform.localRotation;
             phase = Random.value * 10f;                   // que dos del mismo grupo no respiren a la par
             nextScan = Time.time + Random.Range(0.3f, flavor.scanEvery);
         }
@@ -115,6 +125,7 @@ namespace Nindo
             if (watch != null && !watch.isVisible) return;
             // un hueso que el Animator no escribió este frame (cullado, sin curva) vuelve a su pose antes de sumar
             Restore(lower); Restore(upper); Restore(head); Restore(shoulderL); Restore(shoulderR);
+            Flourish();
             if (weight <= 0.001f) return;
 
             var root = enemy.transform;
@@ -147,6 +158,72 @@ namespace Nindo
                                 * Quaternion.AngleAxis(-Mathf.Sin(t * w - 1.6f) * sway * 0.5f * weight, fwd)
                                 * head.t.rotation;
                 Mark(head);
+            }
+        }
+
+        /// <summary>Los golpes de zona en el cuerpo entero (sin clips nuevos), atados a Enemy.Timeline.</summary>
+        void Flourish()
+        {
+            var a = enemy.IsAlive && enemy.State == EnemyState.Attack ? enemy.CurrentAttack : null;
+            if (a == null)
+            {
+                if (moved) { transform.localPosition = basePos; transform.localRotation = baseRot; moved = false; }
+                return;
+            }
+            var tl = enemy.Timeline;
+            float t = enemy.StepClock, T = tl.T;
+            bool struck = lastClock < T && t >= T;
+            lastClock = t;
+            float lift = 0f, yaw = 0f;
+            switch (a.name)
+            {
+                case "Salto":
+                    // en el aire desde que arranca la embestida hasta que cae con el golpe (1.2 m de alto)
+                    lift = 1.2f * Mathf.Sin(Mathf.PI * Mathf.Clamp01((t - (T - 0.42f)) / 0.47f));
+                    if (struck) Game.FX?.Dust(enemy.transform.position, 1.1f);
+                    break;
+                case "Repliegue":
+                case "Finta":
+                {
+                    // en el aire mientras recorre el salto (Enemy lo mueve entre activeStart y activeEnd del clip)
+                    float k = Mathf.InverseLerp(a.activeStart, a.activeEnd, tl.NormAt(t));
+                    lift = (a.name == "Finta" ? 0.45f : 0.7f) * Mathf.Sin(Mathf.PI * k);
+                    break;
+                }
+                case "Remolino":
+                {
+                    // un giro entero desde la suelta hasta un poco después del golpe (pega en 360°)
+                    float k = Mathf.Clamp01((t - tl.ReleaseTime) / Mathf.Max(0.05f, T - tl.ReleaseTime + 0.22f));
+                    yaw = 360f * k * k * (3f - 2f * k);
+                    if (struck) Game.FX?.Splash(enemy.transform.position + Vector3.up * 0.6f);
+                    break;
+                }
+                case "Rompeguardia":
+                    // se echa atrás con la espada arriba durante la carga y cae con todo el peso al soltar
+                    if (upper != null)
+                    {
+                        float back = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / Mathf.Max(0.05f, tl.ReleaseTime)));
+                        float fwd = Mathf.Clamp01((t - tl.ReleaseTime) / Mathf.Max(0.02f, T - tl.ReleaseTime));
+                        float rec = Mathf.Clamp01((t - T - 0.15f) / 0.3f);
+                        float pitch = Mathf.Lerp(Mathf.Lerp(-16f * back, 18f, fwd * fwd), 0f, rec);
+                        Rotate(upper, enemy.transform.right, pitch, enemy.transform.forward, 0f);
+                    }
+                    if (struck) Game.FX?.Dust(enemy.transform.position + enemy.transform.forward * 1.2f, 0.9f);
+                    break;
+                case "Morote":
+                    if (struck) Game.FX?.Splash(enemy.transform.position + enemy.transform.forward * 1.6f * enemy.config.scale + Vector3.up);
+                    break;
+                case "Shiko D":
+                case "Shiko I":
+                    // el shiko de la montaña levanta nieve (el del Ōzeki ya tiene su onda)
+                    if (struck && flavor == MotionFlavor.Mountain) Game.FX?.SmokePuff(enemy.transform.position + enemy.transform.forward * 1.3f, 2.2f);
+                    break;
+            }
+            if (lift > 0.001f || Mathf.Abs(yaw) > 0.01f || moved)
+            {
+                transform.localPosition = basePos + Vector3.up * (lift / Mathf.Max(0.01f, transform.parent != null ? transform.parent.lossyScale.y : 1f));
+                transform.localRotation = baseRot * Quaternion.Euler(0f, yaw, 0f);
+                moved = lift > 0.001f || Mathf.Abs(yaw) > 0.01f;
             }
         }
 

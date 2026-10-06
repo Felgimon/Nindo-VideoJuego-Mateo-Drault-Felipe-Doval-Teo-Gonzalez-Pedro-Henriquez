@@ -90,6 +90,14 @@ namespace Nindo
         }
         public float LastHitTime { get; protected set; } = -99f;
         public Transform katanaTip, katanaBase;
+        /// <summary>Segundos del paso en curso (el reloj de su línea de tiempo) y la línea de tiempo misma: las poses
+        /// procedurales (SumoPoser, VariantMotion) se atan a esto para que el cuerpo diga lo mismo que el aviso.</summary>
+        public float StepClock => stepClock;
+        public StepTimeline Timeline => tl;
+        /// <summary>Está en la práctica del parry del prólogo (sus avisos se dibujan aunque estén apagados en Opciones).</summary>
+        public bool InParryPractice => practiceBackup != null;
+        /// <summary>El filo se enciende este tiempo antes del golpe (s): dorado si se desvía, rojo si es imparable.</summary>
+        public const float GlintLead = 0.33f;
 
         protected CharacterAnimator anim = new CharacterAnimator();
         protected NavMeshAgent agent;
@@ -111,6 +119,11 @@ namespace Nindo
         float clipLen;
         bool counterAttack;
         bool tellActive, tellShown, ticked, swung, glinted, released;
+        // filo encendido del aviso (CharacterGlint, el slot 'Glint' del arma)
+        CharacterGlint glint;
+        bool glintOn;
+        // saltos sin daño (hop_back / hop_side): hasta dónde del clip ya se recorrió y para qué lado
+        float hopNorm, hopSide = 1f;
         float tellStart, lungeStartT, lungeEndT;
         // carril de la embestida: queda fijo al soltar (desde ahí no corrige la puntería)
         Vector3 laneOrigin, laneDir;
@@ -144,6 +157,8 @@ namespace Nindo
             anim.Init(a);
             agent = GetComponent<NavMeshAgent>();
             flash = HitFlash.Attach(model.gameObject);
+            glint = GetComponentInChildren<CharacterGlint>();
+            if (glint != null && !glint.HasGlint) glint = null;   // sin arma con filo (el sumo): sus poses avisan con las manos
             // el modelo ya está armado y normalizado (EnemyFactory lo crea antes de agregar este componente)
             modelBasePos = model.localPosition;
             modelBaseRot = model.localRotation;
@@ -536,6 +551,8 @@ namespace Nindo
             stepClock = 0f;
             stepHit = specialFired = released = armored = false;
             tellShown = ticked = swung = glinted = false;
+            hopNorm = a.activeStart;
+            hopSide = Random.value < 0.5f ? -1f : 1f;
             strikeEta = float.PositiveInfinity;
             StepKind = a.kind;
             IsTelegraphingUnblockable = a.kind == AttackKind.Unblockable;
@@ -550,7 +567,7 @@ namespace Nindo
             if (tellActive)
             {
                 // que no peguen dos enemigos casi juntos: si hace falta, este demora su golpe
-                float travel = a.special == "charge" ? ChargeRoom() / ChargeSpeed(a) : 0f;
+                float travel = TellTravel(a);
                 float delay = Game.Combat != null ? Game.Combat.ReserveStrike(this, Time.time + tl.T + travel) : 0f;
                 if (delay > CombatDirector.MaxStrikeDelay && step == 0)
                 {
@@ -584,6 +601,10 @@ namespace Nindo
         }
 
         protected virtual void OnStepStarted(AttackDef a) { }
+
+        /// <summary>Lo que tarda el golpe en llegar a Kaito después de soltarse (embestidas, ondas): el aviso arranca
+        /// antes por eso y la agenda de golpes lo reserva para cuando de verdad llega.</summary>
+        protected virtual float TellTravel(AttackDef a) => a.special == "charge" ? ChargeRoom() / ChargeSpeed(a) : 0f;
 
         /// <summary>¿Este paso dibuja el aviso alrededor del atacante? (los que no hacen daño no; los proyectiles
         /// avisan a los pies de Kaito, ver ProjectileEta)</summary>
@@ -692,6 +713,14 @@ namespace Nindo
                 swung = true;
                 Game.Audio?.Play(a.sfx, transform.position, 0.65f, 0.1f);
             }
+            // el filo se enciende en el último tramo (dorado: parry; rojo: dash) y sube hasta el cierre del anillo: es lo
+            // que el jugador mira. Queda prendido hasta que el golpe sale (EndTell lo apaga)
+            if (glint != null && eta <= GlintLead)
+            {
+                float k = Mathf.InverseLerp(GlintLead, a.TellBias, eta);
+                glint.SetGlint(StepKind == AttackKind.Unblockable ? TellStyle.Crimson : TellStyle.Gold, Mathf.Lerp(1.5f, 5f, k * k));
+                glintOn = true;
+            }
             // brillo del arma en el instante en que se cierra el anillo (el "¡ahora!")
             if (!glinted && eta <= a.TellBias)
             {
@@ -718,6 +747,7 @@ namespace Nindo
         /// <summary>Termina el aviso del paso (una sola vez) y libera su lugar en la agenda de golpes.</summary>
         protected void EndTell(TellOutcome outcome)
         {
+            if (glintOn) { glintOn = false; glint.SetGlint(Color.black, 0f); }
             if (!tellActive) return;
             tellActive = false;
             Game.Combat?.ReleaseStrike(this);
@@ -812,6 +842,22 @@ namespace Nindo
                             HitPlayer(a, transform.position);
                         }
                         Game.FX?.DustTrail(transform.position);
+                    }
+                    break;
+
+                case "hop_back":
+                case "hop_side":
+                    // salto sin daño (el repliegue del ninja del bambú, la finta de su sumo): recorre 'specialParam'
+                    // metros entre activeStart y activeEnd, de espaldas a Kaito o de costado (al azar)
+                    if (!anim.Frozen)
+                    {
+                        float n = Mathf.Clamp(stepNorm, a.activeStart, a.activeEnd);
+                        if (n > hopNorm)
+                        {
+                            Vector3 dir = a.special == "hop_back" ? -transform.forward : transform.right * hopSide;
+                            MoveBy(dir.Flat().normalized * (a.specialParam * (n - hopNorm) / Mathf.Max(0.01f, a.activeEnd - a.activeStart)));
+                            hopNorm = n;
+                        }
                     }
                     break;
 

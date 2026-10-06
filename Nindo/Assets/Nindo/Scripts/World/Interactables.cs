@@ -93,8 +93,8 @@ namespace Nindo
 
         public static Checkpoint Get(string id) => id != null && byId.TryGetValue(id, out var c) ? c : null;
 
-        // no se reza en combate: curaba todo y reiniciaba los encuentros en plena pelea
-        // (cp_dojo está adentro de la arena de Kage)
+        // no se reza en combate: curaba todo y reiniciaba los encuentros en plena pelea (los santuarios de la
+        // entrada de los jefes quedan a pocos metros de sus arenas)
         public override bool CanInteract => Game.Combat == null || !Game.Combat.InCombat;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

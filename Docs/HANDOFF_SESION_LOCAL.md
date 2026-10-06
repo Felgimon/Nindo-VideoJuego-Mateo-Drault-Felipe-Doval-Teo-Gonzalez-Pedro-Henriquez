@@ -113,7 +113,7 @@ Mapa anotado: `Docs/img/mapa.jpg`. Plan del nivel: `Tools/Blender/world/world_pl
 ### Combate (formato original, pulido)
 Parry con ventana (perfecta = cámara lenta) → desequilibrio; si el enemigo termina el combo
 desequilibrado queda **Exhausto** (rematable con F/△); golpes a un exhausto consumen el
-desequilibrio y vuelve a la guardia (contraataca). Ataques **危 imparables** se esquivan con el
+desequilibrio y vuelve a la guardia (contraataca). Ataques **imparables** (rojos) se esquivan con el
 dash (esquiva perfecta = cámara lenta). **Espíritu** (maná): lo llenan parries/golpes; lo gastan
 dash, remate, **Corte del Viento** (cámara sobre el hombro) y **Torbellino** (órbita baja).
 **Filo de Ira** con poca vida; matar cura. Tokens de ataque para peleas grupales legibles.

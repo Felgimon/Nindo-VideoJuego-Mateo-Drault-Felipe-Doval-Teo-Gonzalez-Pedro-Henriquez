@@ -354,7 +354,7 @@ namespace Nindo
             Enemy e;
             if (IsBoss(archetype))
             {
-                var b = root.AddComponent<Boss>();
+                var b = archetype == "ozeki" ? root.AddComponent<OzekiBoss>() : root.AddComponent<Boss>();
                 ConfigureBoss(b, archetype);
                 e = b;
             }

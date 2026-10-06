@@ -12,6 +12,9 @@ namespace Nindo
     ///  * a los pies de Kaito, para las olas que vienen hacia él.
     /// Lo maneja el enemigo (FXManager.BeginTell / EndTell): el progreso sale de su línea de tiempo, así que
     /// nunca miente. Barato: 1-2 quads por golpe, un raycast y un MaterialPropertyBlock por frame.
+    /// Respeta "Avisos de combate" (Opciones, Settings.CombatAids): sin avisos de parry no dibuja los dorados (ni el
+    /// de las olas), sin los de imparables tampoco los rojos ni sus zonas. Quedan el filo encendido, las poses, el
+    /// hyōshigi y el taiko: el golpe se sigue leyendo, sin pintura en el piso. La práctica del prólogo los dibuja igual.
     /// </summary>
     public class CombatTelegraphs : MonoBehaviour
     {
@@ -78,6 +81,7 @@ namespace Nindo
         {
             if (e == null) return;
             if (drawing.TryGetValue(e, out var old)) Finish(old, TellOutcome.Cancelled);
+            if (!Shown(e)) return;   // apagado en Opciones: End no encuentra nada que cerrar
             var t = Acquire();
             t.e = e;
             t.danger = e.StepKind == AttackKind.Unblockable;
@@ -89,6 +93,13 @@ namespace Nindo
         public void End(Enemy e, TellOutcome outcome)
         {
             if (e != null && drawing.TryGetValue(e, out var t)) Finish(t, outcome);
+        }
+
+        /// <summary>¿Se dibuja el aviso de este golpe? (Opciones; el prólogo enseña con el anillo, siempre se ve)</summary>
+        static bool Shown(Enemy e)
+        {
+            if (e.InParryPractice) return true;
+            return e.StepKind == AttackKind.Unblockable ? Settings.ShowUnblockableAids : Settings.ShowParryAids;
         }
 
         void Finish(Tell t, TellOutcome outcome)
@@ -172,7 +183,7 @@ namespace Nindo
                 for (int i = 0; i < list.Count; i++)
                     if (list[i] != null && list[i].ProjectileEta < eta) { eta = list[i].ProjectileEta; from = list[i].ProjectileFrom; }
             }
-            bool coming = eta <= projectileLead;
+            bool coming = eta <= projectileLead && Settings.ShowParryAids;
             if (waveTell != null && waveTell.outcome == null && !coming)
             {
                 // la ola llegó (o se desvió hace un instante) o dejó de venir
