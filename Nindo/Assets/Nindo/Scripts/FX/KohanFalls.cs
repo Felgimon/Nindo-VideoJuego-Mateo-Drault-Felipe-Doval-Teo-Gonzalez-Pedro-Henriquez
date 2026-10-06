@@ -54,7 +54,9 @@ namespace Nindo
         const float LodDistance = 110f;
         const float FillIntensity = 48f;
         const float RoarMax = 140f;
-        static readonly Color MistColor = new Color(0.725f, 0.78f, 0.847f);   // snow_shade
+        // con snow_shade (0.725, 0.78, 0.847) el rocío era del mismo gris que la nieve de la montaña
+        static readonly Color MistColor = new Color(0.7f, 0.8f, 0.86f);
+        static readonly Color WaterTint = new Color(0.58f, 0.77f, 0.88f);
         static readonly Color FillColor = new Color(0.663f, 0.831f, 0.902f);  // ice
 
         public static KohanFalls Instance { get; private set; }
@@ -70,6 +72,9 @@ namespace Nindo
         public Transform BossFocus { get; set; }
         public FloodSheet Flood { get; private set; }
         public Vector3 PlungeCenter { get; private set; }
+        /// <summary>Mitad del labio de la cortina central (lo más alto de la caída): a dónde termina mirando la toma
+        /// de presentación.</summary>
+        public Vector3 LipCenter { get; private set; }
         public Vector3 ArenaCenter { get; private set; }
         public float DeckY { get; private set; }
         public float WaterY => transform.position.y;
@@ -143,7 +148,7 @@ namespace Nindo
         bool lowQuality;
         float qualityTimer, volumeTimer, volumeTarget, gustTimer, gust, gustDur, gustAngle;
 
-        Material curtainMat, poolMat, ribbonMat, sprayMat, cloudMat, moonbowMat;
+        Material curtainMat, poolMat, ribbonMat, sprayMat, moonbowMat;
         Material[] mistMats;
         Transform[] mistSheets;
         Vector2[] mistScroll;
@@ -195,6 +200,9 @@ namespace Nindo
                 if (s.name == "center") foreach (var p in s.plunge) { pc += p; pw += 1f; }
             if (pw == 0f) foreach (var s in sheets) foreach (var p in s.plunge) { pc += p; pw += 1f; }
             PlungeCenter = pc / Mathf.Max(1f, pw);
+            LipCenter = PlungeCenter + Vector3.up * 30f;
+            foreach (var sh in sheets)
+                if (sh.name == "center" && sh.lip.Length > 0) LipCenter = sh.lip[sh.lip.Length / 2];
             ArenaCenter = transform.TransformPoint(V3(d.arena, 0));
             DeckY = WaterY + (d.deckHeight > 0f ? d.deckHeight : 1f);
             windDir = Flat(ArenaCenter - PlungeCenter);
@@ -631,24 +639,23 @@ namespace Nindo
                 var sub = clumps.subEmitters; sub.enabled = true;
                 sub.AddSubEmitter(crowns, ParticleSystemSubEmitterType.Death, ParticleSystemSubEmitterProperties.InheritNothing);
             }
-            // 2) hervor del pozo: icosaedros facetados que saltan y se deshacen
-            boil = System("PlungeBoil", meshFx ? sprayMat : FXMaterials.Alpha, 120, meshFx ? FallsAssets.Ico : null, gravity: 0.9f);
-            SizeOverLife(boil, 1f, 1.4f);
-            Fade(boil, 1f, 0.9f, 0f);
-            // 3) nube de rocío: la banda blanca que asoma detrás de la baranda norte desde el juego. Columnas que
-            //    suben pegadas a la caída: con bloques de 5 m que avanzaban sobre la plataforma la vista previa
-            //    mostraba un muro gris tapando la pelea y el pie de las cortinas
-            //    Más chicas, más seguidas y medio tramadas desde que nacen: opacas y de 2.6 m se leían como piedras
-            //    nevadas sobre la baranda; con más luz propia se ven como rocío iluminado desde atrás
-            if (meshFx)
+            // 2) hervor del pozo: chorritos facetados que saltan y se achican al caer. Antes crecían (x1.4) y
+            //    vivían más de un segundo casi quietos arriba del pozo: blancos, redondos y grandes se leían como
+            //    montones de nieve. El agua se lee por el movimiento: rápidos, estirados hacia arriba y efímeros
+            boil = System("PlungeBoil", meshFx ? sprayMat : FXMaterials.Alpha, 120, meshFx ? FallsAssets.Ico : null, gravity: 1.2f);
+            SizeOverLife(boil, 1f, 0.2f);
+            Fade(boil, 1f, 0.75f, 0f);
+            // 3) nube de rocío: la banda blanca que asoma detrás de la baranda norte desde el juego, pegada a la
+            //    caída (con bloques de 5 m sobre la plataforma tapaba la pelea). Eran icosaedros facetados opacos y
+            //    tramados: desde la cámara de juego se leían como piedras nevadas arriba de la baranda, por más chicos
+            //    que fueran. Ahora es vapor blando que sube rápido, se abre y se deshace, con el turbulento del pozo
+            cloud = System("SprayCloud", FXMaterials.Alpha, 80, null);
             {
-                cloudMat = new Material(sprayMat) { name = "KohanSprayCloud" };
-                cloudMat.SetFloat("_Glow", 0.45f);
-                materials.Add(cloudMat);
+                var nz = cloud.noise; nz.enabled = true; nz.strength = 1.1f; nz.frequency = 0.35f; nz.scrollSpeed = 0.4f; nz.quality = ParticleSystemNoiseQuality.Low;
+                var rot = cloud.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+                SizeOverLife(cloud, 0.5f, 1.7f);
+                Fade(cloud, 0.34f, 0.24f, 0f, fadeIn: true);
             }
-            cloud = System("SprayCloud", meshFx ? cloudMat : FXMaterials.Alpha, 60, meshFx ? FallsAssets.Blob : null);
-            SizeOverLife(cloud, 0.6f, 1.5f);
-            Fade(cloud, 0.6f, 0.45f, 0f);
             // 4) cola de gallo: gotas estiradas que salen disparadas del pie, la mayoría hacia la arena
             rooster = System("RoosterTail", FXMaterials.Alpha, 220, null, gravity: 0.9f);
             Stretch(rooster, 0.035f, 1.3f);
@@ -1023,7 +1030,7 @@ namespace Nindo
             float rate = k * q;
             for (int n = Take(ref aClump, 45f * rate * dt); n > 0; n--) EmitClump();
             for (int n = Take(ref aBoil, 80f * rate * dt); n > 0; n--) EmitBoil();
-            for (int n = Take(ref aCloud, 15f * rate * dt); n > 0; n--) EmitCloud();
+            for (int n = Take(ref aCloud, 26f * rate * dt); n > 0; n--) EmitCloud();
             for (int n = Take(ref aRooster, 100f * rate * dt); n > 0; n--) EmitRooster(rooster, false);
             for (int n = Take(ref aGlint, 10f * rate * dt); n > 0; n--) EmitRooster(glints, true);
             for (int n = Take(ref aRolling, 6f * q * dt); n > 0; n--) EmitRolling();
@@ -1083,14 +1090,17 @@ namespace Nindo
         {
             LipSample(out _, out var dir, out _, out var foot);
             Vector3 up = Quaternion.AngleAxis(UnityEngine.Random.Range(-15f, 15f), Vector3.Cross(Vector3.up, dir)) * Quaternion.AngleAxis(UnityEngine.Random.Range(-15f, 15f), dir) * Vector3.up;
+            float size = UnityEngine.Random.Range(0.3f, 0.85f);
             var ep = new ParticleSystem.EmitParams
             {
                 position = foot + dir * UnityEngine.Random.Range(-0.6f, 0.8f) + Vector3.Cross(Vector3.up, dir) * UnityEngine.Random.Range(-0.6f, 0.6f),
-                velocity = (up + dir * 0.25f).normalized * UnityEngine.Random.Range(3f, 7f),
-                startLifetime = UnityEngine.Random.Range(0.8f, 1.3f),
-                startSize3D = Vector3.one * UnityEngine.Random.Range(0.5f, 1.6f),
-                rotation3D = new Vector3(UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(0f, 360f), 0f),
-                startColor = Color.Lerp(Color.white, new Color(0.81f, 0.9f, 0.93f), UnityEngine.Random.value),
+                velocity = (up + dir * 0.25f).normalized * UnityEngine.Random.Range(4.5f, 8.5f),
+                startLifetime = UnityEngine.Random.Range(0.55f, 0.85f),
+                // estirado hacia arriba y apenas inclinado: un chorrito, no una piedra
+                startSize3D = new Vector3(size, size * 1.8f, size),
+                rotation3D = new Vector3(UnityEngine.Random.Range(-20f, 20f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-20f, 20f)),
+                // de blanco a agua del pozo: todo blanco parejo era nieve
+                startColor = Color.Lerp(Color.white, WaterTint, UnityEngine.Random.value * 0.75f),
             };
             boil.Emit(ep, 1);
         }
@@ -1100,13 +1110,13 @@ namespace Nindo
             LipSample(out _, out var dir, out _, out var foot);
             var ep = new ParticleSystem.EmitParams
             {
-                position = foot + dir * UnityEngine.Random.Range(-0.5f, 1f) + Vector3.up * UnityEngine.Random.Range(0.3f, 1.2f),
-                // sube casi derecha; el viento del pozo apenas la arrima (queda detrás de la baranda)
-                velocity = Vector3.up * UnityEngine.Random.Range(1.2f, 2.6f) + windDir * UnityEngine.Random.Range(0.15f, 0.5f),
-                startLifetime = UnityEngine.Random.Range(2.4f, 3f),
-                startSize3D = new Vector3(1f, 0.8f, 1f) * UnityEngine.Random.Range(0.8f, 1.8f),
-                rotation3D = new Vector3(UnityEngine.Random.Range(-10f, 10f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-10f, 10f)),
-                startColor = Color.white,
+                position = foot + dir * UnityEngine.Random.Range(-0.5f, 1f) + Vector3.up * UnityEngine.Random.Range(0.2f, 1f),
+                // sube rápido casi derecha (el aire que empuja la caída); el viento del pozo apenas la arrima
+                velocity = Vector3.up * UnityEngine.Random.Range(2.6f, 4.6f) + windDir * UnityEngine.Random.Range(0.3f, 0.8f),
+                startLifetime = UnityEngine.Random.Range(1.7f, 2.3f),
+                startSize = UnityEngine.Random.Range(2.2f, 3.6f),
+                rotation = UnityEngine.Random.Range(0f, 360f),
+                startColor = Color.Lerp(Color.white, MistColor, UnityEngine.Random.value),
             };
             cloud.Emit(ep, 1);
         }
@@ -1219,7 +1229,12 @@ namespace Nindo
                 if (spray == null)
                 {
                     var sh = Resources.Load<Shader>("Shaders/NindoSpray");
-                    if (sh != null && sh.isSupported) spray = new Material(sh) { name = "NindoSpray" };
+                    if (sh != null && sh.isSupported)
+                    {
+                        spray = new Material(sh) { name = "NindoSpray" };
+                        // la cara en sombra va a azul de agua: con el gris claro de antes los grumos eran hielo
+                        spray.SetColor("_Shade", new Color(0.5f, 0.67f, 0.8f));
+                    }
                 }
                 return spray;
             }

@@ -28,6 +28,7 @@ namespace Nindo
             GameEvents.BossDefeated += OnBossDefeated;
             GameEvents.FlagSet += OnFlag;
             GameEvents.Parry += OnParry;
+            GameEvents.ZoneEntered += OnZoneEntered;
         }
 
         void OnDisable()
@@ -36,6 +37,7 @@ namespace Nindo
             GameEvents.BossDefeated -= OnBossDefeated;
             GameEvents.FlagSet -= OnFlag;
             GameEvents.Parry -= OnParry;
+            GameEvents.ZoneEntered -= OnZoneEntered;
         }
 
         void OnDestroy() { if (Game.Story == this) Game.Story = null; }
@@ -514,6 +516,45 @@ namespace Nindo
             yield return new WaitForSecondsRealtime(1.4f);
             yield return Say("dojo_gate");
             if (shot >= 0) Game.Camera.CancelShot(shot);
+        }
+
+        // ================================================================== presentación de la cascada
+        const string FallsSeenFlag = "falls_seen";
+
+        void OnZoneEntered(Zone z)
+        {
+            if (z.id != "lago_cascada" || Game.InCutscene || Game.Save.HasFlag(FallsSeenFlag)) return;
+            var f = KohanFalls.Instance;
+            if (f == null || P == null || (Game.Combat != null && Game.Combat.InCombat)) return;
+            Game.Save.SetFlag(FallsSeenFlag);
+            StartCoroutine(Cutscene(FallsReveal(f), false));
+        }
+
+        /// <summary>
+        /// La primera vez que se llega a la Cascada Kohan. Con la cámara de juego (40-48° de inclinación, FOV 30) solo
+        /// entra el pie de las cortinas: 42 m de caída quedan siempre arriba del cuadro. Una grúa corta, mientras sale
+        /// el título de la zona, arranca baja sobre la plataforma mirando el hervor del pozo y sube la mirada hasta el
+        /// labio de la cortina central. Sin franjas negras: el título de la zona va arriba y lo tapaban.
+        /// </summary>
+        IEnumerator FallsReveal(KohanFalls f)
+        {
+            Vector3 arena = f.ArenaCenter, plunge = f.PlungeCenter, lip = f.LipCenter;
+            Vector3 toFalls = (plunge - arena).Flat().normalized;
+            Vector3 side = Vector3.Cross(Vector3.up, toFalls);
+            float deck = f.DeckY;
+            const float D = 4.8f;
+            int shot = Game.Camera.PlayShot(t =>
+            {
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / D));
+                // la mirada espera medio segundo en el pozo y recién ahí sube
+                float tilt = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.5f) / (D - 1.2f)));
+                Vector3 pos = arena - toFalls * Mathf.Lerp(3f, 8.5f, k) + side * Mathf.Lerp(-3.5f, 1.5f, k);
+                pos.y = deck + Mathf.Lerp(1.6f, 4.2f, k);
+                Vector3 look = Vector3.Lerp(plunge + Vector3.up * 3f, lip + Vector3.down * 5f, tilt);
+                return new Pose(pos, Quaternion.LookRotation(look - pos));
+            }, () => 50f, 1.1f, D, 1.1f);
+            yield return new WaitForSecondsRealtime(D);
+            Game.Camera.CancelShot(shot);
         }
 
         // ================================================================== jefes
