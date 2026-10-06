@@ -249,7 +249,8 @@ namespace Nindo
                 if (!batQueued && (d - 0.8f) / speed <= MizuchiBoss.ReturnLead) { batQueued = true; Owner.OnRallyIncoming(); }
                 if (d <= 0.8f + speed * Time.deltaTime)
                 {
-                    TowardKoi = false; batQueued = false; cued = glinted = false;
+                    // el aviso de esta vuelta ya pudo sonar mientras venía (la ETA cuenta ida y vuelta): no se repite
+                    TowardKoi = false; batQueued = false;
                     var p = Game.Player;
                     if (p != null)
                     {

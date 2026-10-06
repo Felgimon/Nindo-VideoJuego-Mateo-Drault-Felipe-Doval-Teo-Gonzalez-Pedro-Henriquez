@@ -159,6 +159,7 @@ Nindo/Assets/Nindo/
     Combat/       tipos de ataque, CombatDirector (tokens), CharacterAnimator (CrossFade por código)
     Player/       PlayerController (+ .Combat), PlayerConfig
     Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…)
+      Bosses/     MizuchiBoss (el Gran Koi: cuerpo KoiBody, perlas, saltos, ola, pilares, avisos en el mundo)
     Camera/       CameraDirector (tomas mezclables, fijado, perfiles de jefe, golpe de FOV, oído sobre
                   Kaito), CameraOcclusion (disolución de lo que tapa, shader Nindo/Occluder Fade)
     FX/           partículas, hit-stop, post-proceso en runtime (URP Volume)
