@@ -15,7 +15,8 @@ namespace Nindo
     /// de Kaito: desde el juego se ven el pie de las cortinas, el pozo y el rocío. Por eso la caída se vende con lo
     /// que queda en cuadro: hervor, coronas de gotas, la nube de rocío que cruza la baranda norte, cola de gallo,
     /// llovizna con viento sobre la plataforma, niebla que corre hacia la arena, luz fría de relleno desde el
-    /// pozo y el rugido 3D que crece por toda la pasarela. La altura entera (42 m) se ve en las tomas de jefe.
+    /// pozo y el rugido 3D que crece por toda la pasarela. La altura entera (42 m) se ve en las tomas de jefe,
+    /// con columnas de niebla que suben pegadas a la roca y el arcoíris de luna en el rocío.
     ///
     ///  * Cortinas: una malla (dos capas: lámina de atrás + tiras sueltas adelante) con shader Nindo/Waterfall.
     ///  * Partículas Shuriken en espacio mundo, emitidas a mano sobre los labios y la línea de caída (cada gota sale
@@ -144,10 +145,10 @@ namespace Nindo
         readonly List<Mesh> meshes = new List<Mesh>();
         readonly List<Material> materials = new List<Material>();
 
-        ParticleSystem clumps, crowns, boil, cloud, rooster, glints, rolling, drizzle, drizzleGlints;
+        ParticleSystem clumps, crowns, boil, cloud, rooster, glints, rolling, columns, drizzle, drizzleGlints;
         ParticleSystem[] drizzles;
         readonly List<ParticleSystem> systems = new List<ParticleSystem>();
-        float aClump, aBoil, aCloud, aRooster, aGlint, aRolling;
+        float aClump, aBoil, aCloud, aRooster, aGlint, aRolling, aColumn;
 
         static readonly int IdFlow = Shader.PropertyToID("_FlowSpeed"), IdIntensity = Shader.PropertyToID("_Intensity"),
             IdTurb = Shader.PropertyToID("_Turbulence"), IdCorrupt = Shader.PropertyToID("_Corrupt"), IdPoolFlow = Shader.PropertyToID("_Flow"),
@@ -635,6 +636,14 @@ namespace Nindo
                 SizeOverLife(rolling, 0.7f, 1.5f);
                 Fade(rolling, 0.12f, 0.1f, 0f, fadeIn: true);
             }
+            // 5b) columnas de niebla: manchas blandas enormes que suben 10-18 m pegadas a la roca. Desde el juego
+            //     quedan casi todas arriba del cuadro; en las tomas del jefe dan la escala de la caída
+            columns = System("MistColumns", FXMaterials.Alpha, 32, null);
+            {
+                var nz = columns.noise; nz.enabled = true; nz.strength = 0.6f; nz.frequency = 0.08f; nz.scrollSpeed = 0.1f; nz.quality = ParticleSystemNoiseQuality.Low;
+                SizeOverLife(columns, 0.6f, 1.6f);
+                Fade(columns, 0.09f, 0.06f, 0f, fadeIn: true);
+            }
             // 6) llovizna con viento sobre la plataforma (y sus destellos de luna)
             drizzle = System("Drizzle", FXMaterials.Alpha, 300, null);
             ConfigureDrizzle(drizzle, 110f, new Color(0.78f, 0.87f, 0.95f, 0.55f), 0.03f);
@@ -851,7 +860,7 @@ namespace Nindo
         }
 
         /// <summary>Ráfagas: cada 7-11 s (4-7 s en la crecida) durante 1.6 s la niebla corre el doble y gira hasta 25°,
-        /// la llovizna se duplica y las cortinas se mecen más, con un "fuuu" de viento.</summary>
+        /// la llovizna se duplica, una sábana de gotas cruza la plataforma y las cortinas se mecen más, con un "fuuu".</summary>
         void UpdateGust(float dt, float k)
         {
             gustTimer -= dt;
@@ -862,7 +871,10 @@ namespace Nindo
                 gustDur = 1.6f;
                 gustAngle = UnityEngine.Random.Range(-25f, 25f);
                 if (Active && Game.Player != null)
+                {
                     Game.Audio?.Play("falls_gust", Game.Player.transform.position + windDir * -3f + Vector3.up * 2f, 0.8f);
+                    EmitGustSheet();
+                }
             }
             gustDur -= dt;
             float target = gustDur > 0f ? Mathf.Sin(Mathf.Clamp01(1f - gustDur / 1.6f) * Mathf.PI) : 0f;
@@ -943,6 +955,7 @@ namespace Nindo
             for (int n = Take(ref aRooster, 100f * rate * dt); n > 0; n--) EmitRooster(rooster, false);
             for (int n = Take(ref aGlint, 10f * rate * dt); n > 0; n--) EmitRooster(glints, true);
             for (int n = Take(ref aRolling, 6f * q * dt); n > 0; n--) EmitRolling();
+            for (int n = Take(ref aColumn, 3.5f * q * dt); n > 0; n--) EmitColumn();
         }
 
         static int Take(ref float acc, float add)
@@ -1044,14 +1057,56 @@ namespace Nindo
             ps.Emit(ep, 1);
         }
 
-        void EmitRolling()
+        /// <summary>Punto al azar de la línea de caída donde cae agua (también bajo las cintas laterales).</summary>
+        bool PlungeSample(out Vector3 p)
         {
-            // a lo largo de toda la línea de caída donde cae agua (también bajo las cintas laterales)
-            if (plungeLine == null || plungeLine.Length < 2 || plungeWTotal <= 0f) return;
+            p = PlungeCenter;
+            if (plungeLine == null || plungeLine.Length < 2 || plungeWTotal <= 0f) return false;
             float r = UnityEngine.Random.value * plungeWTotal;
             int i = 0;
             for (; i < plungeLine.Length - 1; i++) { r -= plungeW[i]; if (r <= 0f) break; }
-            Vector3 p = Vector3.Lerp(plungeLine[i], plungeLine[Mathf.Min(i + 1, plungeLine.Length - 1)], UnityEngine.Random.value);
+            p = Vector3.Lerp(plungeLine[i], plungeLine[Mathf.Min(i + 1, plungeLine.Length - 1)], UnityEngine.Random.value);
+            return true;
+        }
+
+        void EmitColumn()
+        {
+            if (!PlungeSample(out var p)) return;
+            columns.Emit(new ParticleSystem.EmitParams
+            {
+                position = p - windDir * UnityEngine.Random.Range(0f, 1.5f) + Vector3.up * UnityEngine.Random.Range(1f, 3f),
+                velocity = Vector3.up * UnityEngine.Random.Range(1.2f, 2.2f) + windDir * 0.3f,
+                startLifetime = UnityEngine.Random.Range(7f, 9f),
+                startSize = UnityEngine.Random.Range(4f, 6.5f),
+                rotation = UnityEngine.Random.Range(0f, 360f),
+                startColor = MistColor,
+            }, 1);
+        }
+
+        /// <summary>Al empezar una ráfaga: una sábana de gotas finas que cruza la plataforma desde la baranda norte.</summary>
+        void EmitGustSheet()
+        {
+            if (lowQuality || drizzle == null) return;
+            Vector3 side = Vector3.Cross(Vector3.up, windDir);
+            Vector3 start = Vector3.Lerp(PlungeCenter, ArenaCenter, 0.2f);
+            for (int i = 0; i < 70; i++)
+            {
+                var ps = i % 6 == 0 ? drizzleGlints : drizzle;
+                ps.Emit(new ParticleSystem.EmitParams
+                {
+                    position = start + side * UnityEngine.Random.Range(-11f, 11f) + windDir * UnityEngine.Random.Range(-1f, 1f)
+                               + Vector3.up * (DeckY - start.y + UnityEngine.Random.Range(0.5f, 4f)),
+                    velocity = windDir * UnityEngine.Random.Range(6f, 9f) + Vector3.up * UnityEngine.Random.Range(0.3f, 1.4f),
+                    startLifetime = UnityEngine.Random.Range(1.2f, 1.7f),
+                    startSize = UnityEngine.Random.Range(0.03f, 0.05f),
+                    startColor = new Color(0.8f, 0.89f, 0.97f, 0.7f),
+                }, 1);
+            }
+        }
+
+        void EmitRolling()
+        {
+            if (!PlungeSample(out var p)) return;
             var ep = new ParticleSystem.EmitParams
             {
                 position = p + Vector3.up * UnityEngine.Random.Range(0.4f, 2.2f),
