@@ -17,8 +17,12 @@ namespace Nindo
     ///    radio se mide en el mundo y de la relación sale la escala de los grosores (vale con cualquier escala);
     ///  * un viento suave en reposo (flutter) para que el papel y las cintas nunca queden muertos.
     /// Los parámetros por tipo están en ProfileFor (por el nombre de la cadena) y se ajustaron con la simulación
-    /// de Tools/Blender/characters/kits/spring_sim.py (mismo algoritmo). Pasos de 1/60 s o menos, como mucho 4
-    /// por frame; con el renderer fuera de cámara no simula y al volver arranca de la pose animada.
+    /// de Tools/Blender/characters/kits/spring_sim.py (mismo algoritmo). Pasos FIJOS de 1/60 s con acumulador (como
+    /// mucho 4 por frame): a 30, 60 o 144 fps corre exactamente el mismo sistema (con un paso variable, a 144 fps
+    /// las colas se iban un 40 % más lejos y quedaban sonando). Lo que se dibuja es la forma interpolada entre los
+    /// dos últimos pasos, relativa al ancla de este frame (un paso de atraso, ~16 ms, que en una tela no se ve, y
+    /// el ancla nunca se despega del cuerpo). Con el renderer fuera de cámara no simula y al volver arranca de la
+    /// pose animada.
     /// Corre después del Animator, de ProceduralMotion y de EnemyVariants (que retocan la pose).
     /// </summary>
     [DefaultExecutionOrder(120)]
@@ -72,7 +76,7 @@ namespace Nindo
             }
         }
 
-        /// <summary>Paso máximo de la simulación (s).</summary>
+        /// <summary>Paso fijo de la simulación (s): los parámetros de Profile son por paso.</summary>
         public const float Step = 1f / 60f;
         const int MaxSteps = 4;
         /// <summary>Si el ancla salta más que esto en un frame (teletransporte, respawn) se reinicia en la pose animada (m).</summary>
@@ -86,6 +90,8 @@ namespace Nindo
             public Profile p;
             public Vector3[] pos, prev;     // n + 1 partículas (0 = cabeza del primer hueso, va con el ancla)
             public Vector3[] target, lastTarget;
+            // forma (partícula - ancla) después del penúltimo y del último paso: se dibuja la interpolada
+            public Vector3[] shapePrev, shapeLast;
             public Quaternion[] restLocal;
             public float phase;
         }
@@ -99,7 +105,7 @@ namespace Nindo
         Renderer watch;
         Transform owner;
         bool reset = true;
-        float lastStep = Step;
+        float acc;                          // tiempo todavía sin simular (< Step)
         Vector3 pendingKick;
 
         /// <summary>El personaje (raíz que se mueve por el mundo): para el piso y las direcciones de Kick.</summary>
@@ -164,7 +170,7 @@ namespace Nindo
             {
                 kind = Kind(name), bones = bones.ToArray(), end = end,
                 pos = new Vector3[n + 1], prev = new Vector3[n + 1], target = new Vector3[n + 1], lastTarget = new Vector3[n + 1],
-                restLocal = new Quaternion[n], phase = (name.GetHashCode() & 1023) * 0.0061f,
+                shapePrev = new Vector3[n + 1], shapeLast = new Vector3[n + 1], restLocal = new Quaternion[n], phase = (name.GetHashCode() & 1023) * 0.0061f,
             };
             c.p = ProfileFor(c.kind);
             for (int i = 0; i < n; i++) c.restLocal[i] = c.bones[i].localRotation;
@@ -202,12 +208,19 @@ namespace Nindo
                 c.target[n] = c.end.position;
                 if (!reset && (c.target[0] - c.lastTarget[0]).sqrMagnitude > TeleportDistance * TeleportDistance) teleported = true;
             }
-            bool fresh = reset || teleported;
-            if (fresh)
+            if (reset || teleported)
             {
+                // arranca quieta en la pose animada; el próximo frame ya simula (y aplica un Kick pendiente)
                 foreach (var c in chains)
-                    for (int i = 0; i < c.pos.Length; i++) c.pos[i] = c.prev[i] = c.lastTarget[i] = c.target[i];
+                    for (int i = 0; i < c.pos.Length; i++)
+                    {
+                        c.pos[i] = c.prev[i] = c.lastTarget[i] = c.target[i];
+                        c.shapePrev[i] = c.shapeLast[i] = c.target[i] - c.target[0];
+                    }
+                for (int i = 0; i < colliders.Count; i++) lastCenters[i] = colliders[i].t.position;
                 reset = false;
+                acc = 0f;
+                return;
             }
             // esferas en el mundo y metros por unidad del archivo (de la primera esfera; sin esferas, la escala)
             float scale = transform.lossyScale.x;
@@ -218,29 +231,36 @@ namespace Nindo
                 float r = Vector3.Distance(rim.position, t.position);
                 if (i == 0) scale = r / fr;
                 Vector3 to = t.position;
-                spheres.Add((fresh ? to : lastCenters[i], to, r));
+                spheres.Add((lastCenters[i], to, r));
                 lastCenters[i] = to;
             }
 
-            int steps = Mathf.Clamp(Mathf.CeilToInt(dt / Step - 0.001f), 1, MaxSteps);
-            float h = Mathf.Min(dt / steps, Step);
+            // pasos fijos: cada uno cae en un instante de este frame (u = 0 el anterior, 1 este) y las anclas y
+            // esferas se interpolan a ese instante; un tirón de varios frames se descarta en vez de acumularse
+            acc = Mathf.Min(acc + dt, MaxSteps * Step);
             Vector3 wind = Wind(Time.time);
-            if (pendingKick != Vector3.zero)
+            while (acc >= Step)
             {
+                acc -= Step;
+                float u = Mathf.Clamp01(1f - acc / dt);
+                if (pendingKick != Vector3.zero)
+                {
+                    foreach (var c in chains)
+                        for (int i = 1; i < c.pos.Length; i++) c.prev[i] -= pendingKick * Step;
+                    pendingKick = Vector3.zero;
+                }
                 foreach (var c in chains)
-                    for (int i = 1; i < c.pos.Length; i++) c.prev[i] -= pendingKick * h;
-                pendingKick = Vector3.zero;
-            }
-            for (int s = 1; s <= steps; s++)
-            {
-                float u = (float)s / steps;
-                foreach (var c in chains) Simulate(c, u, h, scale, ground, wind);
-                lastStep = h;
+                {
+                    Simulate(c, u, scale, ground, wind);
+                    var swap = c.shapePrev; c.shapePrev = c.shapeLast; c.shapeLast = swap;
+                    for (int i = 0; i < c.pos.Length; i++) c.shapeLast[i] = c.pos[i] - c.pos[0];
+                }
             }
 
+            float alpha = acc / Step;
             foreach (var c in chains)
             {
-                WriteBack(c);
+                WriteBack(c, alpha);
                 for (int i = 0; i < c.target.Length; i++) c.lastTarget[i] = c.target[i];
             }
         }
@@ -252,25 +272,20 @@ namespace Nindo
             return new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
         }
 
-        void Simulate(Chain c, float u, float h, float scale, float ground, Vector3 wind)
+        void Simulate(Chain c, float u, float scale, float ground, Vector3 wind)
         {
             var p = c.p;
             int n = c.pos.Length - 1;
-            // parámetros dados por paso de 1/60 s: se corrigen para el paso real. La rigidez es un tirón de posición
-            // que el verlet convierte en velocidad: es un resorte (aceleración * h²) y escala con k², no con k
-            // (con k a 144 fps quedaba 2.4 veces más rígido y las colas casi no flameaban)
-            float k = h / Step;
-            float stiff = p.stiffness * k * k;
-            float damp = Mathf.Pow(1f - p.damping, k);
-            float drag = Mathf.Pow(1f - p.airDrag, k);
-            float corr = h / lastStep;               // verlet con paso variable
+            // parámetros por paso de 1/60 s, que es el paso fijo: la rigidez es un tirón de posición que el verlet
+            // convierte en velocidad (un resorte); la amortiguación y el aire, pérdidas de velocidad por paso
+            float damp = 1f - p.damping, drag = 1f - p.airDrag;
             Vector3 a0 = Vector3.Lerp(c.lastTarget[0], c.target[0], u);
             Vector3 anchorVel = a0 - c.pos[0];        // lo que se movió el ancla en este paso
             c.pos[0] = c.prev[0] = a0;
             float t = Time.time;
             Vector3 gust = wind * (p.flutter * (0.55f + 0.45f * Mathf.Sin(t * 1.7f + c.phase * 6.3f)))
                          + Vector3.Cross(wind, Vector3.up) * (p.flutter * 0.5f * Mathf.Sin(t * 3.1f + c.phase * 11f));
-            Vector3 accel = (Physics.gravity * p.gravity + gust) * (h * h);
+            Vector3 accel = (Physics.gravity * p.gravity + gust) * (Step * Step);
             float maxRad = p.maxAngle * Mathf.Deg2Rad;
             for (int i = 1; i <= n; i++)
             {
@@ -280,12 +295,12 @@ namespace Nindo
                 float len = restSeg.magnitude;
                 if (len < 1e-5f) { c.pos[i] = c.prev[i] = c.pos[i - 1]; continue; }
 
-                Vector3 vel = (c.pos[i] - c.prev[i]) * corr * drag;
+                Vector3 vel = (c.pos[i] - c.prev[i]) * drag;
                 vel = anchorVel + (vel - anchorVel) * damp;
                 c.prev[i] = c.pos[i];
                 Vector3 x = c.pos[i] + vel + accel;
                 // forma: hacia donde la pondría la animación, medido desde la partícula de arriba ya simulada
-                x = Vector3.Lerp(x, c.pos[i - 1] + restSeg, stiff);
+                x = Vector3.Lerp(x, c.pos[i - 1] + restSeg, p.stiffness);
                 foreach (var (from, to, sr) in spheres)
                 {
                     float r = sr + p.radius * scale;
@@ -304,14 +319,18 @@ namespace Nindo
             }
         }
 
-        static void WriteBack(Chain c)
+        /// <summary>Gira los huesos hacia la forma interpolada (alpha entre el penúltimo y el último paso), puesta
+        /// sobre el ancla de ESTE frame: solo importan direcciones, así el largo de cada hueso es el del FBX.</summary>
+        static void WriteBack(Chain c, float alpha)
         {
             int n = c.bones.Length;
+            Vector3 anchor = c.bones[0].position;
             for (int i = 0; i < n; i++)
             {
                 var b = c.bones[i];
                 Vector3 child = i + 1 < n ? c.bones[i + 1].position : c.end.position;
-                Vector3 cur = child - b.position, want = c.pos[i + 1] - b.position;
+                Vector3 goal = anchor + Vector3.LerpUnclamped(c.shapePrev[i + 1], c.shapeLast[i + 1], alpha);
+                Vector3 cur = child - b.position, want = goal - b.position;
                 if (cur.sqrMagnitude > 1e-10f && want.sqrMagnitude > 1e-10f)
                     b.rotation = Quaternion.FromToRotation(cur, want) * b.rotation;
             }

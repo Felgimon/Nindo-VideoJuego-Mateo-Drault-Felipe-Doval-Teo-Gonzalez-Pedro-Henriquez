@@ -6,8 +6,9 @@ Copia el algoritmo de SpringChain (verlet en el mundo, rigidez hacia la pose ani
 ancla, arrastre del aire, viento suave, largo fijo, ángulo máximo, esferas del cuerpo y piso) y lee los perfiles
 del propio .cs, así lo que se mide acá es lo que corre en el juego. Escenario: quieto, carrera a 5 m/s, frenada
 seca, quieto, media vuelta en el lugar y un golpe que empuja hacia atrás. Escribe:
-  spring_angles.png  ángulo de la punta respecto de la pose animada para cada tipo de accesorio, a 30, 60 y
-                     144 fps (las curvas tienen que coincidir: los parámetros se corrigen por el paso real)
+  spring_angles.png  ángulo de la punta (la forma que se dibuja, interpolada entre pasos) respecto de la pose
+                     animada para cada tipo de accesorio, a 30, 60 y 144 fps: con pasos fijos de 1/60 s las
+                     curvas tienen que coincidir
   spring_strip.png   la cola del hachimaki y la capa de paja vistas de costado en momentos del escenario
 e imprime por perfil el desvío máximo corriendo, el tiempo hasta asentarse después de frenar y si alguna
 partícula entró en el cuerpo.
@@ -102,28 +103,26 @@ def wind(t):
     return np.array([math.cos(a), 0.0, math.sin(a)])
 
 
-def simulate(c, u, h, t, last_step, spheres):
+def simulate(c, u, t, spheres):
+    """Un paso fijo de 1/60 s (SpringChain.Simulate): u = instante del paso dentro del frame (anclas y esferas)."""
     p = c.p
     n = len(c.pos) - 1
-    k = h / STEP
-    stiff = p["stiffness"] * k * k
-    damp = (1 - p["damping"]) ** k
-    drag = (1 - p["airDrag"]) ** k
-    corr = h / last_step
+    stiff = p["stiffness"]
+    damp = 1 - p["damping"]
+    drag = 1 - p["airDrag"]
     a0 = c.last[0] + (c.target[0] - c.last[0]) * u
     anchor_vel = a0 - c.pos[0]
     c.pos[0] = c.prev[0] = a0
     w = wind(t)
-    gust = w * (p["flutter"] * (0.55 + 0.45 * math.sin(t * 1.7 + c.phase * 6.3))) + \
-        np.cross(w, UP) * (p["flutter"] * 0.5 * math.sin(t * 3.1 + c.phase * 11))
-    accel = (G * p["gravity"] + gust) * h * h
+    gust = w * (p["flutter"] * (0.55 + 0.45 * math.sin(t * 1.7 + c.phase * 6.3))) +         np.cross(w, UP) * (p["flutter"] * 0.5 * math.sin(t * 3.1 + c.phase * 11))
+    accel = (G * p["gravity"] + gust) * STEP * STEP
     max_rad = math.radians(p["maxAngle"])
     for i in range(1, n + 1):
         ti = c.last[i] + (c.target[i] - c.last[i]) * u
         tp = c.last[i - 1] + (c.target[i - 1] - c.last[i - 1]) * u
         rest = ti - tp
         ln = np.linalg.norm(rest)
-        vel = (c.pos[i] - c.prev[i]) * corr * drag
+        vel = (c.pos[i] - c.prev[i]) * drag
         vel = anchor_vel + (vel - anchor_vel) * damp
         c.prev[i] = c.pos[i].copy()
         x = c.pos[i] + vel + accel
@@ -151,9 +150,11 @@ def simulate(c, u, h, t, last_step, spheres):
 
 
 def run(kind, prof, fps, T=6.0):
+    """SpringChain.LateUpdate: acumulador de pasos fijos y forma dibujada = interpolación de los dos últimos pasos
+    (relativa al ancla) sobre el ancla del frame."""
     c = Chain(kind, prof)
     dt = 1 / fps
-    last_step = STEP
+    acc = 0.0
     times, angles, shapes = [], [], []
     t = 0.0
     first = True
@@ -164,25 +165,29 @@ def run(kind, prof, fps, T=6.0):
         now = [to_world(np.array(sc), pos, yaw) for sc, r in SPHERES]
         if first:
             c.pos[:] = c.prev[:] = c.last[:] = c.target
-            before = now
+            shape_prev = shape_last = c.target - c.target[0]
+            spheres = [(a, a, r) for a, (_, r) in zip(now, SPHERES)]
             first = False
-        spheres = [(b, a, r) for b, a, (_, r) in zip(before, now, SPHERES)]
+        else:
+            spheres = [(b, a, r) for b, a, (_, r) in zip(before, now, SPHERES)]
+            acc = min(acc + dt, MAX_STEPS * STEP)
+            while acc >= STEP:
+                acc -= STEP
+                simulate(c, min(1.0, max(0.0, 1 - acc / dt)), t, spheres)
+                shape_prev, shape_last = shape_last, c.pos - c.pos[0]
         before = now
-        steps = max(1, min(MAX_STEPS, math.ceil(dt / STEP - 0.001)))
-        h = min(dt / steps, STEP)
-        for s in range(1, steps + 1):
-            simulate(c, s / steps, h, t, last_step, spheres)
-            last_step = h
         c.last[:] = c.target
-        # desvío de la punta: ángulo entre (punta - ancla) simulado y animado
-        a = c.pos[-1] - c.pos[0]; b = c.target[-1] - c.target[0]
+        shape = shape_prev + (shape_last - shape_prev) * (acc / STEP)
+        # desvío de la punta: ángulo entre (punta - ancla) dibujado y animado
+        a = shape[-1]; b = c.target[-1] - c.target[0]
         ang = math.degrees(math.acos(max(-1, min(1, np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))))))
+        drawn = c.target[0] + shape
         for _, sc, r in spheres:
-            for q in c.pos[1:]:
+            for q in drawn[1:]:
                 if np.linalg.norm(q - sc) < r - 0.01:
                     c.inside += dt
         times.append(t); angles.append(ang)
-        shapes.append((t, pos.copy(), yaw, c.pos.copy(), c.target.copy()))
+        shapes.append((t, pos.copy(), yaw, drawn.copy(), c.target.copy()))
         t += dt
     return np.array(times), np.array(angles), shapes, c.inside
 
@@ -203,7 +208,9 @@ def main():
     profs = profiles()
     kinds = [k for k in CHAINS if k in profs]
     fig, axes = plt.subplots(len(kinds), 1, figsize=(9, 1.7 * len(kinds)), sharex=True)
-    print(f"{'perfil':8} {'corriendo°':>10} {'asienta s':>9} {'dentro s':>8}  (30/60/144 fps: desvío máx corriendo)")
+    # arranque: el pico al acelerar (0.6-1.3 s); corriendo: la estela ya asentada (1.3-2.0 s)
+    print(f"{'perfil':8} {'arranque°':>9} {'corriendo°':>10} {'asienta s':>9} {'dentro s':>8}  "
+          "(30/60/144 fps: pico al arrancar | máx corriendo)")
     for ax, kind in zip(axes, kinds):
         res = {}
         for fps, col in ((30, "#d9a93a"), (60, "#2e3d6b"), (144, "#b0302a")):
@@ -211,9 +218,13 @@ def main():
             res[fps] = (ts, an, inside)
             ax.plot(ts, an, color=col, lw=1.2, label=f"{fps} fps")
         ts, an, inside = res[60]
-        running = (ts > 1.0) & (ts < 2.0)
-        print(f"{kind:8} {an[running].max():10.1f} {settle_time(ts, an):9.2f} {inside:8.2f}  "
-              + " / ".join(f"{res[f][1][(res[f][0] > 1.0) & (res[f][0] < 2.0)].max():.1f}" for f in (30, 60, 144)))
+
+        def peak(f, t0, t1):
+            tt, aa, _ = res[f]
+            return aa[(tt > t0) & (tt < t1)].max()
+        print(f"{kind:8} {peak(60, 0.6, 1.3):9.1f} {peak(60, 1.3, 2.0):10.1f} {settle_time(ts, an):9.2f} {inside:8.2f}  "
+              + " / ".join(f"{peak(f, 0.6, 1.3):.1f}" for f in (30, 60, 144)) + "  |  "
+              + " / ".join(f"{peak(f, 1.3, 2.0):.1f}" for f in (30, 60, 144)))
         ax.set_ylabel(kind, rotation=0, ha="right", va="center")
         ax.axvspan(0.6, 2.15, color="#88aacc", alpha=0.15)
         ax.axvspan(3.6, 3.9, color="#aacc88", alpha=0.2)

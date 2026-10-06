@@ -276,10 +276,10 @@ namespace Nindo
         public string liveMaterial;
         [Tooltip("Velocidad inicial de las puntas al aparecer (m/s): hacia arriba y hacia la espalda del personaje")]
         public float kickUp = 3.5f, kickBack = 2.5f;
-        [Tooltip("Frames que espera a que el cuerpo vuelva a mostrar 'liveMaterial' antes de aparecer igual")]
-        public int maxWait = 30;
+        [Tooltip("Segundos (reales) que espera a que el cuerpo vuelva a mostrar 'liveMaterial' antes de aparecer igual")]
+        public float maxWaitSeconds = 3f;
         Renderer r;
-        int waited;
+        float since = -1f;
 
         void Awake()
         {
@@ -293,9 +293,13 @@ namespace Nindo
         void Update()
         {
             if (!Has()) return;
-            // la historia pone el flag y destapa el slot del cuerpo en el mismo momento, no necesariamente antes
-            // de este Update: unos frames de espera para no copiar el material del pelo
-            if (!string.IsNullOrEmpty(liveMaterial) && !CharacterKits.ShareBodyMaterial(r, liveMaterial) && ++waited < maxWait) return;
+            // la historia pone el flag al tomar la hoz y destapa el nudo recién ~0.9 s después (en tiempo real, con
+            // la cámara lenta de StoryDirector.BandanaAwakening): las colas esperan ese momento para aparecer junto
+            // con el destello del nudo y con su material vivo. En tiempo real y no en frames: a 144 fps 30 frames
+            // eran 0.2 s y aparecían antes, con una copia del amarillo sin la emisión de la bandana
+            if (since < 0f) since = Time.unscaledTime;
+            if (!string.IsNullOrEmpty(liveMaterial) && !CharacterKits.ShareBodyMaterial(r, liveMaterial)
+                && Time.unscaledTime - since < maxWaitSeconds) return;
             r.enabled = true;
             var spring = GetComponentInParent<SpringChain>();
             if (spring != null) spring.Kick(Vector3.up * kickUp - spring.Owner.forward * kickBack);

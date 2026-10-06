@@ -1,4 +1,4 @@
-"""Poses de los "sabores" de movimiento de las variantes (Enemies/EnemyVariants.cs, VariantMotion) sobre el Idle
+"""Poses de los "sabores" de movimiento de las variantes (Enemies/VariantMotion.cs, MotionFlavor) sobre el Idle
 del equipo, con el kit de cada zona puesto: para ver si la diferencia se lee a la distancia del juego.
 
     blender -b --python Tools/Blender/characters/kits/preview_motion.py -- OUT_DIR --src-assets DIR --actions SUMO_FBX
@@ -16,7 +16,7 @@ import kitlib as K  # noqa: E402
 import preview_kits as PV  # noqa: E402
 import build_kits as B  # noqa: E402
 
-CS = os.path.join(K.REPO, "Nindo", "Assets", "Nindo", "Scripts", "Enemies", "EnemyVariants.cs")
+CS = os.path.join(K.REPO, "Nindo", "Assets", "Nindo", "Scripts", "Enemies", "VariantMotion.cs")
 # (kit, sabor) por fila; None = el Idle del equipo sin retoques
 ROWS = {
     "ninja": [("ninja_default", None), ("ninja_mountain", "Mountain"), ("ninja_lake", "Lake"), ("ninja_bamboo", "Bamboo")],
@@ -29,7 +29,7 @@ def flavors():
     src = open(CS, encoding="utf-8").read()
     out = {}
     for name, body in re.findall(r"MotionFlavor (\w+) = new MotionFlavor\s*\{([^}]*)\}", src):
-        d = dict(idleSpeed=1, moveSpeed=1, lean=0, hunch=0, headPitch=0, breathe=0, breatheHz=0.3, sway=0, swayHz=0.4, scan=0, scanEvery=1.6)
+        d = dict(idleSpeed=1, lean=0, hunch=0, headPitch=0, breathe=0, breatheHz=0.3, sway=0, swayHz=0.4, scan=0, scanEvery=1.6)
         for k, v in re.findall(r"(\w+)\s*=\s*(-?[\d.]+)f", body):
             d[k] = float(v)
         out[name] = d
