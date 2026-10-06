@@ -11,7 +11,6 @@ Recorrido (según el documento de diseño):
   Bosque de Bambú (noreste, Ōzeki) -> portales de vuelta -> Dojo: Kage -> abuelo.
 """
 import math
-import falls_layout as FALLS
 
 # --------------------------------------------------------------------------- niveles
 WATER_LAKE = -0.55
@@ -194,6 +193,7 @@ LANDMARKS = [
 ]
 # Cascada Kohan (jefe del lago): acantilado de basalto en herradura al norte de la arena, pinos del borde y
 # el santuario del saliente. El trazado entero vive en falls_layout.py.
+import falls_layout as FALLS  # noqa: E402
 LANDMARKS += FALLS.landmarks()
 
 # muralla: segmentos a lo largo de z=-30 (el portón está en x=0)

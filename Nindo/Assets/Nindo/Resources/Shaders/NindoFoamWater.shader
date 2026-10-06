@@ -33,6 +33,7 @@ Shader "Nindo/Foam Water"
         _Ripple3 ("Onda 3", Vector) = (0, 0, 0, -99)
         _Ripple4 ("Onda 4", Vector) = (0, 0, 0, -99)
         _Ripple5 ("Onda 5", Vector) = (0, 0, 0, -99)
+        _Spray ("Origen de la llovizna (xyz, radio; radio 0 = pareja)", Vector) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -64,6 +65,7 @@ Shader "Nindo/Foam Water"
                 float _Flow, _Level, _Wet, _WaveHeight, _WaveSpeed;
                 float4 _Rock0, _Rock1, _Rock2, _Rock3;
                 float4 _Ripple0, _Ripple1, _Ripple2, _Ripple3, _Ripple4, _Ripple5;
+                float4 _Spray;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; half4 color : COLOR; };
@@ -133,6 +135,7 @@ Shader "Nindo/Foam Water"
                 float2 uv = input.uv;
                 half foam = 0.0h;
                 half water = 0.0h;           // alfa del agua sin espuma
+                half chop = 0.0h;            // facetas claras que corren: agua picada junto a la caída
                 if (_Mode < 0.5)
                 {
                     float d = uv.x;
@@ -149,6 +152,7 @@ Shader "Nindo/Foam Water"
                     float rn = VNoise(p * 1.7 + t * 0.6);
                     foam = max(foam, (half)max(max(RockFoam(p, _Rock0, rn), RockFoam(p, _Rock1, rn)), max(RockFoam(p, _Rock2, rn), RockFoam(p, _Rock3, rn))));
                     water = (half)(0.42 * exp(-max(d, 0.0) / 3.2));
+                    chop = (half)step(0.56, VNoise(p * 1.3 + float2(t * 1.1, -t * 0.8) * _Flow)) * (half)saturate(water * 2.5);
                     half fade = (half)(1.0 - smoothstep(8.0, 13.0, d));
                     foam *= fade;
                     water *= fade;
@@ -170,8 +174,11 @@ Shader "Nindo/Foam Water"
                     float2 c = (cell + 0.2 + 0.6 * float2(Hash(cell + slot), Hash(cell - slot))) * 0.9;
                     float age = frac(t * 0.9 + ph);
                     float ring = step(abs(distance(p, c) - age * 0.45), 0.025) * (1.0 - age) * on;
-                    foam = max(foam, (half)ring * (half)saturate(_Wet + _Level));
-                    water = (half)(_Wet * 0.16 + _Level * 0.42);
+                    // la película mojada y su llovizna se concentran del lado de la cascada
+                    float near = _Spray.w > 0.0 ? 1.0 - smoothstep(_Spray.w * 0.35, _Spray.w, distance(p, _Spray.xz)) : 1.0;
+                    float wet = _Wet * near;
+                    foam = max(foam, (half)(ring * step(Hash(cell * 1.7 + slot), near)) * (half)saturate(wet + _Level));
+                    water = (half)(wet * 0.16 + _Level * 0.42);
                 }
                 else
                 {
@@ -207,7 +214,7 @@ Shader "Nindo/Foam Water"
                 #endif
                 float3 v = normalize(GetWorldSpaceViewDir(input.positionWS));
                 half fres = (half)pow(1.0 - saturate(v.y), 2.0);
-                half3 waterCol = lerp(_WaterColor.rgb * lighting, _SkyColor.rgb, fres * 0.5h);
+                half3 waterCol = lerp(_WaterColor.rgb * lighting * (1.0h + 0.45h * chop), _SkyColor.rgb, fres * 0.5h);
                 half3 color = lerp(waterCol, _FoamColor.rgb * (lighting * 0.85h + 0.18h), foam);
                 half alpha = max(water, foam * 0.92h) * _Alpha * input.fade;
                 color = MixFog(color, input.fogFactor);

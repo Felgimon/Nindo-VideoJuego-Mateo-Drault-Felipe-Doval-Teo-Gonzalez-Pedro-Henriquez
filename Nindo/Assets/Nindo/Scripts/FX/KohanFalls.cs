@@ -201,6 +201,7 @@ namespace Nindo
             BuildAudio();
             Flood = FloodSheet.Create(transform, new Vector3(ArenaCenter.x, DeckY, ArenaCenter.z), d.deckRadius > 0f ? d.deckRadius : 10.6f);
             Flood.SetWet(0.55f, 0f);   // el rocío ya moja la plataforma: brilla y la llovizna deja anillitos
+            Flood.SetSpraySource(PlungeCenter, 22f);
             ApplyQuality();
             Update();
         }
@@ -253,6 +254,8 @@ namespace Nindo
             mesh.SetVertices(V); mesh.SetColors(C); mesh.SetUVs(0, U); mesh.SetTriangles(T, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
+            // el shader la hincha y la mece (~0.8 m): margen para que no se recorte en el borde de la pantalla
+            var cb = mesh.bounds; cb.Expand(2f); mesh.bounds = cb;
             meshes.Add(mesh);
             var sh = Resources.Load<Shader>("Shaders/NindoWaterfall");
             if (sh != null && sh.isSupported) curtainMat = new Material(sh) { name = "KohanFallsCurtain" };
@@ -612,9 +615,11 @@ namespace Nindo
             boil = System("PlungeBoil", meshFx ? sprayMat : FXMaterials.Alpha, 120, meshFx ? FallsAssets.Ico : null, gravity: 0.9f);
             SizeOverLife(boil, 1f, 1.4f);
             Fade(boil, 1f, 0.9f, 0f);
-            // 3) nube de rocío: la banda blanca que se ve por encima de la baranda norte desde el juego
-            cloud = System("SprayCloud", meshFx ? sprayMat : FXMaterials.Alpha, 32, meshFx ? FallsAssets.Blob : null);
-            SizeOverLife(cloud, 0.6f, 1.4f);
+            // 3) nube de rocío: la banda blanca que asoma detrás de la baranda norte desde el juego. Columnas que
+            //    suben pegadas a la caída: con bloques de 5 m que avanzaban sobre la plataforma la vista previa
+            //    mostraba un muro gris tapando la pelea y el pie de las cortinas
+            cloud = System("SprayCloud", meshFx ? sprayMat : FXMaterials.Alpha, 40, meshFx ? FallsAssets.Blob : null);
+            SizeOverLife(cloud, 0.6f, 1.5f);
             Fade(cloud, 0.95f, 0.75f, 0f);
             // 4) cola de gallo: gotas estiradas que salen disparadas del pie, la mayoría hacia la arena
             rooster = System("RoosterTail", FXMaterials.Alpha, 220, null, gravity: 0.9f);
@@ -934,7 +939,7 @@ namespace Nindo
             float rate = k * q;
             for (int n = Take(ref aClump, 45f * rate * dt); n > 0; n--) EmitClump();
             for (int n = Take(ref aBoil, 80f * rate * dt); n > 0; n--) EmitBoil();
-            for (int n = Take(ref aCloud, 9f * rate * dt); n > 0; n--) EmitCloud();
+            for (int n = Take(ref aCloud, 10f * rate * dt); n > 0; n--) EmitCloud();
             for (int n = Take(ref aRooster, 100f * rate * dt); n > 0; n--) EmitRooster(rooster, false);
             for (int n = Take(ref aGlint, 10f * rate * dt); n > 0; n--) EmitRooster(glints, true);
             for (int n = Take(ref aRolling, 6f * q * dt); n > 0; n--) EmitRolling();
@@ -980,7 +985,8 @@ namespace Nindo
                 velocity = dir * (v0 + UnityEngine.Random.Range(-0.3f, 0.3f)),
                 // vive lo que tarda en caer: muere justo en el agua y la corona sale de ahí
                 startLifetime = fall * UnityEngine.Random.Range(0.98f, 1.02f),
-                startSize3D = new Vector3(1f, 1.8f, 1f) * UnityEngine.Random.Range(0.35f, 0.9f),
+                // finos y largos: con 1.8 de alto parecían diamantes de hielo quietos delante de la cortina
+                startSize3D = new Vector3(0.75f, 2.6f, 0.75f) * UnityEngine.Random.Range(0.3f, 0.75f),
                 rotation3D = new Vector3(0f, UnityEngine.Random.Range(0f, 360f), 0f),
                 startColor = Color.white,
             };
@@ -1008,11 +1014,11 @@ namespace Nindo
             LipSample(out _, out var dir, out _, out var foot);
             var ep = new ParticleSystem.EmitParams
             {
-                position = foot + dir * UnityEngine.Random.Range(0.5f, 2f) + Vector3.up * UnityEngine.Random.Range(0.5f, 2f),
-                // sube y la empuja el viento que sale del pozo: asoma por encima de la baranda norte
-                velocity = Vector3.up * UnityEngine.Random.Range(1f, 2.5f) + windDir * UnityEngine.Random.Range(0.4f, 1.1f),
-                startLifetime = UnityEngine.Random.Range(2.6f, 3.4f),
-                startSize3D = new Vector3(1f, 0.75f, 1f) * UnityEngine.Random.Range(2.5f, 5f),
+                position = foot + dir * UnityEngine.Random.Range(-0.5f, 1f) + Vector3.up * UnityEngine.Random.Range(0.3f, 1.2f),
+                // sube casi derecha; el viento del pozo apenas la arrima (queda detrás de la baranda)
+                velocity = Vector3.up * UnityEngine.Random.Range(1.2f, 2.6f) + windDir * UnityEngine.Random.Range(0.15f, 0.5f),
+                startLifetime = UnityEngine.Random.Range(2.4f, 3f),
+                startSize3D = new Vector3(1f, 0.8f, 1f) * UnityEngine.Random.Range(1.2f, 2.6f),
                 rotation3D = new Vector3(UnityEngine.Random.Range(-10f, 10f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-10f, 10f)),
                 startColor = Color.white,
             };

@@ -31,7 +31,7 @@ namespace Nindo
         int nextRipple;
         float stepTimer;
 
-        static readonly int IdLevel = Shader.PropertyToID("_Level"), IdWet = Shader.PropertyToID("_Wet");
+        static readonly int IdLevel = Shader.PropertyToID("_Level"), IdWet = Shader.PropertyToID("_Wet"), IdSpray = Shader.PropertyToID("_Spray");
         static readonly int[] IdRipple =
         {
             Shader.PropertyToID("_Ripple0"), Shader.PropertyToID("_Ripple1"), Shader.PropertyToID("_Ripple2"),
@@ -126,6 +126,13 @@ namespace Nindo
         {
             if (seconds <= 0f) { wet = wetTo = Mathf.Clamp01(wet01); wetDur = 0f; Apply(); return; }
             wetFrom = wet; wetTo = Mathf.Clamp01(wet01); wetT = 0f; wetDur = seconds;
+        }
+
+        /// <summary>De dónde viene la llovizna: la película mojada y sus anillitos se apagan a 'radius' metros de ahí
+        /// (la baranda del lado de la cascada brilla mojada; la de la entrada queda seca).</summary>
+        public void SetSpraySource(Vector3 worldPos, float radius)
+        {
+            if (mat != null) mat.SetVector(IdSpray, new Vector4(worldPos.x, worldPos.y, worldPos.z, Mathf.Max(1f, radius)));
         }
 
         /// <summary>Anillo que se abre en el agua (pasos, pilares, el cuerpo del koi al caer). Hasta 6 a la vez.</summary>

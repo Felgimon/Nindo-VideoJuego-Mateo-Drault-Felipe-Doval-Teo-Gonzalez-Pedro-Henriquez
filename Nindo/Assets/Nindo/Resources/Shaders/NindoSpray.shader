@@ -10,8 +10,8 @@ Shader "Nindo/Spray"
     Properties
     {
         _Color ("Color", Color) = (0.91, 0.957, 0.965, 1)
-        _Shade ("Color en sombra", Color) = (0.55, 0.68, 0.78, 1)
-        _Glow ("Luz propia", Range(0, 1)) = 0.22
+        _Shade ("Color en sombra", Color) = (0.7, 0.79, 0.87, 1)
+        _Glow ("Luz propia", Range(0, 1)) = 0.32
     }
 
     SubShader
@@ -83,8 +83,9 @@ Shader "Nindo/Spray"
                 n *= dot(n, v) < 0.0 ? -1.0 : 1.0;
                 Light mainLight = GetMainLight();
                 half ndl = saturate(dot(n, mainLight.direction));
-                half3 albedo = lerp(_Shade.rgb, _Color.rgb, 0.35h + 0.65h * ndl) * input.color.rgb;
-                half3 lighting = SampleSH(n) + mainLight.color * (0.5h + 0.5h * ndl);
+                // sombreado chato: el rocío deja pasar la luz (con mucho contraste parecían piedras grises)
+                half3 albedo = lerp(_Shade.rgb, _Color.rgb, 0.55h + 0.45h * ndl) * input.color.rgb;
+                half3 lighting = SampleSH(n) + mainLight.color * (0.62h + 0.38h * ndl);
                 #if defined(_ADDITIONAL_LIGHTS)
                 InputData inputData = (InputData)0;
                 inputData.positionWS = input.positionWS;
