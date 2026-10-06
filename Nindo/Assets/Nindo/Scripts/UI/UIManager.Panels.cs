@@ -161,7 +161,9 @@ namespace Nindo
                 float shift = b.icon != null ? 40f : 0f;
                 bannerText.rectTransform.anchoredPosition = new Vector2(shift, 0f);
                 bannerIcon.rectTransform.anchoredPosition = new Vector2(-tw * 0.5f - 44f + shift, 0f);
-                bannerRoot.sizeDelta = new Vector2(Mathf.Max(640f, tw + 260f + shift * 2f), 110f);
+                // en pelea, trazo más corto: con el margen de siempre la punta izquierda rozaba la cabeza del dragón
+                bannerRoot.sizeDelta = fight ? new Vector2(Mathf.Max(480f, tw + 170f + shift * 2f), 96f)
+                                             : new Vector2(Mathf.Max(640f, tw + 260f + shift * 2f), 110f);
             }
             bannerT += dt;
             // baja 40 px en 0.2 s, queda y se apaga en 0.4 s
