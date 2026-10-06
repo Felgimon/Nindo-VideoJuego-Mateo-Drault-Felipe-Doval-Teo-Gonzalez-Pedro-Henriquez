@@ -62,7 +62,7 @@ namespace Nindo
         {
             // kunai dorado que apunta para abajo, ARRIBA de la barra del fijado. Antes era un rombo que giraba sobre
             // el torso y tapaba entre la mitad y tres cuartos del ninja: justo donde se lee la anticipación del golpe
-            var chev = UIFactory.Centered("Lock", world, UIFactory.Gold, Vector2.zero, Vector2.zero, new Vector2(62, 22), UISprites.Kunai);
+            var chev = UIFactory.Centered("Lock", world, UIFactory.Gold, Vector2.zero, Vector2.zero, new Vector2(76, 27), UISprites.Kunai);
             lockChevron = chev.rectTransform;
             lockChevron.localRotation = Quaternion.Euler(0, 0, -90f);
             lockImg = chev;
@@ -91,8 +91,8 @@ namespace Nindo
 
             for (int i = 0; i < callouts.Length; i++)
             {
-                var t = UIFactory.NoWrap(UIFactory.Text("Callout", world, "", 40, UIFactory.Gold, Vector2.zero, Vector2.zero, new Vector2(520, 60), TextAlignmentOptions.Left, true));
-                t.rectTransform.pivot = new Vector2(0f, 0.5f);
+                var t = UIFactory.NoWrap(UIFactory.Text("Callout", world, "", 38, UIFactory.Gold, Vector2.zero, Vector2.zero, new Vector2(620, 56), TextAlignmentOptions.Bottom, true));
+                t.rectTransform.pivot = new Vector2(0.5f, 0f);
                 UIFactory.Outline(t, 0.3f);
                 t.enabled = false;
                 callouts[i] = new Callout { rt = t.rectTransform, text = t };
@@ -217,11 +217,14 @@ namespace Nindo
             }
             else if (finisherShown != null || finisherRoot.gameObject.activeSelf) { finisherShown = null; finisherRoot.gameObject.SetActive(false); }
 
-            // ---------------------------------------------------------------- fijado
+            UpdateMarkers(cam, scale, dt, t);
+
+            // ---------------------------------------------------------------- fijado (arriba de todo lo de su enemigo)
             if (lockTarget != null && lockTarget.IsAlive && Project(cam, HeadPoint(lockTarget), scale, out var lp))
             {
                 lockPopT += dt;
                 float top = cand == lockTarget && finisherShown != null ? finisherTop : StackTop(lockTarget, lp).y;
+                top = Mathf.Max(top, lockMarkerTop);
                 lockChevron.anchoredPosition = new Vector2(lp.x, top + 40f + 4f * Mathf.Sin(t * Mathf.PI * 4f));
                 lockChevron.localScale = Vector3.one * UIAnim.Pop(lockPopT, 0.15f, 0.6f, 1.1f);
                 lockImg.enabled = true;
@@ -248,7 +251,6 @@ namespace Nindo
             }
             else if (interactShown != null) { interactShown = null; interactRoot.gameObject.SetActive(false); }
 
-            UpdateMarkers(cam, scale, dt, t);
             UpdateCallouts(cam, scale, p, dt);
         }
 
@@ -343,8 +345,11 @@ namespace Nindo
             m.rt.sizeDelta = new Vector2(size, size);
         }
 
+        float lockMarkerTop;
+
         void UpdateMarkers(Camera cam, float scale, float dt, float t)
         {
+            lockMarkerTop = float.NegativeInfinity;
             for (int i = 0; i < markers.Count; i++)
             {
                 var m = markers[i];
@@ -359,6 +364,7 @@ namespace Nindo
                 }
                 var top = StackTop(m.e, hp);
                 m.rt.anchoredPosition = top + new Vector2(0f, m.size * 0.5f + 6f);
+                if (m.e == lockTarget) lockMarkerTop = Mathf.Max(lockMarkerTop, top.y + m.size + 6f);
                 float k = m.t / m.life;
                 float pop = UIAnim.Pop(m.t, 0.2f, 0.3f, 1.2f);
                 if (holding) pop *= 1.06f + 0.06f * Mathf.Sin(t * Mathf.PI * 12f);
@@ -378,8 +384,9 @@ namespace Nindo
         // ---------------------------------------------------------------- avisos de combate sobre Kaito
         /// <summary>
         /// Aviso corto pegado a Kaito ("¡FILO DE IRA!", "¡Parry perfecto!", "Instante sombra"): salta, sube un poco
-        /// y se apaga en ~1 s, al costado de la cabeza (no en el centro de la pantalla, encima de los enemigos, ni
-        /// pisando los avisos de progreso). Mismo pincel y contorno que "TEMPRANO / TARDE" (TimingCoach).
+        /// y se apaga en ~1 s, centrado sobre su cabeza, un renglón más arriba que "TEMPRANO / TARDE" (TimingCoach,
+        /// mismo pincel y contorno). Antes iba en el centro de la pantalla, encima de los enemigos, y pisaba los
+        /// avisos de progreso.
         /// </summary>
         public void ShowCallout(string text, Color c, float life = 1f)
         {
@@ -387,21 +394,21 @@ namespace Nindo
             foreach (var x in callouts) if (!x.active) { slot = x; break; }
             if (slot == null) { slot = callouts[0]; foreach (var x in callouts) if (x.t > slot.t) slot = x; }
             // los que ya estaban suben un renglón
-            foreach (var x in callouts) if (x.active && x != slot) x.lift += 46f;
+            foreach (var x in callouts) if (x.active && x != slot) x.lift += 44f;
             slot.active = true; slot.t = 0f; slot.life = Mathf.Max(0.6f, life); slot.lift = 0f;
             slot.text.text = text; slot.text.color = c; slot.text.enabled = true;
         }
 
         void UpdateCallouts(Camera cam, float scale, PlayerController p, float dt)
         {
-            bool visible = Project(cam, p.transform.position + Vector3.up * 2.6f, scale, out var anchor);
+            bool visible = Project(cam, p.transform.position + Vector3.up * 2.9f, scale, out var anchor);
             foreach (var c in callouts)
             {
                 if (!c.active) continue;
                 c.t += dt;
                 if (c.t >= c.life || !visible) { c.active = false; c.text.enabled = false; continue; }
                 float k = c.t / c.life;
-                c.rt.anchoredPosition = anchor + new Vector2(70f, 30f * UIAnim.OutCubic(k) + c.lift);
+                c.rt.anchoredPosition = anchor + new Vector2(0f, 30f * UIAnim.OutCubic(k) + c.lift);
                 c.rt.localScale = Vector3.one * UIAnim.Pop(c.t, 0.1f, 0.6f, 1.15f);
                 var col = c.text.color; col.a = c.t > c.life - 0.6f ? (c.life - c.t) / 0.6f : 1f; c.text.color = col;
             }

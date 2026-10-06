@@ -59,7 +59,7 @@ namespace Nindo
         // dónde están el ojo y la boca en el marco (u a lo largo, v desde abajo): el arte no trae ojo, lo pone el HUD
         static readonly Vector2 DragonEye = new Vector2(0.9256f, 0.5122f), DragonMouth = new Vector2(0.975f, 0.427f);
         // la ola del dragón: los mismos números que se le pasan al shader (DragonWave los repite en C#)
-        const float WaveAmp = 0.024f, WaveFreq = 0.012f, WaveSpeed = 1.8f;
+        const float WaveAmp = 0.03f, WaveFreq = 0.012f, WaveSpeed = 1.8f;
 
         class Ember { public RectTransform rt; public Image img; public Vector2 vel; public float t, life, size; public Color c0, c1, c2; }
         readonly List<Ember> embers = new List<Ember>();
@@ -327,11 +327,13 @@ namespace Nindo
             bool hide = HideHud;
             hudGroup.alpha = 1f;
             leftGroup.alpha = Mathf.MoveTowards(leftGroup.alpha, hide ? 0f : 1f, dt * 4f);
-            // los sellos siguen a la vista mientras vuela el que se acaba de ganar (pasa en una cinemática)
-            bool sealsShow = !hide || Time.unscaledTime < sealVisibleUntil;
-            rightGroup.alpha = Mathf.MoveTowards(rightGroup.alpha, sealsShow ? 1f : 0f, dt * 4f);
-            // el objetivo se aparta en combate y cuando hay un título o un diálogo (antes competía con todo)
+            // en combate el HUD es solo la bandana y el dragón: sellos y objetivo (información para recorrer)
+            // se apartan y vuelven al terminar la pelea. Los sellos siguen a la vista mientras vuela el que se
+            // acaba de ganar (pasa en una cinemática)
             bool inCombat = Game.Combat != null && Game.Combat.InCombat;
+            bool sealsShow = (!hide && !inCombat) || Time.unscaledTime < sealVisibleUntil;
+            rightGroup.alpha = Mathf.MoveTowards(rightGroup.alpha, sealsShow ? 1f : 0f, dt * (sealsShow ? 2f : 4f));
+            // el objetivo, además, espera a que se vaya el título de zona (antes competía con todo)
             bool objShow = !hide && objective.Length > 0 && !inCombat && titleGroup.alpha < 0.01f;
             objectiveGroup.alpha = Mathf.MoveTowards(objectiveGroup.alpha, objShow ? 1f : 0f, dt * (objShow ? 2f : 5f));
             float t = Time.unscaledTime;

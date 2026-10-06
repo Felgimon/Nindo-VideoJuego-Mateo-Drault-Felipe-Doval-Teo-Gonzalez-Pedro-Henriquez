@@ -55,12 +55,12 @@ namespace Nindo
         Image speakerRibbon, dialogueHint;
         TextMeshProUGUI dialogueSpeaker, dialogueText;
         bool lineComplete;
-        float speakerSwipe = 1f;
+        float speakerSwipe = 1f, speakerWidth = 300f;
         public bool DialogueOpen { get; private set; }
 
         // ---- pausa / opciones / muerte / final
         GameObject pausePanel, optionsPanel, deathPanel, endPanel;
-        Image pauseColumn, optionsColumn, deathDim, deathSwash;
+        Image pauseColumn, optionsColumn, pauseCardImg, optionsCardImg, deathDim, deathSwash;
         RectTransform pauseCard, optionsCard;
         CanvasGroup[] pauseItemGroups;
         Selectable pauseFirst, optionsFirst;
@@ -146,11 +146,12 @@ namespace Nindo
         // ================================================================== título de zona
         void BuildAreaTitle()
         {
-            // arriba al centro, entre el HUD y Kaito (antes en el centro: chocaba con "[E] Rezar..." y el objetivo)
-            titleRoot = UIFactory.Rect("AreaTitle", story, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, -250), new Vector2(1400, 260));
+            // arriba al centro, debajo del dragón y por encima de Kaito (antes en el centro: chocaba con "[E] Rezar..."
+            // y el objetivo). El trazo cubre título, raya y subtítulo
+            titleRoot = UIFactory.Rect("AreaTitle", story, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, -300), new Vector2(1400, 260));
             titleGroup = titleRoot.gameObject.AddComponent<CanvasGroup>();
             titleGroup.alpha = 0f;
-            titleSwash = UIFactory.Centered("Swash", titleRoot, new Color(0.043f, 0.039f, 0.051f, 0.9f), new Vector2(0.5f, 0.5f), new Vector2(0, 4), new Vector2(1180, 190), UISprites.BrushSwash);
+            titleSwash = UIFactory.Centered("Swash", titleRoot, new Color(0.043f, 0.039f, 0.051f, 0.9f), new Vector2(0.5f, 0.5f), new Vector2(0, -18), new Vector2(1180, 200), UISprites.BrushSwash);
             titleSwash.type = Image.Type.Filled; titleSwash.fillMethod = Image.FillMethod.Horizontal; titleSwash.fillOrigin = 0;
             for (int i = 0; i < titleSpecks.Length; i++)
                 titleSpecks[i] = UIFactory.Centered("Speck", titleRoot, new Color(0.7f, 0.07f, 0.1f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10, 10), UISprites.SoftDot);
@@ -189,7 +190,7 @@ namespace Nindo
         {
             titleText.text = title; titleSub.text = subtitle;
             float tw = titleText.GetPreferredValues(title, 9999f, 100f).x;
-            titleSwash.rectTransform.sizeDelta = new Vector2(Mathf.Clamp(tw + 420f, 900f, 1380f), 190f);
+            titleSwash.rectTransform.sizeDelta = new Vector2(Mathf.Clamp(tw + 420f, 900f, 1380f), 200f);
             var stampPos = new Vector2(-tw * 0.5f - 96f, 10f);
             titleStamp.sprite = stamp;
             titleStamp.enabled = false;
@@ -301,8 +302,9 @@ namespace Nindo
             speakerRibbonRt = speakerRibbon.rectTransform;
             Place(speakerRibbonRt, new Vector2(0f, 1f), new Vector2(-14f, 30f), new Vector2(320, 62));
             speakerRibbonRt.pivot = new Vector2(0f, 1f);
-            dialogueSpeaker = UIFactory.NoWrap(UIFactory.Text("Speaker", speakerRibbonRt, "", 34, UIFactory.Paper, new Vector2(0f, 0.5f), new Vector2(104f, 2f), new Vector2(400, 50), TextAlignmentOptions.Left, true));
-            dialogueSpeaker.rectTransform.pivot = new Vector2(0f, 0.5f);
+            // el nombre va aparte de la cinta (no se aplasta cuando la cinta se desenrolla)
+            dialogueSpeaker = UIFactory.NoWrap(UIFactory.Text("Speaker", dialogueRoot, "", 34, UIFactory.Paper, new Vector2(0f, 1f), new Vector2(92f, 0f), new Vector2(400, 50), TextAlignmentOptions.Left, true));
+            dialogueSpeaker.rectTransform.pivot = new Vector2(0f, 0.5f);   // centrado en la cinta (que va de +30 a -32)
             UIFactory.Outline(dialogueSpeaker, 0.15f);
             var rule = UIFactory.Image("Rule", dialogueRoot, new Color(UIFactory.Gold.r, UIFactory.Gold.g, UIFactory.Gold.b, 0.7f), new Vector2(0f, 1f), new Vector2(84f, -40f), new Vector2(900, 12), UISprites.BrushLine);
             rule.rectTransform.pivot = new Vector2(0f, 0.5f);
@@ -335,8 +337,7 @@ namespace Nindo
                     lastSpeaker = lines[i].speaker;
                     dialogueSpeaker.text = lastSpeaker;
                     speakerRibbon.color = SpeakerColor(lastSpeaker);
-                    float nw = dialogueSpeaker.GetPreferredValues(lastSpeaker, 9999f, 50f).x;
-                    speakerRibbonRt.sizeDelta = new Vector2(Mathf.Max(300f, nw + 160f), 62f);
+                    speakerWidth = Mathf.Max(300f, dialogueSpeaker.GetPreferredValues(lastSpeaker, 9999f, 50f).x + 160f);
                     speakerSwipe = 0f;
                 }
                 dialogueText.text = UIFactory.RichKeys(lines[i].text);
@@ -386,8 +387,10 @@ namespace Nindo
             dialogueRoot.anchoredPosition = new Vector2(0f, 40f - 24f * (1f - UIAnim.OutCubic(dialogueGroup.alpha)));
             if (speakerSwipe < 1f)
             {
+                // con cada cambio de quien habla la cinta se vuelve a desenrollar desde el nudo
                 speakerSwipe = Mathf.MoveTowards(speakerSwipe, 1f, dt / 0.2f);
-                speakerRibbonRt.localScale = new Vector3(Mathf.Lerp(0.3f, 1f, UIAnim.OutBack(speakerSwipe)), 1f, 1f);
+                speakerRibbonRt.sizeDelta = new Vector2(Mathf.Lerp(110f, speakerWidth, UIAnim.OutBack(speakerSwipe)), 62f);
+                dialogueSpeaker.alpha = Mathf.Clamp01((speakerSwipe - 0.4f) / 0.4f);
             }
             dialogueHint.enabled = lineComplete;
             if (lineComplete) dialogueHintRt.anchoredPosition = new Vector2(-64f, 34f + 6f * Mathf.Sin(Time.unscaledTime * Mathf.PI * 2.8f));
@@ -451,6 +454,7 @@ namespace Nindo
             // tarjeta de controles: un renglón por acción con las teclas del dispositivo que se está usando
             var card = UIFactory.Sliced("Controls", bg.transform, UISprites.InkCard, Color.white, 256f);
             pauseCard = card.rectTransform;
+            pauseCardImg = card;
             Place(pauseCard, new Vector2(0.5f, 0.5f), new Vector2(370f, -20f), new Vector2(860, 640));
             pauseCard.pivot = new Vector2(0.5f, 0.5f);
             card.pixelsPerUnitMultiplier = 1f;
@@ -548,7 +552,7 @@ namespace Nindo
             }
             float ck = UIAnim.OutCubic((pauseOpenT - 0.1f) / 0.2f);
             pauseCard.anchoredPosition = new Vector2(370f + 120f * (1f - ck), -20f);
-            pauseCard.GetComponent<Image>().color = new Color(1f, 1f, 1f, ck);
+            pauseCardImg.color = new Color(1f, 1f, 1f, ck);
             RefreshControls();
         }
 
@@ -562,6 +566,7 @@ namespace Nindo
             optionsColumn = MenuColumn(bg.transform, "Opciones", out _);
             var card = UIFactory.Sliced("Card", bg.transform, UISprites.InkCard, Color.white, 256f);
             optionsCard = card.rectTransform;
+            optionsCardImg = card;
             card.pixelsPerUnitMultiplier = 1f;
             Place(optionsCard, new Vector2(0.5f, 0.5f), new Vector2(330f, -10f), new Vector2(1060, 860));
             optionsCard.pivot = new Vector2(0.5f, 0.5f);
@@ -624,7 +629,7 @@ namespace Nindo
             optionsColumn.fillAmount = UIAnim.OutCubic(optionsOpenT / 0.18f);
             float ck = UIAnim.OutCubic((optionsOpenT - 0.05f) / 0.2f);
             optionsCard.anchoredPosition = new Vector2(330f + 120f * (1f - ck), -10f);
-            optionsCard.GetComponent<Image>().color = new Color(1f, 1f, 1f, ck);
+            optionsCardImg.color = new Color(1f, 1f, 1f, ck);
         }
 
         // ================================================================== muerte
@@ -712,15 +717,25 @@ namespace Nindo
             Cursor.visible = true;
         }
 
-        // el logo en oro y después cada renglón, de a uno; el botón al final (no se saltea el cierre sin querer)
+        // el logo en oro y después cada renglón, de a uno; el botón al final (no se saltea el cierre sin querer,
+        // pero confirmar lo completa de una)
         IEnumerator EndingReveal()
         {
             foreach (var g in endLines) g.alpha = 0f;
             endButton.gameObject.SetActive(false);
-            if (endLogo != null) yield return UIAnim.Tween(1.2f, UIAnim.InOutSine, k => endLogo.color = new Color(UIFactory.Gold.r, UIFactory.Gold.g, UIFactory.Gold.b, k));
-            foreach (var g in endLines)
-                yield return UIAnim.Tween(1.2f, UIAnim.InOutSine, k => g.alpha = k);
+            if (endLogo != null) endLogo.color = new Color(UIFactory.Gold.r, UIFactory.Gold.g, UIFactory.Gold.b, 0f);
+            float t = 0f, total = 1.2f * (endLines.Length + 1);
+            yield return null;
+            while (t < total)
+            {
+                t += Time.unscaledDeltaTime;
+                if (AdvancePressed(Game.Input)) t = total;
+                if (endLogo != null) endLogo.color = new Color(UIFactory.Gold.r, UIFactory.Gold.g, UIFactory.Gold.b, UIAnim.InOutSine(t / 1.2f));
+                for (int i = 0; i < endLines.Length; i++) endLines[i].alpha = UIAnim.InOutSine((t - 1.2f * (i + 1)) / 1.2f);
+                yield return null;
+            }
             endButton.gameObject.SetActive(true);
+            Game.Input?.ClearBuffer();
             Select(endButton);
         }
 

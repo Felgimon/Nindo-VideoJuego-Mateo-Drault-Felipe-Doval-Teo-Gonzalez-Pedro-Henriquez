@@ -32,7 +32,7 @@ Shader "Nindo/UI Spirit"
         _GhostAge ("Estela: cuánto se deshizo", Range(0, 1)) = 0
         _Need ("Hasta dónde haría falta", Range(0, 1)) = 0
         _NeedA ("Aviso de lo que falta", Range(0, 1)) = 0
-        _WaveAmp ("Ondulación (uv)", Float) = 0.024
+        _WaveAmp ("Ondulación (uv)", Float) = 0.03
         _WaveFreq ("Frecuencia (por unidad de canvas)", Float) = 0.012
         _WaveSpeed ("Velocidad de la ondulación", Float) = 1.8
         _Nod ("Cabeceo (uv)", Float) = 0
@@ -204,9 +204,9 @@ Shader "Nindo/UI Spirit"
                     float edge = _Fill + 0.007 * sin(uv.y * 58 + _T * 6.5) + 0.004 * sin(uv.y * 23 - _T * 3.7);
                     float inside = smoothstep(-aa, aa, edge - xf) * step(0.0005, _Fill);
                     float trail = smoothstep(-aa, aa, xf - edge) * smoothstep(-aa, aa, _Ghost - xf);
-                    // la estela se deshace en motas mientras se vacía
-                    float gn = noise(float2(xf * 300, uv.y * 90)) * 0.6 + noise(float2(xf * 60, uv.y * 18)) * 0.4;
-                    trail *= saturate((gn * 0.6 + 0.55 - _GhostAge * 1.15) * 5);
+                    // la estela se apaga en un grano fino mientras se vacía (con manchas grandes parecía sucia)
+                    float gn = noise(float2(xf * 700, uv.y * 210)) * 0.7 + noise(float2(xf * 90, uv.y * 26)) * 0.3;
+                    trail *= saturate(1.0 - _GhostAge * 1.25 + (gn - 0.5) * 0.6);
                     float need = smoothstep(-aa, aa, xf - max(edge, _Ghost)) * smoothstep(-aa, aa, _Need - xf) * _NeedA;
                     float rimF = inside * (1 - smoothstep(0.0, 0.035, edge - xf));
 
@@ -241,7 +241,7 @@ Shader "Nindo/UI Spirit"
                     // (en uv se estiraba con el sprite)
                     float stripe = step(0.5, frac((u * _Len + uv.y * _Height) / 9));
                     col = lerp(col, half3(0.95, 0.15, 0.1), need);
-                    alpha *= saturate(inside + trail * 0.45 + need * (0.45 + 0.4 * stripe));
+                    alpha *= saturate(inside + trail * 0.55 + need * (0.45 + 0.4 * stripe));
                 }
 
                 // compuesto premultiplicado + fuego aditivo: base roja, cuerpo naranja, puntas amarillas
