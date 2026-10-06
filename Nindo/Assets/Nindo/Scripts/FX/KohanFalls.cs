@@ -62,6 +62,8 @@ namespace Nindo
         public static KohanFalls Instance { get; private set; }
 
         // ------------------------------------------------------------------ API (para MizuchiArena / el jefe)
+        /// <summary>Caudal con Mizuchi liberado: la cascada queda mansa (el koi ya no la pelea).</summary>
+        public const float CalmIntensity = 0.8f;
         /// <summary>Caudal: 1 en la fase 1, 1.4 en la crecida de la fase 2. Se suaviza solo.</summary>
         public float Intensity { get => intensityTarget; set => intensityTarget = Mathf.Clamp(value, 0.5f, 2.5f); }
         /// <summary>Tinte violeta del sello en la parte alta de las cortinas (transición a la fase 2).</summary>
@@ -219,6 +221,8 @@ namespace Nindo
             Flood = FloodSheet.Create(transform, new Vector3(ArenaCenter.x, DeckY, ArenaCenter.z), d.deckRadius > 0f ? d.deckRadius : 10.6f);
             Flood.SetWet(0.55f, 0f);   // el rocío ya moja la plataforma: brilla y la llovizna deja anillitos
             Flood.SetSpraySource(PlungeCenter, 22f);
+            // Mizuchi ya liberado (MizuchiBoss lo deja así al final): al volver a cargar la cascada sigue mansa
+            if (Game.Save != null && Game.Save.HasFlag(Flags.Boss("mizuchi"))) intensityTarget = intensity = CalmIntensity;
             ApplyQuality();
             Update();
         }

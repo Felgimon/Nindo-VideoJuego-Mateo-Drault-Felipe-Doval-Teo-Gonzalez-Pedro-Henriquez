@@ -13,6 +13,12 @@ namespace Nindo
         public const string Abuelo = "Abuelo";
         public const string Ninja = "Ninja Kurokage";
         public const string Kage = "Kage";
+        public const string Espiritu = "Espíritu de la Bandana";
+
+        // Mizuchi: avisos de los cambios de fase y del final (MizuchiBoss)
+        public const string MizuchiPhase2 = "¡El sello corrompe a Mizuchi!";
+        public const string MizuchiPhase3 = "¡La cascada responde!";
+        public const string MizuchiFreed = "Mizuchi, liberado";
 
         public static string CheckpointName(string id)
         {
@@ -170,7 +176,9 @@ namespace Nindo
                     };
                 case "mizuchi_intro":
                     return new List<DialogueLine> {
-                        L("Mizuchi", "El lago devora a los que se atreven a cruzarlo. Ahogate en la marea, pequeño."),
+                        L(Espiritu, "Ese koi lleva siglos intentando remontar la cascada... y el clan le clavó el sello en el lomo."),
+                        L(Kaito, "Por eso el lago está oscuro. Aguantá, gran koi: te voy a sacar esa estaca."),
+                        L(Espiritu, "Mirá el agua, Kaito. El agua no miente: dorada, desviá. Roja, salí de ahí."),
                     };
                 case "ozeki_intro":
                     return new List<DialogueLine> {
@@ -185,7 +193,10 @@ namespace Nindo
                 case "seal_mountain":
                     return new List<DialogueLine> { L(Kaito, "El Sello de la Montaña. Un portal apareció: me lleva de vuelta al dojo.") };
                 case "seal_lake":
-                    return new List<DialogueLine> { L(Kaito, "El Sello del Agua. Ya casi.") };
+                    return new List<DialogueLine> {
+                        L(Kaito, "El Sello del Agua... y el koi, por fin libre."),
+                        L(Espiritu, "Hace mucho, tu abuelo ayudó a otro koi a subir esta cascada. Ese dragón vive en tu bandana."),
+                    };
                 case "seal_bamboo":
                     return new List<DialogueLine> { L(Kaito, "El Sello del Bambú.") };
                 case "ending":

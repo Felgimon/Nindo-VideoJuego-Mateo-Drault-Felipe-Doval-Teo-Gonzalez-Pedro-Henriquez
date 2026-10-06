@@ -187,6 +187,8 @@ namespace Nindo
                 {
                     stepTimer = Mathf.Lerp(0.42f, 0.24f, Mathf.InverseLerp(1f, 8f, speed));
                     Ripple(p.transform.position);
+                    // con la crecida (no la película mojada) cada paso chapotea encima del paso de madera
+                    if (IsFlooded) Game.Audio?.Play("step_water", p.transform.position, 0.45f, 0.12f);
                 }
             }
         }

@@ -33,6 +33,10 @@ namespace Nindo
         public Transform Root => transform;
         public float Radius => config.radius * Mathf.Max(0.5f, config.scale);
         public Vector3 AimPoint => transform.position + Vector3.up * config.height * 0.55f * config.scale;
+        /// <summary>Punto del cuerpo más cercano a 'from', donde le entran los golpes de Kaito (se le resta Radius como a
+        /// la posición). Un cuerpo largo lo cambia por el de su silueta: con el centro solo, la cabeza y la cola del koi
+        /// de 7.5 m quedaban fuera del alcance de la katana.</summary>
+        public virtual Vector3 HurtCenter(Vector3 from) => transform.position;
         public CharacterAnimator Anim => anim;
         public bool IsTelegraphingUnblockable { get; private set; }
         public bool IsExhausted => State == EnemyState.Exhausted;
@@ -499,12 +503,12 @@ namespace Nindo
             float total = 0f;
             int phase = CurrentPhase;
             foreach (var p in ps)
-                if (dist >= p.minRange && phase >= p.minPhase && Time.time - p.lastUsed >= p.cooldown) total += p.weight;
+                if (dist >= p.minRange && phase >= p.minPhase && Time.time - p.lastUsed >= p.cooldown && Usable(p, phase)) total += p.weight;
             if (total <= 0f) return false;
             float r = Random.value * total;
             foreach (var p in ps)
             {
-                if (dist < p.minRange || phase < p.minPhase || Time.time - p.lastUsed < p.cooldown) continue;
+                if (dist < p.minRange || phase < p.minPhase || Time.time - p.lastUsed < p.cooldown || !Usable(p, phase)) continue;
                 r -= p.weight;
                 if (r <= 0f) { chosen = p; return true; }
             }
@@ -513,6 +517,15 @@ namespace Nindo
         }
 
         public virtual int CurrentPhase => 0;
+
+        /// <summary>Fase máxima y ángulo hacia Kaito del patrón (p. ej. el coletazo de Mizuchi, solo con Kaito detrás).</summary>
+        bool Usable(AttackPattern p, int phase)
+        {
+            if (phase > p.maxPhase) return false;
+            if (p.minAngle <= 0f && p.maxAngle >= 180f || target == null) return true;
+            float ang = Vector3.Angle(transform.forward.Flat(), (target.transform.position - transform.position).Flat());
+            return ang >= p.minAngle && ang <= p.maxAngle;
+        }
 
         // ---------------------------------------------------------------- ataque
         protected void StartAttack(bool counter)
@@ -585,6 +598,12 @@ namespace Nindo
 
         protected virtual void OnStepStarted(AttackDef a) { }
 
+        /// <summary>
+        /// Un especial largo (zambullida, salto, pilares, peloteo) lleva su propio reloj: mientras es true el paso no avanza
+        /// el clip ni termina, y solo corren la ETA (ComputeStrikeEta), los avisos y TickSpecial.
+        /// </summary>
+        protected virtual bool StepHeld => false;
+
         /// <summary>¿Este paso dibuja el aviso alrededor del atacante? (los que no hacen daño no; los proyectiles
         /// avisan a los pies de Kaito, ver ProjectileEta)</summary>
         protected virtual bool StepHasTell(AttackDef a) => a.damage > 0f;
@@ -601,6 +620,14 @@ namespace Nindo
         {
             if (!TargetValid()) return;
             var a = pattern.steps[step];
+            if (StepHeld)
+            {
+                if (!anim.Frozen) stepClock += dt;
+                strikeEta = ComputeStrikeEta(a);
+                TickTell(a);
+                TickSpecial(a, dt);
+                return;
+            }
             float prevNorm = stepNorm;
             if (!anim.Frozen) stepClock += dt;
             stepNorm = tl.NormAt(stepClock);
@@ -1068,7 +1095,8 @@ namespace Nindo
             trail?.Stop();
             Game.UI?.PulseImbalance(this);
             EndTell(TellOutcome.Parried);   // el anillo se rompe en pedazos (antes de que el Recoil lo cancele)
-            if (State == EnemyState.Attack)
+            // un paso 'noRecoil' (los combos de ritmo de Mizuchi) suma la postura pero el combo sigue a su ritmo
+            if (State == EnemyState.Attack && (CurrentAttack == null || !CurrentAttack.noRecoil))
             {
                 SetState(EnemyState.Recoil);
                 stateDuration = config.parriedRecoil * (perfect ? 1.5f : 1f);
@@ -1116,7 +1144,7 @@ namespace Nindo
             StartCoroutine(DeathRoutine(info.direction));
         }
 
-        IEnumerator DeathRoutine(Vector3 dir)
+        protected virtual IEnumerator DeathRoutine(Vector3 dir)
         {
             // cae hacia atrás y se desvanece en humo (sin ragdoll: barato y legible)
             float t = 0f;

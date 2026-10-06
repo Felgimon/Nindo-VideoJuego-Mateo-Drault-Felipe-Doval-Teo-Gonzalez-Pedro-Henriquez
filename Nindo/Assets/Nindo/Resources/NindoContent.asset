@@ -860,6 +860,13 @@ MonoBehaviour:
     volume: 0.5
     pitchVariance: 0.06
     spatial: 1
+  - key: fin_whoosh
+    clips:
+    - {fileID: 8300000, guid: 0818905da38d441345129a5abc655b2d, type: 3}
+    - {fileID: 8300000, guid: d055e9a9e808d46e56900e4daecda4b7, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: finisher_hit
     clips:
     - {fileID: 8300000, guid: 20ad7977e4c6d6c45af26c677a05531b, type: 3}
@@ -903,9 +910,40 @@ MonoBehaviour:
     volume: 0.9
     pitchVariance: 0.06
     spatial: 1
+  - key: jet_charge
+    clips:
+    - {fileID: 8300000, guid: c5b2a74187815f8e12e0cfa5d21eebcb, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: jet_fire
+    clips:
+    - {fileID: 8300000, guid: 16f0832d520fed469d08c37be56f770a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: kill
     clips:
     - {fileID: 8300000, guid: e9efd4e82f31a5a4edd2cf6e7511a5d6, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: koi_freed
+    clips:
+    - {fileID: 8300000, guid: 06f92086921603d2f13b0d84bd4c33d4, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: koi_roar
+    clips:
+    - {fileID: 8300000, guid: debfeffbe76cdd9e29b4685f348a47e5, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: koi_snap
+    clips:
+    - {fileID: 8300000, guid: 13b11881345aea569ea61a7ba3f1d0f7, type: 3}
+    - {fileID: 8300000, guid: 3beed46624107643d12398b47b62c9ea, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
@@ -949,9 +987,36 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: pearl_ping
+    clips:
+    - {fileID: 8300000, guid: b23f4a3363245dc98dfc279f3730014d, type: 3}
+    - {fileID: 8300000, guid: 0054e01600c85b2e23ba165e0c00f2cd, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: pearl_pop
+    clips:
+    - {fileID: 8300000, guid: 4270771eb37f95a2e6b4fe0a1ce0ede0, type: 3}
+    - {fileID: 8300000, guid: e20c28a5fba60382fb90fa06bb679920, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: pearl_spit
+    clips:
+    - {fileID: 8300000, guid: 9fb3814ff932bdb7d5c4be3f786dee72, type: 3}
+    - {fileID: 8300000, guid: 8dfdc48a8fa64679e6c9ae5913d53400, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: perfect_dodge
     clips:
     - {fileID: 8300000, guid: 2029dd5fb31957dc698e4f9fceee4f0d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: pillar_fall
+    clips:
+    - {fileID: 8300000, guid: 900ae6322d243739db5418863d476925, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
@@ -979,6 +1044,12 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 0
+  - key: seal_crack
+    clips:
+    - {fileID: 8300000, guid: fd253fedfbdfc8793ba14213e9e912bf, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: shadow_rope_free
     clips:
     - {fileID: 8300000, guid: e8d95da000da27103584d69667b45f7c, type: 3}
@@ -1027,6 +1098,14 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: step_water
+    clips:
+    - {fileID: 8300000, guid: 26c4e1aecda3d2e2553eccab1dbcb12b, type: 3}
+    - {fileID: 8300000, guid: d513c25bee091d749ba637d13c57beaa, type: 3}
+    - {fileID: 8300000, guid: f122803b324fe5dbbb850906c455f607, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: step_wood
     clips:
     - {fileID: 8300000, guid: ea380a6ae9af851996eb6e0a8ee4051e, type: 3}
@@ -1052,6 +1131,13 @@ MonoBehaviour:
     volume: 0.8
     pitchVariance: 0.06
     spatial: 1
+  - key: tail_crack
+    clips:
+    - {fileID: 8300000, guid: ddd9ebb02593f9960f71d6dc8714324f, type: 3}
+    - {fileID: 8300000, guid: fee6df2e6ce250935ae213d4b84a398d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: teleport
     clips:
     - {fileID: 8300000, guid: f2d1d8523a1b2aaa667645c549630a8d, type: 3}
@@ -1067,6 +1153,12 @@ MonoBehaviour:
   - key: tell_tick
     clips:
     - {fileID: 8300000, guid: 426d323469ef11625f9eda2a5d59741a, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: thunder
+    clips:
+    - {fileID: 8300000, guid: b7fc22932507285ff280b106ac6f9f11, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
@@ -1112,6 +1204,12 @@ MonoBehaviour:
   - key: wave
     clips:
     - {fileID: 8300000, guid: 811701bd674c64672da32085fb85084e, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
+  - key: wave_rise
+    clips:
+    - {fileID: 8300000, guid: 206eaa399d80a4a27a10b012c120ad2b, type: 3}
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1

@@ -36,7 +36,7 @@ namespace Nindo
             SetState(PlayerState.Attack);
 
             attackTarget = AttackTarget(config.attackMagnetRange);
-            Vector3 aim = attackTarget != null ? attackTarget.transform.position - transform.position : InputToWorld(MoveInput);
+            Vector3 aim = attackTarget != null ? attackTarget.HurtCenter(transform.position) - transform.position : InputToWorld(MoveInput);
             if (aim.sqrMagnitude > 0.01f) FaceInstant(aim);
             // atacar corriendo ya no frena en seco: conserva parte de la carrera hacia donde corta
             carry = transform.forward * Mathf.Max(0f, Vector3.Dot(run, transform.forward)) * config.attackMomentum;
@@ -56,11 +56,11 @@ namespace Nindo
 
             // seguir apuntando al objetivo durante la anticipación
             if (attackTarget != null && attackNorm < a.activeStart && attackTarget.IsAlive)
-                FaceTowards(attackTarget.transform.position - transform.position, 25f, dt);
+                FaceTowards(attackTarget.HurtCenter(transform.position) - transform.position, 25f, dt);
 
             // avance (lunge) con imán: se frena antes de atravesar al enemigo
             float room = attackTarget != null && attackTarget.IsAlive
-                ? CombatMath.FlatDistance(attackTarget.transform.position, transform.position) - attackTarget.Radius - Radius - 0.35f
+                ? CombatMath.FlatDistance(attackTarget.HurtCenter(transform.position), transform.position) - attackTarget.Radius - Radius - 0.35f
                 : float.MaxValue;
             if (!frozen && attackNorm >= a.lungeStart && attackNorm <= a.lungeEnd && lungeDone < a.lunge)
             {
@@ -144,7 +144,7 @@ namespace Nindo
                 if (State == PlayerState.Scripted) return;
                 var e = list[i];
                 if (e == null || !e.IsAlive || hitThisSwing.Contains(e)) continue;
-                if (!CombatMath.InArc(transform, e.transform.position, a.range, a.arc, e.Radius)) continue;
+                if (!CombatMath.InArc(transform, e.HurtCenter(transform.position), a.range, a.arc, e.Radius)) continue;
                 if (Mathf.Abs(e.transform.position.y - transform.position.y) > 2.5f) continue;
                 hitThisSwing.Add(e);
                 ResolveHitOnEnemy(e, a.damage, a.imbalance, a.kind, a.knockback, a.hitStop, a.shake, a.name);
@@ -512,7 +512,7 @@ namespace Nindo
             if (!HasKatana) return null;
             Enemy best = null; float bestD = float.MaxValue;
             if (lockTarget != null && lockTarget.CanBeFinished(config.finisherHealthThreshold) &&
-                CombatMath.FlatDistance(lockTarget.transform.position, transform.position) <= config.finisherRange + 1f)
+                CombatMath.FlatDistance(lockTarget.HurtCenter(transform.position), transform.position) <= config.finisherRange + 1f)
                 return lockTarget;
             var list = Game.Combat != null ? Game.Combat.All : null;
             if (list == null) return null;
@@ -520,7 +520,7 @@ namespace Nindo
             {
                 var e = list[i];
                 if (e == null || !e.IsAlive || !e.CanBeFinished(config.finisherHealthThreshold)) continue;
-                float d = CombatMath.FlatDistance(e.transform.position, transform.position);
+                float d = CombatMath.FlatDistance(e.HurtCenter(transform.position), transform.position);
                 if (d < config.finisherRange && d < bestD) { bestD = d; best = e; }
             }
             return best;
@@ -738,6 +738,9 @@ namespace Nindo
                 Vector3 p = e.transform.position;
                 Vector3 ab = (b - a).Flat();
                 float t = ab.sqrMagnitude > 0.001f ? Mathf.Clamp01(Vector3.Dot((p - a).Flat(), ab) / ab.sqrMagnitude) : 0f;
+                // cuerpos largos: el punto de su silueta más cercano al tajo
+                p = e.HurtCenter(a + ab * t);
+                t = ab.sqrMagnitude > 0.001f ? Mathf.Clamp01(Vector3.Dot((p - a).Flat(), ab) / ab.sqrMagnitude) : 0f;
                 Vector3 closest = a + ab * t;
                 if (CombatMath.FlatDistance(closest, p) <= radius + e.Radius) abilityVictims.Add(e);
             }
@@ -776,7 +779,7 @@ namespace Nindo
                 if (State != PlayerState.Ability) return; // una muerte arrancó una cinemática
                 var e = list[i];
                 if (e == null || !e.IsAlive) continue;
-                if (CombatMath.FlatDistance(e.transform.position, transform.position) <= config.whirlwindRadius + e.Radius)
+                if (CombatMath.FlatDistance(e.HurtCenter(transform.position), transform.position) <= config.whirlwindRadius + e.Radius)
                     ResolveHitOnEnemy(e, config.whirlwindDamage, 1f, AttackKind.Ability, 1.4f, 0.06f, 0.3f, "Torbellino");
             }
         }

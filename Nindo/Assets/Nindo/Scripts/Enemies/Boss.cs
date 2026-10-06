@@ -133,7 +133,7 @@ namespace Nindo
         /// Se enfurece: ruge 1.1 s sin dejar de ser un objetivo (antes pasaba a "guion": se perdía el fijado y la
         /// cámara se reacomodaba), conserva la postura acumulada y vuelve más rápido.
         /// </summary>
-        void PhaseChange(int newPhase)
+        protected virtual void PhaseChange(int newPhase)
         {
             const float roar = 1.1f;
             phase = newPhase;

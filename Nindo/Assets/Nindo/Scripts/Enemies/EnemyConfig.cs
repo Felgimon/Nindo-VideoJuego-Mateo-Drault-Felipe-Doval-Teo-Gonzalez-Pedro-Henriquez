@@ -16,6 +16,9 @@ namespace Nindo
         public float cooldown = 0f;
         [Tooltip("Fase mínima del jefe para usar este patrón (0 = siempre)")] public int minPhase = 0;
         [Tooltip("Al terminar queda agotado/mareado (p. ej. después del giro de Gorō)")] public bool exhaustAfter = false;
+        [Tooltip("Fase máxima del jefe en que se usa (99 = siempre)")] public int maxPhase = 99;
+        [Tooltip("Ángulo entre el frente del atacante y Kaito (grados): p. ej. 100..180 = solo con Kaito detrás")]
+        public float minAngle = 0f, maxAngle = 180f;
         [NonSerialized] public float lastUsed = -99f;
 
         /// <summary>Copia superficial del patrón (los pasos los copia EnemyConfig.Clone). El cooldown arranca de cero.</summary>

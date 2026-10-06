@@ -76,6 +76,43 @@ namespace Nindo
             Game.Audio?.Play("water_splash", pos, 0.45f);
         }
 
+        /// <summary>
+        /// Columna de agua que sale (o cae) vertical: el koi que irrumpe desde el pozo, un pilar que revienta contra la
+        /// plataforma. 'radius' = ancho de la base, 'height' = hasta dónde suben las gotas (m).
+        /// </summary>
+        public static void Column(Vector3 pos, float radius, float height)
+        {
+            if (!Ensure()) return;
+            float up = Mathf.Sqrt(2f * 9.81f * 1.2f * Mathf.Max(0.5f, height));   // las gotas tienen gravedad 1.2
+            int n = Mathf.RoundToInt(26 + 10 * radius);
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 off = Random.insideUnitSphere; off.y = 0f;
+                Vector3 v = Vector3.up * up * Random.Range(0.55f, 1f) + off * Random.Range(1f, 3.5f);
+                Drop(pos + off * radius * 0.8f + Vector3.up * 0.2f, v, Random.Range(0.18f, 0.4f));
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 off = Random.insideUnitSphere; off.y = 0f;
+                Chunk(pos + off * radius, Vector3.up * Random.Range(2f, 5f) + off * 2f, Random.Range(0.6f, 1.2f) * Mathf.Sqrt(radius));
+            }
+            for (int i = 0; i < 4; i++) Puff(pos + Vector3.up * Random.Range(0.5f, 2f), Random.Range(2.2f, 3.6f) * Mathf.Sqrt(radius));
+            RingWave.Spawn(pos, radius * 2.2f, new Color(0.75f, 0.92f, 1f, 0.85f), 0.55f);
+            if (KohanFalls.Instance != null && KohanFalls.Instance.Flood != null) KohanFalls.Instance.Flood.Ripple(pos);
+        }
+
+        /// <summary>Rocío dirigido: la punta del chorro contra la plataforma, la cresta de la ola, la estela del koi
+        /// bajo el agua. Sin sonido (lo pone quien lo llama, una vez y no por frame).</summary>
+        public static void Spray(Vector3 pos, Vector3 dir, int count, float speed, float size = 0.2f)
+        {
+            if (!Ensure()) return;
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 v = (dir + Random.insideUnitSphere * 0.45f) * speed * Random.Range(0.6f, 1.1f);
+                Drop(pos + Random.insideUnitSphere * 0.25f, v, size * Random.Range(0.7f, 1.4f));
+            }
+        }
+
         // ------------------------------------------------------------------ emisión
         static void Drop(Vector3 p, Vector3 v, float size)
         {

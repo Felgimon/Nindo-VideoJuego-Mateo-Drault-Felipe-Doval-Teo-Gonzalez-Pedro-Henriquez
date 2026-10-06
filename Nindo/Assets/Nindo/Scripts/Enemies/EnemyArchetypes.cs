@@ -159,30 +159,83 @@ namespace Nindo
             return c;
         }
 
-        /// <summary>Mizuchi, la Marea (jefe del lago): ninja veloz que lanza olas y llama refuerzos.</summary>
+        /// <summary>
+        /// Mizuchi, el Gran Koi de la Cascada Kohan (jefe del lago): un koi espíritu de 7.5 m con el Sello del Agua clavado
+        /// en el lomo. Golpes desviables con aviso dorado (mordida, aletazos, coletazo si Kaito se le pone detrás, perlas
+        /// que el parry perfecto devuelve) e imparables rojos que siempre se pueden esquivar corriendo (salto del dragón,
+        /// chorro). Fase 2 (55 %): corrompido, inunda la plataforma; combo de ritmo, peloteo de la perla, chorro barrido,
+        /// la ola de la cascada y los pilares de agua. Fase 3 (25 %): perlas de tormenta. Los especiales los maneja
+        /// MizuchiBoss. Tiempos de las hojas de contacto de Art/Characters/Mizuchi/Mizuchi.fbx.json (apex = pose cargada,
+        /// activeStart = contacto); la mordida ya adelanta el cuerpo 0.6 m en el clip, la embestida del código es el resto.
+        /// </summary>
         public static EnemyConfig Mizuchi()
         {
-            var c = Ninja();
-            c.id = "mizuchi"; c.displayName = "Mizuchi"; c.maxHealth = 420; c.scale = 1.3f; c.runSpeed = 6.2f;
-            c.maxImbalance = 5; c.exhaustedTime = 3f; c.guardTime = 1.6f; c.poiseHits = 2; c.detectRadius = 30; c.loseRadius = 80;
-            c.finisherHealth = 0.12f; c.tint = new Color(0.2f, 0.65f, 0.8f); c.tintStrength = 0.5f; c.hyperArmor = false;
-            var a1 = Hit("Attack1", 16, 0.6f, 0.78f, telegraph: 0.08f, speed: 1.15f, apex: NinjaApex1);
-            var a2 = Hit("Attack2", 16, 0.42f, 0.62f, speed: 1.15f, apex: NinjaApex2);
-            var a3 = Hit("Attack3", 20, 0.5f, 0.7f, kind: AttackKind.Heavy, lunge: 1.6f, speed: 1.1f, kb: 1.5f, apex: NinjaApex3);
-            var wave = Hit("Attack3", 18, 0.5f, 0.6f, kind: AttackKind.Light, lunge: 0f, telegraph: 0.25f, apex: NinjaApex3);
-            wave.special = "wave"; wave.specialParam = 1;
-            var wave3 = wave.Clone(); wave3.specialParam = 3;
-            var summon = Hit("Spotted", 0, 0.5f, 0.55f, lunge: 0f); summon.special = "summon"; summon.specialParam = 2;
-            var tp = Hit("Attack2", 0, 0.3f, 0.35f, lunge: 0f); tp.special = "teleport"; tp.specialParam = 2.4f;
+            var c = new EnemyConfig
+            {
+                id = "mizuchi", displayName = "Mizuchi", maxHealth = 500, runSpeed = 5f, walkSpeed = 2.4f, turnSpeed = 4.5f,
+                // radio = medio cuerpo (1.95 m de ancho) más algo de aleta; altura 3 m: AimPoint a 1.65 m, el eje del cuerpo
+                radius = 1.3f, height = 3f, scale = 1f, maxImbalance = 4, exhaustedTime = 3.4f, guardTime = 1.2f,
+                poiseHits = 3, hyperArmor = true, knockbackResist = 0.95f, parriedRecoil = 0.4f, staggerTime = 0.3f,
+                preferredDistance = 4.5f, detectRadius = 30f, loseRadius = 80f, finisherHealth = 0.12f,
+                attackCooldown = new Vector2(0.8f, 1.6f),
+                animGuard = "Guard", animCounter = "FinR", animExhausted = "Exhausted", animHit = "Hit",
+                animSpotted = "Roar", animDeath = "Freed", animParried = "Parried",
+            };
+            // ---- fase 1
+            var bite = Hit("Bite", 16, 0.5758f, 0.697f, range: 3.4f, arc: 70, lunge: 1.6f, telegraph: 0.22f, kb: 1f, apex: 0.4545f);
+            bite.sfx = "koi_snap";
+            var finL = Hit("FinL", 14, 0.5556f, 0.6667f, range: 3.3f, arc: 150, lunge: 0.9f, telegraph: 0.15f, apex: 0.4074f);
+            var finR = Hit("FinR", 14, 0.4167f, 0.5417f, range: 3.3f, arc: 150, lunge: 0.7f, apex: 0.25f);
+            finL.sfx = finR.sfx = "fin_whoosh";
+            // el coletazo barre el disco entero desde el centro del cuerpo y no corrige la puntería: castiga quedarse detrás
+            var tail = Hit("TailWhip", 22, 0.5476f, 0.7143f, range: 4.6f, arc: 360, kind: AttackKind.Heavy, lunge: 0f, telegraph: 0.28f, kb: 2.4f, apex: 0.4524f);
+            tail.tracking = false; tail.sfx = "tail_crack";
+            // perlas: el paso no pega, pegan las perlas (desviables; el parry perfecto las devuelve)
+            var pearls = Hit("Spit", 10, 0.5556f, 0.5833f, range: 14f, arc: 60, lunge: 0f, telegraph: 0.25f, kb: 0.8f, apex: 0.4444f);
+            pearls.name = "Perlas"; pearls.special = "pearls"; pearls.specialParam = 3;
+            // salto del dragón: se zambulle, nada bajo el agua y salta sobre Kaito (disco rojo de 3.6 m)
+            var dive = Hit("Dive", 30, 0.9f, 0.95f, range: 3.6f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, kb: 3.2f);
+            dive.special = "dive"; dive.specialParam = 3.6f; dive.tracking = false;
+            // chorro: apunta, se traba 0.75 s antes de disparar y la línea queda fija (un paso al costado alcanza)
+            var jet = Hit("Jet", 26, 0.5455f, 0.7576f, range: 11f, arc: 20, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.3f, kb: 2.6f, apex: 0.4848f);
+            jet.special = "jet"; jet.specialParam = 11f; jet.tracking = false;
+            // ---- fase 2: el torrente no retrocede con el parry (la postura igual suma) y cierra con un coletazo demorado
+            var tBite = Torrente(bite); var tFinL = Torrente(finL); var tFinR = Torrente(finR); var tTail = Torrente(tail);
+            tTail.telegraph = 0.45f;
+            var rally = Hit("Spit", 18, 0.5556f, 0.5833f, range: 14f, arc: 60, lunge: 0f, telegraph: 0.25f, kb: 2f, apex: 0.4444f);
+            rally.name = "Tama-asobi"; rally.special = "rally";
+            var sweep = jet.Clone(); sweep.name = "Chorro barrido"; sweep.special = "jetsweep";
+            var wave = Hit("GreatWave", 24, 0.354f, 0.396f, range: 0.1f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, kb: 3f, apex: 0.25f);
+            wave.special = "greatwave"; wave.tracking = false;
+            var pillars = Hit("Roar", 20, 0.3f, 0.35f, range: 0.1f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, kb: 2.5f);
+            pillars.special = "pillars"; pillars.specialParam = 4; pillars.tracking = false;
+            // ---- fase 3
+            var storm = pearls.Clone(); storm.name = "Perlas de tormenta"; storm.special = "storm"; storm.specialParam = 5; storm.damage = 8;
             c.patterns = new[]
             {
-                new AttackPattern { name = "Marea", steps = new[] { a1, a2, a3 }, weight = 2f, maxRange = 3f },
-                new AttackPattern { name = "Ola", steps = new[] { wave }, weight = 1.3f, minRange = 4f, maxRange = 16f, cooldown = 3f },
-                new AttackPattern { name = "Tres olas", steps = new[] { wave3, wave }, weight = 1.2f, minRange = 3f, maxRange = 16f, cooldown = 6f, minPhase = 1 },
-                new AttackPattern { name = "Corriente", steps = new[] { tp, a1, a2 }, weight = 1f, maxRange = 12f, cooldown = 7f, minPhase = 1 },
-                new AttackPattern { name = "Llamado", steps = new[] { summon }, weight = 0.8f, maxRange = 20f, cooldown = 25f, minPhase = 1 },
+                new AttackPattern { name = "Mordida", steps = new[] { bite }, weight = 1.6f, maxRange = 3.6f, maxAngle = 70f },
+                new AttackPattern { name = "Aletazo", steps = new[] { finL, finR }, weight = 1.5f, maxRange = 3.4f, maxAngle = 110f },
+                new AttackPattern { name = "Mordida y aletazo", steps = new[] { bite, finL, finR }, weight = 1.1f, maxRange = 3.6f, maxAngle = 70f, maxPhase = 0 },
+                new AttackPattern { name = "Coletazo", steps = new[] { tail }, weight = 2.5f, maxRange = 4.8f, minAngle = 100f, cooldown = 4f },
+                new AttackPattern { name = "Perlas del Lago", steps = new[] { pearls }, weight = 1.2f, minRange = 6f, maxRange = 14f, cooldown = 5f, maxPhase = 0 },
+                new AttackPattern { name = "Salto del Dragón", steps = new[] { dive }, weight = 1f, maxRange = 30f, cooldown = 12f },
+                new AttackPattern { name = "Chorro", steps = new[] { jet }, weight = 0.9f, minRange = 4f, maxRange = 11f, cooldown = 9f, maxPhase = 0 },
+                new AttackPattern { name = "Torrente", steps = new[] { tBite, tFinL, tFinR, tTail }, weight = 1.6f, maxRange = 3.6f, maxAngle = 70f, minPhase = 1 },
+                new AttackPattern { name = "Tama-asobi", steps = new[] { rally }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 14f, minPhase = 1 },
+                new AttackPattern { name = "Chorro barrido", steps = new[] { sweep }, weight = 1f, minRange = 4f, maxRange = 9f, cooldown = 8f, minPhase = 1 },
+                new AttackPattern { name = "Ola de la Cascada", steps = new[] { wave }, weight = 0.9f, maxRange = 30f, cooldown = 15f, minPhase = 1 },
+                new AttackPattern { name = "Pilares", steps = new[] { pillars }, weight = 0.8f, maxRange = 30f, cooldown = 20f, minPhase = 1 },
+                new AttackPattern { name = "Perlas de tormenta", steps = new[] { storm }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 6f, minPhase = 2 },
             };
             return c;
+        }
+
+        static AttackDef Torrente(AttackDef a)
+        {
+            var t = a.Clone();
+            t.name = "Torrente " + a.name;
+            t.noRecoil = true;
+            return t;
         }
 
         /// <summary>Ōzeki, el Gran Campeón (bosque de bambú): sumo gigante, embestidas y pisotones.</summary>
