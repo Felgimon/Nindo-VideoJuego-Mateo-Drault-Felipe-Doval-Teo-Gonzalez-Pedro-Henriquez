@@ -32,7 +32,7 @@ def on_platform(x, z):
 
 def check(kind, name, x, z, margin=0.8):
     wd = T.walk_dist(x, z)
-    if wd > -margin and not on_landing(x, z):
+    if wd > -margin:
         problems.append(f"{kind} {name} ({x},{z}) está a {-wd:.1f} m del borde transitable (wd={wd:.2f})")
     if T.in_lake(x, z) and not on_platform(x, z):
         problems.append(f"{kind} {name} ({x},{z}) cae en el agua")
@@ -59,6 +59,41 @@ for lx, lz, sa, ca, hl, hw in LANDINGS:
 for cid, x, z, yaw in W.CHECKPOINTS:
     sx, sz = x + math.sin(math.radians(yaw)) * 1.8, z + math.cos(math.radians(yaw)) * 1.8
     check("Reaparición", cid, sx, sz, 0.3)
+
+
+# límites invisibles (la misma grilla que build_walls): ninguna pared entre la reaparición y el eje del camino o el
+# centro del área más cercanos (el muelle del lago llegó a quedar encerrado detrás de la pared del borde de la pasarela)
+def _cross(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _segments_cross(p1, p2, q1, q2):
+    return (_cross(q1, q2, p1) > 0) != (_cross(q1, q2, p2) > 0) and (_cross(p1, p2, q1) > 0) != (_cross(p1, p2, q2) > 0)
+
+
+GX0, GX1, GZ0, GZ1 = W.MAP_BOUNDS
+for cid, x, z, yaw in W.CHECKPOINTS:
+    sx, sz = x + math.sin(math.radians(yaw)) * 1.8, z + math.cos(math.radians(yaw)) * 1.8
+    goals = [(ax, az) for name, ax, az, r, h, soft in W.AREAS]
+    for name, pts, width, ph in W.PATHS:
+        for a, b in zip(pts, pts[1:]):
+            _, t = T.seg_dist(sx, sz, *a, *b)
+            goals.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    gx, gz = min(goals, key=lambda g: math.hypot(g[0] - sx, g[1] - sz))
+    win = (min(sx, gx) - 2, min(sz, gz) - 2, max(sx, gx) + 2, max(sz, gz) + 2)
+    walls = T.wall_segments(GX0, GZ0, int((GX1 - GX0) / 2), int((GZ1 - GZ0) / 2), 2.0, window=win)
+    hit = [w for w in walls if _segments_cross((sx, sz), (gx, gz), w[0], w[1])]
+    if hit:
+        problems.append(f"Reaparición {cid} ({sx:.1f},{sz:.1f}): {len(hit)} pared(es) invisible(s) antes de ({gx:.1f},{gz:.1f})")
+# el contorno tiene que ser cerrado: una punta suelta es un hueco en la pared (cajas finas de los muelles mal cortadas)
+_ends = {}
+for a, b in T.wall_segments(GX0, GZ0, int((GX1 - GX0) / 2), int((GZ1 - GZ0) / 2), 2.0):
+    for p in (a, b):
+        k = (round(p[0], 3), round(p[1], 3))
+        _ends[k] = _ends.get(k, 0) + 1
+for (ex, ez), n in _ends.items():
+    if n == 1 and GX0 < ex < GX1 and GZ0 < ez < GZ1:
+        problems.append(f"Límites invisibles: punta suelta en ({ex:.2f},{ez:.2f})")
 for k, (x, z) in W.POINTS.items():
     check("Point", k, x, z, 0.3)
 for cid, x, z, yaw in W.CHECKPOINTS:

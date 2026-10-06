@@ -12,6 +12,9 @@ Recorrido (según el documento de diseño):
 """
 import math
 
+# extensión del terreno exportado (x0, x1, z0, z1): también es la grilla de los límites invisibles
+MAP_BOUNDS = (-244, 244, -204, 196)
+
 # --------------------------------------------------------------------------- niveles
 WATER_LAKE = -0.55
 WATER_STREAM = -0.45
@@ -221,7 +224,7 @@ CHECKPOINTS = [
     ("cp_dojo", 10, 140, 180),
     # a la entrada de los jefes (antes el más cercano quedaba a 75-91 m y cada reintento era una caminata):
     # Mizuchi: sobre un muelle al costado de la pasarela, 15 m antes de la plataforma (mirando a la pasarela)
-    ("cp_lake_falls", 177.36, 57.88, 311),
+    ("cp_lake_falls", 177.25, 57.98, 311),
     # Ōzeki: en el centro del camino, 6 m antes del arco de bambú (fuera de la barrera de la arena, r 15)
     ("cp_bamboo_gate", 111.5, 144.2, 220),
 ]

@@ -96,8 +96,7 @@ for i, (name, pts, width, ph) in enumerate(W.PATHS):
         _PATH_H[i] = [0.0, W.DOJO_H]
 
 
-def walk_dist(x, z):
-    """Distancia con signo al área transitable (<0 adentro)."""
+def _ground_walk_dist(x, z):
     d = 1e9
     for name, ax, az, r, h, soft in W.AREAS:
         d = min(d, math.hypot(x - ax, z - az) - r)
@@ -106,6 +105,34 @@ def walk_dist(x, z):
             sd, _ = seg_dist(x, z, *pts[i], *pts[i + 1])
             d = min(d, sd - width * 0.5)
     return d
+
+
+# muelles de los santuarios sobre el agua (W.CHECKPOINT_LANDINGS): (x, z, eje largo sa/ca, desde, hasta, medio ancho).
+# Tablero de dock_segment: 4 x 2.2 m; el borde transitable queda 5 cm afuera de los tablones, como en la pasarela. La
+# punta que toca la pasarela se mete 0.6 m bajo sus tablones: si no, la unión de las dos zonas es un filo de 4 cm y el
+# contorno de los límites invisibles puede cerrarla (el muelle quedaba aislado detrás de una pared)
+LANDINGS = []
+for _pid, _x, _z, _yaw, _sc in W.CHECKPOINT_LANDINGS:
+    _sa, _ca = math.sin(math.radians(_yaw)), math.cos(math.radians(_yaw))
+    _hl, _hw = 2.0 * _sc, 1.1 * _sc
+    _near_neg = _ground_walk_dist(_x - _sa * _hl, _z - _ca * _hl) < _ground_walk_dist(_x + _sa * _hl, _z + _ca * _hl)
+    LANDINGS.append((_x, _z, _sa, _ca, -_hl - (0.6 if _near_neg else 0.05), _hl + (0.05 if _near_neg else 0.6), _hw + 0.05))
+
+
+def landing_dist(x, z):
+    """Distancia con signo al tablero de los muelles de santuario (<0 arriba)."""
+    d = 1e9
+    for lx, lz, sa, ca, u0, u1, hw in LANDINGS:
+        u = (x - lx) * sa + (z - lz) * ca
+        v = (x - lx) * ca - (z - lz) * sa
+        qu, qv = abs(u - (u0 + u1) * 0.5) - (u1 - u0) * 0.5, abs(v) - hw
+        d = min(d, math.hypot(max(qu, 0.0), max(qv, 0.0)) + min(max(qu, qv), 0.0))
+    return d
+
+
+def walk_dist(x, z):
+    """Distancia con signo al área transitable (<0 adentro)."""
+    return min(_ground_walk_dist(x, z), landing_dist(x, z))
 
 
 def path_info(x, z):
@@ -287,3 +314,85 @@ def face_color(x, z, h, nz, rng):
     if steep:
         return ramp(x, z, ["rock_brown_dark", "rock_brown", "rock_brown", "stone_moss"], rng, 0.06)
     return ramp(x, z, GRASS.get(reg, GRASS["jardin"]), rng)
+
+
+# --------------------------------------------------------------------------- límites invisibles
+def _zero_on_edge(p1, p2, v1, v2, exact):
+    if not exact:
+        t = v1 / (v1 - v2) if v1 != v2 else 0.5
+        return (p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t)
+    # bisección sobre walk_dist: una celda gruesa y las finas que comparten la arista dan el mismo punto
+    a, b = 0.0, 1.0
+    for _ in range(24):
+        m = (a + b) * 0.5
+        vm = walk_dist(p1[0] + (p2[0] - p1[0]) * m, p1[1] + (p2[1] - p1[1]) * m)
+        if (vm < 0) == (v1 < 0):
+            a = m
+        else:
+            b = m
+    t = (a + b) * 0.5
+    return (p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t)
+
+
+def _fine_boxes(x0, z0, step):
+    """Cajas (i0, j0, i1, j1) de la grilla gruesa alrededor de cada muelle: un tablero de 2.2 m de ancho no se resuelve
+    con celdas de 2 m, ahí el contorno se saca con celdas de 0.5 m. Margen chico a propósito: si la caja corta un
+    detalle que la grilla gruesa no ve (la cuña de agua entre la pasarela y la plataforma de la arena), el contorno
+    fino queda con puntas sueltas en el borde de la caja (validate_plan lo revisa)."""
+    boxes = []
+    for lx, lz, sa, ca, u0, u1, hw in LANDINGS:
+        pts = [(lx + sa * u + ca * v, lz + ca * u - sa * v) for u in (u0, u1) for v in (-hw, hw)]
+        boxes.append((math.floor((min(p[0] for p in pts) - 0.3 - x0) / step), math.floor((min(p[1] for p in pts) - 0.3 - z0) / step),
+                      math.ceil((max(p[0] for p in pts) + 0.3 - x0) / step), math.ceil((max(p[1] for p in pts) + 0.3 - z0) / step)))
+    return boxes
+
+
+def wall_segments(x0, z0, nx, nz, step=2.0, fine=0.5, window=None):
+    """Contorno walk_dist = 0 (marching squares) de la grilla de nx x nz celdas de 'step' m con origen (x0, z0): los
+    límites invisibles B__limites. window = (xa, za, xb, zb) limita el cálculo a las celdas que lo tocan (validador).
+    Fuera de las cajas de los muelles el resultado es el de siempre (interpolación lineal en celdas de 2 m)."""
+    boxes = _fine_boxes(x0, z0, step)
+    val = {}
+
+    def V(x, z):
+        k = (round(x, 4), round(z, 4))
+        if k not in val:
+            val[k] = walk_dist(x, z)
+        return val[k]
+
+    def in_box(x, z):
+        return any(x0 + bi0 * step - 1e-6 <= x <= x0 + bi1 * step + 1e-6 and z0 + bj0 * step - 1e-6 <= z <= z0 + bj1 * step + 1e-6
+                   for bi0, bj0, bi1, bj1 in boxes)
+
+    segs = []
+
+    def cell(cx, cz, s):
+        c = [(cx, cz), (cx + s, cz), (cx + s, cz + s), (cx, cz + s)]
+        v = [V(*p) for p in c]
+        pts = []
+        for k in range(4):
+            a, b = k, (k + 1) % 4
+            if (v[a] < 0) != (v[b] < 0):
+                pts.append(_zero_on_edge(c[a], c[b], v[a], v[b], in_box(*c[a]) and in_box(*c[b])))
+        if len(pts) == 2:
+            segs.append((pts[0], pts[1]))
+        elif len(pts) == 4:
+            segs.append((pts[0], pts[1])); segs.append((pts[2], pts[3]))
+
+    def wanted(cx, cz, s):
+        return window is None or (cx + s >= window[0] and cx <= window[2] and cz + s >= window[1] and cz <= window[3])
+
+    for j in range(nz):
+        for i in range(nx):
+            if any(bi0 <= i < bi1 and bj0 <= j < bj1 for bi0, bj0, bi1, bj1 in boxes):
+                continue
+            if wanted(x0 + i * step, z0 + j * step, step):
+                cell(x0 + i * step, z0 + j * step, step)
+    n = int(round(step / fine))
+    for bi0, bj0, bi1, bj1 in boxes:
+        for fj in range((bj1 - bj0) * n):
+            for fi in range((bi1 - bi0) * n):
+                cx, cz = x0 + bi0 * step + fi * fine, z0 + bj0 * step + fj * fine
+                if wanted(cx, cz, fine):
+                    cell(cx, cz, fine)
+    return segs

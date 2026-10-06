@@ -27,7 +27,7 @@ os.makedirs(PREV_DIR, exist_ok=True)
 rng = random.Random(1234)
 
 CELL = 2.5
-X0, X1, Z0, Z1 = -244, 244, -204, 196
+X0, X1, Z0, Z1 = W.MAP_BOUNDS
 WATER_PROPS = {"house_fisher", "boat_small", "lake_arena_platform", "dock_segment", "boardwalk_segment"}
 
 
@@ -392,28 +392,9 @@ def finish_mesh_builder(mb):
 
 # =========================================================================== límites (marching squares)
 def build_walls():
+    # el contorno lo saca world_terrain (el validador revisa con la misma grilla que nada encierre una reaparición)
     step = 2.0
-    nx = int((X1 - X0) / step); nz = int((Z1 - Z0) / step)
-    val = [[T.walk_dist(X0 + i * step, Z0 + j * step) for i in range(nx + 1)] for j in range(nz + 1)]
-    segs = []
-
-    def interp(p1, p2, v1, v2):
-        t = v1 / (v1 - v2) if v1 != v2 else 0.5
-        return (p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t)
-
-    for j in range(nz):
-        for i in range(nx):
-            c = [(X0 + i * step, Z0 + j * step), (X0 + (i + 1) * step, Z0 + j * step), (X0 + (i + 1) * step, Z0 + (j + 1) * step), (X0 + i * step, Z0 + (j + 1) * step)]
-            v = [val[j][i], val[j][i + 1], val[j + 1][i + 1], val[j + 1][i]]
-            pts = []
-            for k in range(4):
-                a, b = k, (k + 1) % 4
-                if (v[a] < 0) != (v[b] < 0):
-                    pts.append(interp(c[a], c[b], v[a], v[b]))
-            if len(pts) == 2:
-                segs.append((pts[0], pts[1]))
-            elif len(pts) == 4:
-                segs.append((pts[0], pts[1])); segs.append((pts[2], pts[3]))
+    segs = T.wall_segments(X0, Z0, int((X1 - X0) / step), int((Z1 - Z0) / step), step)
     mb = L.MeshBuilder("B__limites")
     for (ax, az), (bx, bz) in segs:
         ha, hb = H(ax, az), H(bx, bz)
