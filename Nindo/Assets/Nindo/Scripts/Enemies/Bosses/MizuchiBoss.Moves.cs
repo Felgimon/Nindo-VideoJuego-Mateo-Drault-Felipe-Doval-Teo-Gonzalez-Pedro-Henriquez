@@ -431,6 +431,13 @@ namespace Nindo
 
         float SweepAngle(float s) => Mathf.Lerp(-SweepHalf, SweepHalf, s) * sweepSign;
 
+        void ClearJetMarks()
+        {
+            jetLocked = false;
+            if (aimMark != null) { marks.Finish(aimMark, false); aimMark = null; }
+            for (int i = 0; i < sweepMarks.Length; i++) { marks.Finish(sweepMarks[i], false); sweepMarks[i] = null; }
+        }
+
         Vector3 SweepDir()
         {
             float s = Mathf.Clamp01((stepClock - tl.T) / SweepTime);
@@ -618,6 +625,10 @@ namespace Nindo
             anim.Play("BreachAir", 0.05f);
             anim.SetSpeed(33f / 30f / air);
             bool damaging = damage > 0f;
+            // ápice de hasta 'apex' m, más bajo si la cabeza saldría por arriba del cuadro: con la cámara mirando al norte,
+            // un salto de 5 m desde el agua del norte dejaba la cabeza afuera (simulado: hasta 14 % sobre el borde)
+            Vector3 mid = Vector3.Lerp(from, land, 0.5f);
+            while (apex > 3f && !OnScreen(mid + Vector3.up * (apex + 3.4f), 0.03f)) apex -= 0.5f;
             MizuchiMarks.Mark disc = null;
             if (damaging)
             {
@@ -663,7 +674,7 @@ namespace Nindo
             BeginSequence();
             Vector3 exit = PickRing(transform.position, true);
             yield return Leap(exit, true);
-            if (Interrupted) { EndSequence(); yield break; }
+            if (SeqBroken) { EndSequence(); yield break; }
             float b0 = Bearing(exit);
             float b1 = Bearing(PickRing(target.transform.position, false));
             float arc = Mathf.Abs(b1 - b0) * Mathf.Deg2Rad * WaterRing;
@@ -690,7 +701,7 @@ namespace Nindo
                 yield return new WaitForSeconds(0.07f);
             }
             ghost.Show(false);
-            if (Interrupted) { EndSequence(); yield break; }
+            if (SeqBroken) { EndSequence(); yield break; }
             Vector3 land = Predict(0.4f);
             WaterSplash.Column(emerge, 1.8f, 5f);
             Game.Audio?.Play("water_splash", emerge, 1f);
@@ -772,10 +783,13 @@ namespace Nindo
         IEnumerator WaveRoutine(AttackDef a)
         {
             BeginSequence();
-            Vector3 slam = RingPoint(0f);
+            // pegado a la baranda norte (1 m más adentro que el anillo): parado sobre la cola, con Kaito en la baranda sur
+            // la cabeza quedaba justo arriba del cuadro
+            Vector3 slam = Center + North * (WaterRing - 0.8f);
+            slam.y = WaterHeight;
             yield return Leap(slam, true);
             yield return new WaitForSeconds(0.2f);
-            if (Interrupted) { EndSequence(); yield break; }
+            if (SeqBroken) { EndSequence(); yield break; }
             transform.SetPositionAndRotation(slam, Quaternion.LookRotation(-North));
             SetHidden(false);
             anim.Play("GreatWave", 0.05f);
@@ -798,7 +812,7 @@ namespace Nindo
             bool sunk = false;
             while (Time.time < waveLaunch)
             {
-                if (Interrupted) { ClearWave(); EndSequence(); yield break; }
+                if (SeqBroken) { ClearWave(); EndSequence(); yield break; }
                 float k = 1f - (waveLaunch - Time.time) / BandWarn;
                 foreach (var m in bandMarks) if (m != null) m.Progress = Mathf.Clamp01(k * BandWarn / (BandWarn - TellStyle.BiasUnblockable));
                 if (!sunk && Time.time >= sinkAt) { sunk = true; anim.Play("Dive", 0.15f, 14f / 24f); }
@@ -931,7 +945,7 @@ namespace Nindo
             float t0 = Time.time;
             while (true)
             {
-                if (Interrupted) { ClearPillars(); EndSequence(); yield break; }
+                if (SeqBroken) { ClearPillars(); EndSequence(); yield break; }
                 float now = Time.time;
                 // rugido en loop (cuadros 14-30) mientras caen
                 if (anim.TryNormalizedTime("Roar", out float nt) && nt > 30f / 48f) anim.Play("Roar", 0.08f, 14f / 48f);
@@ -951,7 +965,7 @@ namespace Nindo
                 yield return null;
             }
             yield return new WaitForSeconds(0.2f);
-            if (Interrupted) { EndSequence(); yield break; }
+            if (SeqBroken) { EndSequence(); yield break; }
             // salto final desde la plataforma
             Vector3 land = Predict(0.4f);
             anim.Play("Dive", 0.1f);

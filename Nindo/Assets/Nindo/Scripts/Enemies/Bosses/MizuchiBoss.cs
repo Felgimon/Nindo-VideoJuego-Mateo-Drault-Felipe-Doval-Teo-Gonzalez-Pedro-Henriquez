@@ -52,6 +52,8 @@ namespace Nindo
         bool beachLanding, freeBeach;
         float beachLoopAt, savedImbalance;
         bool holdingCutscene, holdingLetterbox;
+        bool lurking;
+        float lurkAngle;
 
         protected override bool StepHeld => held;
 
@@ -99,6 +101,36 @@ namespace Nindo
             trailFinR = MakeTrail("pec_R1", body.PecTipR, mat);
             trailTail = MakeTrail("fluke_L1", body.FlukeTip, mat);
             if (agent != null) agent.radius = 1.2f;
+            if (!Seen) Lurk();
+        }
+
+        bool Seen => Game.Save != null && Game.Save.HasFlag(StoryDirector.BossSeenFlag(bossId));
+
+        /// <summary>
+        /// Antes de la presentación espera bajo el pozo de la cascada: la primera imagen de la arena (la grúa de la
+        /// cascada de StoryDirector) es la plataforma vacía y una sombra larga que da vueltas en el hervor. Sale en
+        /// Presentation. No se lo puede fijar ni pegar (guionado).
+        /// </summary>
+        void Lurk()
+        {
+            lurking = true;
+            EnterScripted();
+            SetHidden(true);
+            SetAirborne(true);
+            transform.position = Plunge;
+        }
+
+        void TickLurk()
+        {
+            var p = Game.Player;
+            bool near = p != null && CombatMath.FlatDistance(p.transform.position, Plunge) < 45f;
+            ghost.Show(near);
+            if (!near) return;
+            lurkAngle += Time.deltaTime * 0.45f;
+            Vector3 tangent = new Vector3(-Mathf.Sin(lurkAngle), 0f, Mathf.Cos(lurkAngle));
+            Vector3 pos = Plunge + new Vector3(Mathf.Cos(lurkAngle), 0f, Mathf.Sin(lurkAngle)) * 2.6f;
+            transform.SetPositionAndRotation(pos, Quaternion.LookRotation(tangent));
+            ghost.Swim(pos, tangent, WaterHeight);
         }
 
         BladeTrail MakeTrail(string baseBone, Transform tip, Material mat)
@@ -142,6 +174,13 @@ namespace Nindo
         {
             base.Update();
             if (body == null) return;
+            if (lurking) { TickLurk(); return; }
+            // un chorro cortado (golpe de habilidad, cambio de fase) no puede quedar disparando ni apuntando
+            if (State != EnemyState.Attack)
+            {
+                beam.Stop();
+                if (aimMark != null || jetLocked) ClearJetMarks();
+            }
             DriveBody();
             if (State == EnemyState.Exhausted && beachLoopAt > 0f && Time.time >= beachLoopAt)
             {
@@ -165,15 +204,18 @@ namespace Nindo
 
         /// <summary>
         /// Con la cámara de combate el borde de arriba toca el agua ~12 m más allá del foco: corriendo el foco hacia la
-        /// cascada entran el pie de las cortinas y el rocío. Menos corrimiento con Kaito ya del lado norte (si no, sus pies
-        /// se van por abajo).
+        /// cascada (hasta 2.5 m) entran el pie de las cortinas y el rocío. El foco ya se corre solo hacia el koi (CameraDirector:
+        /// 45 % hasta 6 m); entre los dos nunca más de 4.5 m al norte de Kaito o sus pies se van por abajo (simulado: con
+        /// Kaito en la baranda sur y el koi al norte quedaban en el 1 % de abajo de la pantalla; así, en el 14 % o más).
         /// </summary>
         void UpdateFraming()
         {
             var cam = Game.Camera;
             if (cam == null || target == null) return;
-            float along = Vector3.Dot((target.transform.position - Center).Flat(), North);
-            cam.SetFocusBias(North * Mathf.Lerp(2.5f, 0.5f, Mathf.InverseLerp(-4f, 6f, along)));
+            Vector3 toBoss = (transform.position - target.transform.position).Flat();
+            float d = toBoss.magnitude;
+            float lean = d > 0.01f ? Vector3.Dot(toBoss, North) * Mathf.Min(0.45f, 6f / d) : 0f;
+            cam.SetFocusBias(North * Mathf.Clamp(4.5f - lean, 0f, 2.5f));
         }
 
         // ------------------------------------------------------------------ ICameraProfile
@@ -325,10 +367,13 @@ namespace Nindo
             HoldCutscene(false);
             inCinematic = false;
             beachLoopAt = 0f; freeBeach = false;
+            lurking = false;
             base.ResetEnemy();
             if (body != null) { body.SetPhase(0); body.SetHidden(false); }
             baseFinisherHealth = config.finisherHealth;
             Game.Camera?.SetFocusBias(Vector3.zero);
+            // Kaito murió en otro lado antes de conocerlo: vuelve a esperar en el pozo
+            if (body != null && !Seen) Lurk();
         }
 
         /// <summary>Corta cualquier especial en curso y deja al koi sano y salvo sobre la plataforma.</summary>
@@ -405,7 +450,8 @@ namespace Nindo
             if (!on) Game.Input?.ClearBuffer();
         }
 
-        bool Interrupted => !IsAlive || State == EnemyState.Executed || target == null || !target.IsAlive;
+        /// <summary>El especial en curso se cortó: lo remataron, un golpe de habilidad lo sacó del ataque o Kaito murió.</summary>
+        bool SeqBroken => !IsAlive || State != EnemyState.Attack || target == null || !target.IsAlive;
 
         // ================================================================== fases
         /// <summary>
@@ -463,7 +509,7 @@ namespace Nindo
             yield return new WaitForSeconds(1.2f);
 
             // toma: baja, sobre la plataforma, mirando la cortina; sigue al koi
-            Vector3 camPos = Center - North * 7.5f + East * 3f + Vector3.up * 2.2f;
+            Vector3 camPos = BehindKaito(3.5f, 2f, 2.1f);
             Vector3 look = transform.position + Vector3.up * 2f;
             int shot = Game.Camera != null ? Game.Camera.PlayShot(t =>
             {
@@ -538,6 +584,15 @@ namespace Nindo
             StaggerCooldowns(1, 0.6f);
         }
 
+        /// <summary>Cámara baja por detrás de Kaito (mirando hacia la cascada): Kaito en primer plano, el koi y el agua atrás.</summary>
+        Vector3 BehindKaito(float back, float side, float up)
+        {
+            Vector3 k = Game.Player != null ? Game.Player.transform.position : Center - North * 4f;
+            Vector3 c = k - North * back + East * side;
+            c.y = k.y + up;
+            return c;
+        }
+
         // ================================================================== presentación
         /// <summary>
         /// Primera vez en la arena (StoryDirector.BossIntroRoutine, ya dentro de la cinemática): el pozo de la cascada
@@ -547,13 +602,16 @@ namespace Nindo
         public IEnumerator Presentation(PlayerController p)
         {
             inCinematic = true;
+            lurking = false;
+            ghost?.Show(false);
             Game.Save.SetFlag(StoryDirector.FallsSeenFlag);
             Vector3 land = spawnPos;
             Vector3 pool = Plunge;
             SetHidden(true);
             SetAirborne(true);
             transform.SetPositionAndRotation(pool, Quaternion.LookRotation(-North));
-            Vector3 camPos = Center - North * 5.5f + East * 2.5f + Vector3.up * 1.9f;
+            if (p != null) p.ScriptedFace(pool);
+            Vector3 camPos = BehindKaito(4f, 1.8f, 2.3f);
             Vector3 look = pool + Vector3.up * 2f;
             int shot = Game.Camera != null ? Game.Camera.PlayShot(t =>
             {
@@ -631,7 +689,9 @@ namespace Nindo
             Game.Camera?.CancelAllShots();     // el plano genérico de muerte de jefe: este tiene el suyo
             HoldCutscene(true, true);
             if (Game.Player != null) Game.Player.ScriptedFace(transform.position);
-            Vector3 camPos = Center - North * 8f + East * 3.5f + Vector3.up * 2.4f;
+            // al sur del koi (del lado contrario a la cascada): lo ve echado y después subiendo la cortina
+            Vector3 camPos = transform.position - North * 7.5f + East * 3f;
+            camPos.y = DeckHeight + 2.4f;
             Vector3 look = transform.position + Vector3.up * 2f;
             int shot = Game.Camera != null ? Game.Camera.PlayShot(t =>
             {

@@ -166,7 +166,7 @@ namespace Nindo
         /// chorro). Fase 2 (55 %): corrompido, inunda la plataforma; combo de ritmo, peloteo de la perla, chorro barrido,
         /// la ola de la cascada y los pilares de agua. Fase 3 (25 %): perlas de tormenta. Los especiales los maneja
         /// MizuchiBoss. Tiempos de las hojas de contacto de Art/Characters/Mizuchi/Mizuchi.fbx.json (apex = pose cargada,
-        /// activeStart = contacto); la mordida ya adelanta el cuerpo 0.6 m en el clip, la embestida del código es el resto.
+        /// activeStart = contacto); la mordida ya adelanta el cuerpo 0.6 m en el clip.
         /// </summary>
         public static EnemyConfig Mizuchi()
         {
@@ -182,10 +182,12 @@ namespace Nindo
                 animSpotted = "Roar", animDeath = "Freed", animParried = "Parried",
             };
             // ---- fase 1
-            var bite = Hit("Bite", 16, 0.5758f, 0.697f, range: 3.4f, arc: 70, lunge: 1.6f, telegraph: 0.22f, kb: 1f, apex: 0.4545f);
+            // embestidas cortas: el tope de Enemy se mide con el radio del cuerpo (1.3) y la boca está 2.9 m adelante;
+            // con más avance el hocico atravesaba a Kaito
+            var bite = Hit("Bite", 16, 0.5758f, 0.697f, range: 3.4f, arc: 70, lunge: 0.6f, telegraph: 0.22f, kb: 1f, apex: 0.4545f);
             bite.sfx = "koi_snap";
-            var finL = Hit("FinL", 14, 0.5556f, 0.6667f, range: 3.3f, arc: 150, lunge: 0.9f, telegraph: 0.15f, apex: 0.4074f);
-            var finR = Hit("FinR", 14, 0.4167f, 0.5417f, range: 3.3f, arc: 150, lunge: 0.7f, apex: 0.25f);
+            var finL = Hit("FinL", 14, 0.5556f, 0.6667f, range: 3.3f, arc: 150, lunge: 0.5f, telegraph: 0.15f, apex: 0.4074f);
+            var finR = Hit("FinR", 14, 0.4167f, 0.5417f, range: 3.3f, arc: 150, lunge: 0.4f, apex: 0.25f);
             finL.sfx = finR.sfx = "fin_whoosh";
             // el coletazo barre el disco entero desde el centro del cuerpo y no corrige la puntería: castiga quedarse detrás
             var tail = Hit("TailWhip", 22, 0.5476f, 0.7143f, range: 4.6f, arc: 360, kind: AttackKind.Heavy, lunge: 0f, telegraph: 0.28f, kb: 2.4f, apex: 0.4524f);
