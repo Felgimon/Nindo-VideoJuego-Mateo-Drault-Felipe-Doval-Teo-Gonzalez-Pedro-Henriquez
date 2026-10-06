@@ -172,6 +172,58 @@ MonoBehaviour:
     stateLengths:
     - 0.0333
     - 2.4667
+  - id: mizuchi_koi
+    model: {fileID: 919132149155446097, guid: 6139008ced08c9004d9add9a1249ff10, type: 3}
+    controller: {fileID: 9100000, guid: 9df10ea5ced26eedabce2179ffaf66a1, type: 2}
+    height: 3.951
+    modelYaw: 0
+    materialOverrides: []
+    stateNames:
+    - Idle
+    - Hover
+    - Swim
+    - Bite
+    - FinL
+    - FinR
+    - TailWhip
+    - Spit
+    - Return
+    - Jet
+    - Dive
+    - BreachAir
+    - BreachLand
+    - GreatWave
+    - Roar
+    - Intro
+    - Hit
+    - Parried
+    - Guard
+    - Exhausted
+    - Freed
+    - ClimbFalls
+    stateLengths:
+    - 2.0
+    - 2.0
+    - 1.0
+    - 1.1
+    - 0.9
+    - 0.8
+    - 1.4
+    - 1.2
+    - 0.4
+    - 2.2
+    - 0.8
+    - 1.1
+    - 1.8
+    - 1.6
+    - 1.6
+    - 3.0
+    - 0.4667
+    - 0.7
+    - 1.2
+    - 2.4
+    - 4.0
+    - 1.2
   zones:
   - {fileID: 919132149155446097, guid: 48325740ec032fec89b449ccce6bc26f, type: 3}
   - {fileID: 919132149155446097, guid: 6425a65ff005d48864f10290b6d60d9c, type: 3}
