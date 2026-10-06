@@ -337,11 +337,12 @@ namespace Nindo
             dialogueGroup.alpha = 0f;
             var panel = UIFactory.Sliced("Panel", dialogueRoot, UISprites.InkPanel, Color.white, 200f);
             panel.rectTransform.Fill(new Vector2(-40f, 0f), new Vector2(40f, 0f));
-            speakerRibbon = UIFactory.Sliced("Ribbon", dialogueRoot, UISprites.Ribbon, UIFactory.Red, 62f);
+            // nombre sobre una pincelada de tinta (antes una cinta roja: se confundía con la bandana de la vida)
+            speakerRibbon = UIFactory.Image("Swash", dialogueRoot, new Color(0.043f, 0.039f, 0.051f, 0.92f), UISprites.BrushSwash);
             speakerRibbonRt = speakerRibbon.rectTransform;
             Place(speakerRibbonRt, new Vector2(0f, 1f), new Vector2(-14f, 30f), new Vector2(320, 62));
             speakerRibbonRt.pivot = new Vector2(0f, 1f);
-            // el nombre va aparte de la cinta (no se aplasta cuando la cinta se desenrolla)
+            // el nombre va aparte de la pincelada (no se aplasta mientras se pinta)
             dialogueSpeaker = UIFactory.NoWrap(UIFactory.Text("Speaker", dialogueRoot, "", 34, UIFactory.Paper, new Vector2(0f, 1f), new Vector2(92f, 0f), new Vector2(400, 50), TextAlignmentOptions.Left, true));
             dialogueSpeaker.rectTransform.pivot = new Vector2(0f, 0.5f);   // centrado en la cinta (que va de +30 a -32)
             UIFactory.Outline(dialogueSpeaker, 0.15f);
@@ -354,13 +355,14 @@ namespace Nindo
             dialogueHintRt.localRotation = Quaternion.Euler(0, 0, -90f);
         }
 
-        /// <summary>Color de la cinta de quien habla: Kaito rojo (su bandana), el abuelo índigo, Kage violeta, el clan carmesí oscuro.</summary>
+        /// <summary>Color del nombre de quien habla (claro, se lee sobre la tinta): Kaito dorado (su bandana amarilla),
+        /// el abuelo índigo claro, Kage violeta, el clan carmesí.</summary>
         static Color SpeakerColor(string s)
         {
-            if (s == StoryText.Kaito) return UIFactory.Red;
-            if (s == StoryText.Abuelo) return new Color(0.18f, 0.23f, 0.43f);
-            if (s == StoryText.Kage) return new Color(0.29f, 0.16f, 0.42f);
-            return new Color(0.38f, 0.06f, 0.08f);
+            if (s == StoryText.Kaito) return UIFactory.Gold;
+            if (s == StoryText.Abuelo) return new Color(0.66f, 0.76f, 1f);
+            if (s == StoryText.Kage) return new Color(0.8f, 0.64f, 1f);
+            return new Color(1f, 0.46f, 0.4f);
         }
 
         /// <summary>Muestra líneas de diálogo; se avanza con atacar/interactuar/confirmar.</summary>
@@ -375,7 +377,7 @@ namespace Nindo
                 {
                     lastSpeaker = lines[i].speaker;
                     dialogueSpeaker.text = lastSpeaker;
-                    speakerRibbon.color = SpeakerColor(lastSpeaker);
+                    dialogueSpeaker.color = SpeakerColor(lastSpeaker);
                     speakerWidth = Mathf.Max(300f, dialogueSpeaker.GetPreferredValues(lastSpeaker, 9999f, 50f).x + 160f);
                     speakerSwipe = 0f;
                 }
@@ -439,7 +441,7 @@ namespace Nindo
             dialogueRoot.SetPos(new Vector2(0f, 40f - 24f * (1f - UIAnim.OutCubic(dialogueGroup.alpha))));
             if (speakerSwipe < 1f)
             {
-                // con cada cambio de quien habla la cinta se vuelve a desenrollar desde el nudo
+                // con cada cambio de quien habla la pincelada se vuelve a pintar de izquierda a derecha
                 speakerSwipe = Mathf.MoveTowards(speakerSwipe, 1f, dt / 0.2f);
                 speakerRibbonRt.sizeDelta = new Vector2(Mathf.Lerp(110f, speakerWidth, UIAnim.OutBack(speakerSwipe)), 62f);
                 dialogueSpeaker.alpha = Mathf.Clamp01((speakerSwipe - 0.4f) / 0.4f);

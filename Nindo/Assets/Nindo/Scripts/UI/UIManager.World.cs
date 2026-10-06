@@ -69,13 +69,14 @@ namespace Nindo
             lockImg = chev;
             chev.enabled = false;
 
-            // remate: cinta roja con la tecla, el ícono y "Ejecutar"
+            // remate: la tecla, el ícono y "Ejecutar" sobre una pincelada de tinta, como el aviso de interactuar (antes
+            // una cinta roja: se confundía con la bandana de la vida). Lo distinguen el oro del texto y el ícono
             finisherRoot = UIFactory.Rect("Finisher", world, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(300, 60));
-            finisherRibbon = UIFactory.Sliced("Ribbon", finisherRoot, UISprites.Ribbon, UIFactory.Red, 60f);
-            finisherRibbon.rectTransform.Fill(new Vector2(-30f, 0f), Vector2.zero);
+            finisherRibbon = UIFactory.Image("Swash", finisherRoot, new Color(0.043f, 0.039f, 0.051f, 0.8f), UISprites.BrushSwash);
+            finisherRibbon.rectTransform.Fill(new Vector2(-30f, -8f), new Vector2(30f, 8f));
             finisherKey = UIFactory.KeyCap(finisherRoot, "F", 44f, new Vector2(0f, 0.5f), new Vector2(42f, 1f));
             finisherIcon = UIFactory.Centered("Icon", finisherRoot, UIFactory.Gold, new Vector2(0f, 0.5f), new Vector2(90f, 0f), new Vector2(36, 36), UISprites.Finisher);
-            finisherLabel = UIFactory.NoWrap(UIFactory.Text("Label", finisherRoot, "Ejecutar", 30, UIFactory.Paper, new Vector2(0f, 0.5f), new Vector2(112f, 0f), new Vector2(200, 50), TextAlignmentOptions.Left, true));
+            finisherLabel = UIFactory.NoWrap(UIFactory.Text("Label", finisherRoot, "Ejecutar", 30, UIFactory.Gold, new Vector2(0f, 0.5f), new Vector2(112f, 0f), new Vector2(200, 50), TextAlignmentOptions.Left, true));
             finisherLabel.rectTransform.pivot = new Vector2(0f, 0.5f);
             UIFactory.Outline(finisherLabel, 0.2f);
             finisherRoot.gameObject.SetActive(false);
@@ -216,8 +217,8 @@ namespace Nindo
                 if (afford != finisherAfford)
                 {
                     finisherAfford = afford;
-                    // sin Espíritu la cinta se apaga y dice qué falta (el dragón raya cuánto: DenySpirit(costo))
-                    finisherRibbon.color = afford == 1 ? UIFactory.Red : new Color(0.36f, 0.34f, 0.37f);
+                    // sin Espíritu el texto se apaga y dice qué falta (el dragón raya cuánto: DenySpirit(costo))
+                    finisherLabel.color = afford == 1 ? UIFactory.Gold : new Color(0.62f, 0.59f, 0.56f);
                     finisherLabel.text = afford == 1 ? "Ejecutar" : "Falta Espíritu";
                     finisherLabel.fontSize = afford == 1 ? 30 : 26;
                     finisherIcon.enabled = afford == 1;

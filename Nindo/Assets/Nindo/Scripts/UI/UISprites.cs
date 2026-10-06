@@ -25,7 +25,6 @@ namespace Nindo
         public static Sprite BrushLine => Get("BrushLine");
         public static Sprite InkPanel => Get("InkPanel");
         public static Sprite InkCard => Get("InkCard");
-        public static Sprite Ribbon => Get("Ribbon");
         public static Sprite KeyCap => Get("KeyCap");
         public static Sprite KeyRound => Get("KeyRound");
         public static Sprite Kunai => Get("Kunai");

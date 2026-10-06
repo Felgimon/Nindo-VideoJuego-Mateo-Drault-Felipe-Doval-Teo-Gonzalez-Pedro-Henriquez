@@ -166,11 +166,12 @@ namespace Nindo
             if (C != null) PlayVfx(C.vfxDamaged, p, Dir(dir));
         }
 
-        public void DashBurst(Vector3 pos, Vector3 dir)
-        {
-            Emit(dust, pos + Vector3.up * 0.1f, Dir(-dir));
-            if (C != null) PlayVfx(C.vfxLines, pos + Vector3.up * 0.8f, Dir(dir), 1.2f);
-        }
+        // el dash ya se lee con las imágenes residuales: las tres franjas (LinesAttack, columna vertical) duplicaban
+        // el aviso y no seguían la dirección; esa idea vive ahora en el tajo del remate (FinisherSlash)
+        public void DashBurst(Vector3 pos, Vector3 dir) => Emit(dust, pos + Vector3.up * 0.1f, Dir(-dir));
+
+        /// <summary>Tajo de tres franjas (tinta y dos filos dorados) a lo largo del recorrido del remate.</summary>
+        public void FinisherSlash(Vector3 from, Vector3 to, bool rage) => FinisherStreak.Spawn(from, to, rage);
 
         public void DodgeSpark(Vector3 p) => Emit(sparksWhite, p, Quaternion.identity, 0.6f, 0.6f);
 

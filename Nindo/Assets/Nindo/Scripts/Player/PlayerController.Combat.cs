@@ -575,7 +575,7 @@ namespace Nindo
                     Vector3 behind = e.transform.position + dir * (e.Radius + 1.4f);
                     Game.FX?.AfterImages(model != null ? model : transform, 0.12f, 0.02f, true);
                     Teleport(behind, Quaternion.LookRotation(dir));
-                    Game.FX?.SlashLine(from + Vector3.up, behind + Vector3.up);
+                    Game.FX?.FinisherSlash(from + Vector3.up, behind + Vector3.up, RageActive);
                     Game.FX?.Execution(e.AimPoint, dir);
                     Game.Audio?.Play("finisher_hit", e.transform.position, 1f);
                     Game.Camera?.CancelShot(finisherShot);

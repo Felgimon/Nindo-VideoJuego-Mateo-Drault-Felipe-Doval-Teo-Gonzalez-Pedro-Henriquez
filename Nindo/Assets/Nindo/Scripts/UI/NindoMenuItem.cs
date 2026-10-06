@@ -6,22 +6,21 @@ using UnityEngine.UI;
 namespace Nindo
 {
     /// <summary>
-    /// Cómo se ve el ítem elegido de un menú (botón, fila de opciones): una cinta roja de bandana se desenrolla
-    /// detrás del texto, entra un kunai dorado de cursor y la letra pasa de gris a papel y crece un poco.
+    /// Cómo se ve el ítem elegido de un menú (botón, fila de opciones): entra un kunai dorado de cursor que cada
+    /// tanto "pincha" hacia el texto, y la letra pasa de gris apagado a papel y crece un poco. Un solo indicador:
+    /// la cinta roja que había detrás se confundía con la bandana de la vida y repetía lo que ya dice el kunai.
     /// Reemplaza al tinte de color del Button de Unity: con teclado o mando el elegido quedaba MÁS oscuro
     /// que los demás (luma 0.076 contra 0.087) y no había forma de saber dónde estaba el foco.
     /// Va en el mismo GameObject que el Selectable (recibe sus eventos de selección).
     /// </summary>
     public class NindoMenuItem : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, ISubmitHandler, IPointerClickHandler
     {
-        public RectTransform ribbon;          // Image Sliced con pivote a la izquierda: se le anima el ancho
-        public Image ribbonImage;
         public RectTransform cursor;          // kunai
         public Image cursorImage;
         public TextMeshProUGUI label;
-        public float ribbonWidth = 470f, ribbonMin = 90f;
         public Vector2 cursorPos;
-        public Color labelNormal = new Color(0.78f, 0.74f, 0.66f, 1f);
+        // los no elegidos bien apagados: sin la cinta, el contraste de la letra es lo que separa al elegido
+        public Color labelNormal = new Color(0.62f, 0.59f, 0.53f, 1f);
         public Color labelSelected = UIFactory.Paper;
         public bool silent;                    // sin sonido de "mover" (la primera selección al abrir un panel)
 
@@ -68,7 +67,7 @@ namespace Nindo
         {
             float dt = Time.unscaledDeltaTime;
             float target = selected ? 1f : 0f;
-            if (Mathf.Approximately(k, target) && punch <= 0f) return;
+            if (Mathf.Approximately(k, target) && punch <= 0f && !selected) return;
             // entra en 0.12 s y sale en 0.08 s (el que se va no tiene que distraer)
             k = Mathf.MoveTowards(k, target, dt / (selected ? UIAnim.Fast : 0.08f));
             punch = Mathf.MoveTowards(punch, 0f, dt / 0.18f);
@@ -78,15 +77,12 @@ namespace Nindo
         void Apply()
         {
             float e = selected ? UIAnim.OutCubic(k) : k * k;
-            if (ribbon != null)
-            {
-                ribbon.sizeDelta = new Vector2(Mathf.Lerp(ribbonMin, ribbonWidth, e), ribbon.sizeDelta.y);
-                var c = ribbonImage.color; c.a = Mathf.Clamp01(e * 1.6f); ribbonImage.color = c;
-                ribbonImage.enabled = e > 0.001f;
-            }
             if (cursor != null)
             {
-                cursor.anchoredPosition = cursorPos + new Vector2(-20f * (1f - e), 0f);
+                // entra desde 24 px a la izquierda; elegido, pincha 6 px hacia el texto cada 1.1 s (atrae la vista
+                // sin vibrar todo el tiempo)
+                float poke = selected ? Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f / 1.1f)), 6f) * 6f : 0f;
+                cursor.anchoredPosition = cursorPos + new Vector2(-24f * (1f - e) + poke * e, 0f);
                 var c = cursorImage.color; c.a = e; cursorImage.color = c;
                 cursorImage.enabled = e > 0.001f;
             }
@@ -95,7 +91,7 @@ namespace Nindo
                 label.color = Color.Lerp(labelNormal, labelSelected, e);
                 // al confirmar: se hunde y vuelve
                 float press = punch > 0f ? Mathf.Sin(punch * Mathf.PI) * 0.08f : 0f;
-                label.rectTransform.localScale = Vector3.one * (1f + 0.06f * e - press);
+                label.rectTransform.localScale = Vector3.one * (1f + 0.07f * e - press);
             }
         }
     }

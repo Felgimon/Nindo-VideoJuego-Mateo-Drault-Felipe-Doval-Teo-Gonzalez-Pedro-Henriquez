@@ -241,8 +241,8 @@ namespace Nindo
 
         // ================================================================== menús
         /// <summary>
-        /// Ítem de menú "Nindō": texto con pincel, cinta roja que se desenrolla al elegirlo y kunai de cursor
-        /// (NindoMenuItem). El rect del ítem mide 'size'; la cinta arranca en x = -24 para que el nudo asome.
+        /// Ítem de menú "Nindō": texto con pincel y kunai de cursor al elegirlo (NindoMenuItem). El rect del ítem
+        /// mide 'size'.
         /// </summary>
         public static Button MenuItem(string name, Transform parent, string label, Vector2 size, UnityAction onClick, float fontSize = 38f, TextAlignmentOptions align = TextAlignmentOptions.Left)
         {
@@ -259,23 +259,17 @@ namespace Nindo
             return b;
         }
 
-        /// <summary>Le pone a un Selectable (en 'rt') la cinta, el kunai y la etiqueta de NindoMenuItem.</summary>
+        /// <summary>Le pone a un Selectable (en 'rt') el kunai y la etiqueta de NindoMenuItem.</summary>
         public static NindoMenuItem AttachFocus(RectTransform rt, string label, float fontSize, TextAlignmentOptions align, Vector2 size, bool labelOwnsRow = true)
         {
             var item = rt.gameObject.AddComponent<NindoMenuItem>();
-            float h = Mathf.Min(size.y, 74f);
-            var rib = Sliced("Ribbon", rt, UISprites.Ribbon, Red, h);
-            var rrt = rib.rectTransform;
-            rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f); rrt.pivot = new Vector2(0f, 0.5f);
-            rrt.anchoredPosition = new Vector2(-34f, -2f); rrt.sizeDelta = new Vector2(size.x + 50f, h);
-            var cur = Centered("Cursor", rt, Gold, new Vector2(0f, 0.5f), new Vector2(-62f, 0f), new Vector2(72f, 25f), UISprites.Kunai);
-            var t = Text("Label", rt, label, fontSize, PaperDim, align, true);
+            var cur = Centered("Cursor", rt, Gold, new Vector2(0f, 0.5f), new Vector2(-62f, 0f), new Vector2(80f, 28f), UISprites.Kunai);
+            var t = Text("Label", rt, label, fontSize, item.labelNormal, align, true);
             NoWrap(t);
             var trt = t.rectTransform;
             trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
             trt.offsetMin = new Vector2(align == TextAlignmentOptions.Left ? 70f : 0f, 0f); trt.offsetMax = Vector2.zero;
             if (labelOwnsRow) Outline(t, 0.12f);
-            item.ribbon = rrt; item.ribbonImage = rib; item.ribbonWidth = size.x + 50f; item.ribbonMin = Mathf.Min(110f, size.x * 0.4f);
             item.cursor = cur.rectTransform; item.cursorImage = cur; item.cursorPos = new Vector2(-62f, 0f);
             item.label = t;
             item.Refresh();
