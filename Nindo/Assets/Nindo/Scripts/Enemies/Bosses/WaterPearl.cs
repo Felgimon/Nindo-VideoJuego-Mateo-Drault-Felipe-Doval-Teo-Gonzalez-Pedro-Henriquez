@@ -27,9 +27,14 @@ namespace Nindo
         static readonly Color Cyan = new Color(0.5f, 0.94f, 0.88f);
         static readonly Color Gold = new Color(1f, 0.85f, 0.42f);
         const float SpeedCap = 16f;
-        // cada vuelta del peloteo hacia Kaito dura al menos esto: el hyōshigi (0.38 s) siempre entra antes del golpe aunque
-        // Kaito se acerque; a 16 m/s y 3 m la vuelta eran 0.11 s
-        const float MinLeg = 0.55f;
+        // del parry de Kaito al próximo contacto (ida al koi + vuelta) pasa al menos esto: el hyōshigi (0.38 s) entra y
+        // queda tiempo de reaccionar aunque Kaito esté cerca. Se acorta con cada intercambio (el peloteo se acelera a la
+        // vista) pero nunca baja de RoundFast. Antes el mínimo era por tramo y un piso de 5 m/s lo pisaba: a 2.5 m la
+        // vuelta entera era 0.4 s
+        const float RoundSlow = 0.85f, RoundFast = 0.6f;
+        // más cerca que esto del hocico el koi no la devuelve (la revienta y corta el peloteo): a quemarropa no hay
+        // vuelta que se pueda leer, y tampoco se gana nada acercándose a pegarle durante el peloteo
+        public const float RallyNear = 3f;
 
         public MizuchiBoss Owner { get; private set; }
         public Mode Kind { get; private set; }
@@ -41,6 +46,10 @@ namespace Nindo
 
         Vector3 dir;
         float speed, life, hitRadius, size, homing;
+        // peloteo: velocidad "de ritmo" (+0.8 por tramo, como pide el diseño: +1.6 por intercambio), intercambios
+        // hechos y cuándo la devolvió Kaito (para medir la ida)
+        float baseSpeed, reflectedAt;
+        int exchanges;
         float damage;
         float knockback;
         bool done, batQueued;
@@ -65,6 +74,7 @@ namespace Nindo
             p.homing = mode == Mode.Rally ? 0.25f : 0f;
             p.life = mode == Mode.Rally ? 12f : 2.2f;
             p.done = false; p.batQueued = false; p.cued = false; p.glinted = false;
+            p.baseSpeed = speed; p.exchanges = 0; p.reflectedAt = Time.time;
             p.visual.localScale = Vector3.one * size;
             p.SetColor(false);
             p.trail.Clear();
@@ -139,11 +149,22 @@ namespace Nindo
             Vector3 snout = Owner.Snout;
             float toSnout = Mathf.Max(0f, CombatMath.FlatDistance(pos, snout) - 0.8f) / speed;
             float d = CombatMath.FlatDistance(snout, player);
-            return toSnout + Mathf.Max(0f, d - hitRadius) / BackSpeed(d);
+            if (d < RallyNear) return float.PositiveInfinity;
+            float outLeg = Time.time - reflectedAt + toSnout;
+            return toSnout + Mathf.Max(0f, d - hitRadius) / BackSpeed(d, outLeg);
         }
 
-        /// <summary>Velocidad de la vuelta hacia Kaito desde 'dist' m: +0.8 por golpe hasta 16 m/s, pero nunca menos de MinLeg s.</summary>
-        float BackSpeed(float dist) => Mathf.Min(Mathf.Min(SpeedCap, speed + 0.8f), Mathf.Max(5f, (dist - hitRadius) / MinLeg));
+        /// <summary>
+        /// Velocidad de la vuelta hacia Kaito desde 'dist' m, habiendo tardado 'outLeg' s la ida: la de ritmo (+0.8 por
+        /// tramo, hasta 16 m/s), salvo que la vuelta entera quedara por debajo del mínimo del intercambio.
+        /// </summary>
+        float BackSpeed(float dist, float outLeg)
+        {
+            float run = Mathf.Max(0.1f, dist - hitRadius);
+            float round = Mathf.Lerp(RoundSlow, RoundFast, exchanges / 4f);
+            float leg = Mathf.Max(round - outLeg, run / Mathf.Min(SpeedCap, baseSpeed + 0.8f));
+            return Mathf.Clamp(run / Mathf.Max(0.05f, leg), 2.5f, SpeedCap);
+        }
 
         /// <summary>Tiempo hasta pasar a 'radius' de 'p' en línea recta (infinito si pasa de largo o se deshace antes).</summary>
         public static float TimeToReach(Vector3 from, Vector3 dir, float speed, Vector3 p, float radius, float life = 99f)
@@ -227,7 +248,9 @@ namespace Nindo
             TowardKoi = true;
             cued = glinted = false;
             batQueued = false;
-            speed = Kind == Mode.Rally ? Mathf.Min(SpeedCap, speed + 0.8f) : 14f;
+            reflectedAt = Time.time;
+            if (Kind == Mode.Rally) baseSpeed = Mathf.Min(SpeedCap, baseSpeed + 0.8f);
+            speed = Kind == Mode.Rally ? baseSpeed : 14f;
             // la devuelta del abanico busca fuerte (si no, el parry perfecto de una perla de costado no llegaba nunca)
             if (Kind == Mode.Fan) homing = 1.2f;
             if (Owner != null) dir = (Owner.Snout - transform.position).Flat().normalized;
@@ -250,13 +273,15 @@ namespace Nindo
                 if (d <= 0.8f + speed * Time.deltaTime)
                 {
                     // el aviso de esta vuelta ya pudo sonar mientras venía (la ETA cuenta ida y vuelta): no se repite
-                    TowardKoi = false; batQueued = false;
                     var p = Game.Player;
-                    if (p != null)
-                    {
-                        dir = (p.transform.position - pos).Flat().normalized;
-                        speed = BackSpeed(CombatMath.FlatDistance(p.transform.position, pos));
-                    }
+                    float dk = p != null ? CombatMath.FlatDistance(p.transform.position, pos) : 0f;
+                    // Kaito se le vino encima: la revienta de un hocicazo y el peloteo termina (ni premio ni castigo)
+                    if (p == null || dk < RallyNear) { Burst(true); return; }
+                    TowardKoi = false; batQueued = false;
+                    dir = (p.transform.position - pos).Flat().normalized;
+                    speed = BackSpeed(dk, Time.time - reflectedAt);
+                    baseSpeed = Mathf.Min(SpeedCap, baseSpeed + 0.8f);
+                    exchanges++;
                     SetColor(false);
                     Owner.OnRallyBatted(this);
                 }

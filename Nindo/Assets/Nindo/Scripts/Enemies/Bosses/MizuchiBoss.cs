@@ -139,10 +139,17 @@ namespace Nindo
             return b != null && tip != null ? BladeTrail.Create(transform, b, tip, mat, TellStyle.TrailParry) : null;
         }
 
-        void OnEnable() { GameEvents.BossStarted += OnBossStarted; }
+        // Unity llama solo al OnEnable/OnDisable del tipo más derivado: los de Enemy (privados) no corren para el koi, así
+        // que acá se repite su alta y baja en el CombatDirector (si no, apagarlo y prenderlo vivo lo dejaba fuera de la lista)
+        void OnEnable()
+        {
+            if (Game.Combat != null && Health > 0) Game.Combat.Register(this);
+            GameEvents.BossStarted += OnBossStarted;
+        }
 
         void OnDisable()
         {
+            Game.Combat?.Unregister(this);
             GameEvents.BossStarted -= OnBossStarted;
             HoldCutscene(false);
         }
@@ -307,8 +314,14 @@ namespace Nindo
 
         public override HitResult ReceiveHit(in DamageInfo info)
         {
-            // bajo el agua, en el aire o en una cinemática no se le puede pegar (la katana no llega y no es justo para él)
-            if ((hidden || airborne || inCinematic) && info.sourceFaction == Faction.Player) return HitResult.Ignored;
+            if (info.sourceFaction == Faction.Player)
+            {
+                // bajo el agua o en una cinemática no se le puede pegar (la katana no llega y no es justo para él)
+                if (hidden || inCinematic) return HitResult.Ignored;
+                // en el aire o asomado detrás de la baranda (la ola) se lo ve: el tajo rebota con clang, como en el
+                // rugido, en vez de atravesarlo en silencio (eso se leía como un error)
+                if (airborne) { LastHitTime = Time.time; return HitResult.Blocked; }
+            }
             var r = base.ReceiveHit(info);
             if (State == EnemyState.Exhausted && r == HitResult.Hit)
             {
@@ -332,6 +345,24 @@ namespace Nindo
             if (State != EnemyState.Exhausted) { freeBeach = false; return; }
             stateDuration = seconds;
             nextAttackTime = Time.time + seconds + Random.Range(config.attackCooldown.x, config.attackCooldown.y);
+        }
+
+        /// <summary>
+        /// La regla común ("combo con un parry encima = agotado") varaba al koi con cada parry: la pelea se volvía
+        /// parry + 3.4 s de castigo y la barra de postura no significaba nada. Acá solo se vara con la postura llena
+        /// (4 pips: parry 1, perfecto 1.5, perla devuelta 1; el fallo del peloteo la llena entera) o si el patrón lo pide.
+        /// </summary>
+        protected override void ComboEnd()
+        {
+            if ((pattern == null || !pattern.exhaustAfter) && Imbalance < config.maxImbalance - 0.01f)
+            {
+                ReleaseToken();
+                pattern = null;
+                nextAttackTime = Time.time + Random.Range(config.attackCooldown.x, config.attackCooldown.y);
+                EnterGuard();
+                return;
+            }
+            base.ComboEnd();
         }
 
         protected override void BecomeExhausted()
@@ -460,6 +491,10 @@ namespace Nindo
         /// </summary>
         protected override void PhaseChange(int newPhase)
         {
+            // de a una: saltar de la 1 a la 3 (los dos umbrales en una misma ventana de castigo, o DebugPhase(2)) dejaba la
+            // fase 3 con el cuerpo blanco, sin inundación ni los valores corrompidos. La 3 entra con el próximo golpe
+            // después de la transición (Boss.OnDamaged vuelve a mirar los umbrales en cada golpe)
+            newPhase = Mathf.Min(newPhase, CurrentPhase + 1);
             CancelMoves();
             base.PhaseChange(newPhase);
             if (newPhase == 1)
@@ -681,6 +716,40 @@ namespace Nindo
         }
 
         /// <summary>
+        /// El remate común deja a Kaito "detrás" del centro del enemigo (raíz + radio + 1.4 m): en un cuerpo de 7.5 m eso
+        /// cae dentro de la cola y ahí se quedaba toda la liberación. Lo corre al costado de la silueta, mirándolo.
+        /// </summary>
+        void PushPlayerOutOfBody()
+        {
+            var p = Game.Player;
+            if (p == null || body == null) return;
+            Vector3 pp = p.transform.position;
+            Vector3 c = body.Closest(pp, out float r);
+            Vector3 u = (pp - c).Flat();
+            if (u.magnitude >= r + p.Radius + 0.4f) return;
+            // del lado en que ya estaba; si quedó justo sobre el eje, al costado del cuerpo que da a la cámara (sur)
+            if (u.sqrMagnitude < 1e-3f) u = Vector3.Dot(transform.right, North) > 0f ? -transform.right : transform.right;
+            u = u.Flat().normalized;
+            Vector3 q = OnDeck(c + u * (r + p.Radius + 1.1f), DeckRoom);
+            q.y = pp.y;
+            p.Teleport(q, Quaternion.LookRotation(-u));
+        }
+
+        // BeginExecution (código común) gira al enemigo de golpe hacia Kaito: en este cuerpo de 7.5 m echado de costado
+        // era un latigazo de hasta 180° en la pose del remate. Se le devuelve el giro que traía, antes de dibujar el cuadro
+        Quaternion liveRotation = Quaternion.identity;
+        bool executionRestored;
+
+        void LateUpdate()
+        {
+            if (State == EnemyState.Executed)
+            {
+                if (!executionRestored) { executionRestored = true; transform.rotation = liveRotation; }
+            }
+            else { liveRotation = transform.rotation; executionRestored = false; }
+        }
+
+        /// <summary>
         /// No cae ni se hace humo: la estaca salta, la tinta se le despega y queda blanco; nada hasta la cascada, la sube
         /// y en el labio se vuelve el dragón dorado (el del Espíritu del HUD) que se va hacia la luna. El sello limpio queda
         /// en el centro de la plataforma. La cascada se calma y el agua se va.
@@ -690,6 +759,7 @@ namespace Nindo
             inCinematic = true;
             Game.Camera?.CancelAllShots();     // el plano genérico de muerte de jefe: este tiene el suyo
             HoldCutscene(true, true);
+            PushPlayerOutOfBody();
             if (Game.Player != null) Game.Player.ScriptedFace(transform.position);
             // al sur del koi (del lado contrario a la cascada): lo ve echado y después subiendo la cortina
             Vector3 camPos = transform.position - North * 7.5f + East * 3f;
@@ -805,10 +875,13 @@ namespace Nindo
         }
 
         // ================================================================== pruebas (RunCommand del editor)
-        /// <summary>Salta a la fase 'p' (1 = corrompido, 2 = desesperación) con la vida justo debajo del umbral.</summary>
+        /// <summary>
+        /// Salta a la fase 'p' (1 = corrompido, 2 = desesperación) con la vida justo debajo del umbral. Desde la fase 1
+        /// pasa primero por la corrupción: DebugPhase(2) se vuelve a llamar (o se le pega) cuando termina.
+        /// </summary>
         public void DebugPhase(int p)
         {
-            if (!IsAlive || p <= CurrentPhase || p > phaseThresholds.Length) return;
+            if (!IsAlive || inCinematic || p <= CurrentPhase || p > phaseThresholds.Length) return;
             Health = Mathf.Min(Health, config.maxHealth * (phaseThresholds[p - 1] - 0.01f));
             PhaseChange(p);
         }

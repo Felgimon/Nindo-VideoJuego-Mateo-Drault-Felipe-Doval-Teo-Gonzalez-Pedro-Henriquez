@@ -362,6 +362,9 @@ namespace Nindo
             if (s == StoryText.Kaito) return UIFactory.Gold;
             if (s == StoryText.Abuelo) return new Color(0.66f, 0.76f, 1f);
             if (s == StoryText.Kage) return new Color(0.8f, 0.64f, 1f);
+            // el espíritu del abuelo (el dragón de la bandana): dorado pálido, aparte del dorado lleno de Kaito con quien
+            // alterna líneas; con el carmesí del clan se leía como enemigo
+            if (s == StoryText.Espiritu) return new Color(1f, 0.93f, 0.72f);
             return new Color(1f, 0.46f, 0.4f);
         }
 

@@ -201,13 +201,15 @@ namespace Nindo
             dive.special = "dive"; dive.specialParam = 3.6f; dive.tracking = false;
             // chorro: apunta, se traba 0.75 s antes de disparar y la línea queda fija (un paso al costado alcanza)
             var jet = Hit("Jet", 26, 0.5455f, 0.7576f, range: 11f, arc: 20, kind: AttackKind.Unblockable, lunge: 0f, telegraph: 0.3f, kb: 2.6f, apex: 0.4848f);
-            jet.special = "jet"; jet.specialParam = 11f; jet.tracking = false;
+            jet.special = "jet"; jet.specialParam = 11f; jet.tracking = false; jet.sfx = "jet_fire";
             // ---- fase 2: el torrente no retrocede con el parry (la postura igual suma) y cierra con un coletazo demorado
             var tBite = Torrente(bite); var tFinL = Torrente(finL); var tFinR = Torrente(finR); var tTail = Torrente(tail);
             tTail.telegraph = 0.45f;
             var rally = Hit("Spit", 18, 0.5556f, 0.5833f, range: 14f, arc: 60, lunge: 0f, telegraph: 0.25f, kb: 2f, apex: 0.4444f);
             rally.name = "Tama-asobi"; rally.special = "rally";
-            var sweep = jet.Clone(); sweep.name = "Chorro barrido"; sweep.special = "jetsweep";
+            // el barrido se traba 1 s antes (abanico más ancho que la línea): con más aviso la mira vive ~0.4 s antes de
+            // trabarse y se lee "apunta, se traba" como en el chorro (con 0.3 la mira duraba 0.1-0.2 s)
+            var sweep = jet.Clone(); sweep.name = "Chorro barrido"; sweep.special = "jetsweep"; sweep.telegraph = 0.7f;
             var wave = Hit("GreatWave", 24, 0.354f, 0.396f, range: 0.1f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, kb: 3f, apex: 0.25f);
             wave.special = "greatwave"; wave.tracking = false;
             var pillars = Hit("Roar", 20, 0.3f, 0.35f, range: 0.1f, arc: 360, kind: AttackKind.Unblockable, lunge: 0f, kb: 2.5f);
@@ -223,10 +225,10 @@ namespace Nindo
                 new AttackPattern { name = "Coletazo", steps = new[] { tail }, weight = 2.5f, maxRange = 4.8f, minAngle = 100f, cooldown = 4f },
                 new AttackPattern { name = "Perlas del Lago", steps = new[] { pearls }, weight = 1.2f, minRange = 6f, maxRange = 14f, cooldown = 5f, maxPhase = 0 },
                 new AttackPattern { name = "Salto del Dragón", steps = new[] { dive }, weight = 1f, minRange = 2f, maxRange = 30f, cooldown = 12f },
-                new AttackPattern { name = "Chorro", steps = new[] { jet }, weight = 0.9f, minRange = 4f, maxRange = 11f, cooldown = 9f, maxPhase = 0 },
+                new AttackPattern { name = "Chorro", steps = new[] { jet }, weight = 0.9f, minRange = 4f, maxRange = 11f, maxAngle = 35f, cooldown = 9f, maxPhase = 0 },
                 new AttackPattern { name = "Torrente", steps = new[] { tBite, tFinL, tFinR, tTail }, weight = 1.6f, maxRange = 3.6f, maxAngle = 70f, minPhase = 1 },
                 new AttackPattern { name = "Tama-asobi", steps = new[] { rally }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 14f, minPhase = 1 },
-                new AttackPattern { name = "Chorro barrido", steps = new[] { sweep }, weight = 1f, minRange = 4f, maxRange = 9f, cooldown = 8f, minPhase = 1 },
+                new AttackPattern { name = "Chorro barrido", steps = new[] { sweep }, weight = 1f, minRange = 4f, maxRange = 9f, maxAngle = 35f, cooldown = 8f, minPhase = 1 },
                 new AttackPattern { name = "Ola de la Cascada", steps = new[] { wave }, weight = 0.9f, minRange = 2f, maxRange = 30f, cooldown = 15f, minPhase = 1 },
                 new AttackPattern { name = "Pilares", steps = new[] { pillars }, weight = 0.8f, minRange = 2f, maxRange = 30f, cooldown = 20f, minPhase = 1 },
                 new AttackPattern { name = "Perlas de tormenta", steps = new[] { storm }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 6f, minPhase = 2 },

@@ -60,6 +60,10 @@ namespace Nindo
 
         // ------------------------------------------------------------------ pilares
         const float PillarRadius = 2.2f, PillarWarn = 1.1f, PillarFall = 0.35f, PillarGap = 0.45f;
+        // 6.5 + 2.2 de disco + el radio de Kaito deja ~0.35 m libres contra la baranda (9.8 m al lado del octógono).
+        // Simulado con la baranda: el que huye del disco más próximo solo se come el primero si corre derecho contra la
+        // baranda; el que se queda quieto, todos.
+        const float PillarInner = 6.5f;
         readonly Vector3[] pillarAt = new Vector3[4];
         readonly float[] pillarImpact = new float[4];
         readonly bool[] pillarDone = new bool[4], pillarDropped = new bool[4];
@@ -419,7 +423,10 @@ namespace Nindo
             if (aimMark != null) { marks.Finish(aimMark, false); aimMark = null; }
             Game.Audio?.Play("lock", jetOrigin, 0.9f, 0.02f);
             if (!sweep) return;
-            sweepSign = Random.value < 0.5f ? -1f : 1f;
+            // arranca del lado contrario a donde quedó Kaito y viene hacia él: le da el mayor tiempo antes de que el
+            // chorro llegue a su ángulo (si quedó justo en la línea, cualquiera de los dos lados)
+            float side = target != null ? Vector3.SignedAngle(jetDir, (target.transform.position - jetOrigin).Flat(), Vector3.up) : 0f;
+            sweepSign = Mathf.Abs(side) > 3f ? Mathf.Sign(side) : Random.value < 0.5f ? -1f : 1f;
             // el barrido dura SweepTime (0.8 s) de tramo activo: el clip se estira para acompañarlo
             tl.sustain = SweepTime;
             marks.ShowWedge(Ground(jetOrigin), jetDir, len, SweepHalf);
@@ -593,7 +600,17 @@ namespace Nindo
         {
             anim.Play("Dive", 0.1f);
             anim.SetSpeed(1f);
-            for (float t = 0f; t < 0.27f; t += Time.deltaTime) { TurnTo(exit, 10f); yield return null; }
+            // en un ataque (zambullida, ola) el giro previo es en la plataforma y se le puede pegar: si un golpe de
+            // habilidad lo saca del ataque no salta (antes volaba igual al lago y EndSequence lo traía de un tirón a la
+            // baranda). La transición de fase es guionada: ahí State nunca es Attack y no se corta
+            bool attacking = State == EnemyState.Attack;
+            for (float t = 0f; t < 0.27f; t += Time.deltaTime)
+            {
+                if (attacking && SeqBroken) yield break;
+                TurnTo(exit, 10f);
+                yield return null;
+            }
+            if (attacking && SeqBroken) yield break;
             Vector3 from = transform.position;
             float leap = Mathf.Clamp(CombatMath.FlatDistance(from, exit) / 11f, 0.45f, 0.85f);
             // el tramo del salto del clip (cuadros 8-22) dura lo que dura el arco
@@ -796,6 +813,7 @@ namespace Nindo
             Vector3 slam = Center + North * (WaterRing - 0.8f);
             slam.y = WaterHeight;
             yield return Leap(slam, true);
+            if (SeqBroken) { EndSequence(); yield break; }
             yield return new WaitForSeconds(0.2f);
             if (SeqBroken) { EndSequence(); yield break; }
             transform.SetPositionAndRotation(slam, Quaternion.LookRotation(-North));
@@ -896,8 +914,10 @@ namespace Nindo
 
         void PlacePillar(int i)
         {
-            Vector3 c = i == 0 && target != null ? target.transform.position : Predict(0.6f);
-            // a 3 m o más de los anteriores: entre pilar y pilar siempre queda por dónde salir
+            // el primero cae sobre Kaito; los demás donde va a estar, pero nunca más afuera que PillarInner: el que
+            // huyó hasta la baranda queda fuera de su alcance (si se clavaran contra la baranda no habría salida)
+            Vector3 c = i == 0 && target != null ? target.transform.position : OnDeck(Predict(0.6f), PillarInner);
+            // a 3 m o más de los anteriores, así no se apilan en el mismo lugar (los discos de 2.2 m igual se tocan)
             for (int j = 0; j < i; j++)
             {
                 Vector3 d = (c - pillarAt[j]).Flat();
@@ -905,7 +925,7 @@ namespace Nindo
                 if (d.sqrMagnitude < 0.01f) d = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
                 c = pillarAt[j] + d.normalized * 3f;
             }
-            c = OnDeck(c, 8.6f);
+            c = OnDeck(c, i == 0 ? 8.6f : PillarInner);
             pillarAt[i] = c;
             pillarImpact[i] = Time.time + PillarWarn;
             pillarDone[i] = pillarDropped[i] = false;
@@ -936,8 +956,9 @@ namespace Nindo
 
         /// <summary>
         /// Se para en la plataforma y ruge (se le puede pegar: no se interrumpe): cuatro columnas de agua caen del cielo,
-        /// la primera donde está Kaito y las demás donde va a estar, a 3 m o más una de otra, cada una con 1.1 s de disco
-        /// rojo. Después salta sobre Kaito (disco de 3.6 m) y queda varado.
+        /// la primera donde está Kaito y las demás donde va a estar (sin pasar de 6.5 m del centro, así pegado a la
+        /// baranda siempre hay salida), a 3 m o más una de otra, cada una con 1.1 s de disco rojo. Después salta sobre
+        /// Kaito (disco de 3.6 m) y queda varado.
         /// </summary>
         IEnumerator PillarRoutine(AttackDef a)
         {
@@ -977,7 +998,12 @@ namespace Nindo
             // salto final desde la plataforma
             Vector3 land = Predict(0.4f);
             anim.Play("Dive", 0.1f);
-            for (float t = 0f; t < 0.27f; t += Time.deltaTime) { TurnTo(land, 10f); yield return null; }
+            for (float t = 0f; t < 0.27f; t += Time.deltaTime)
+            {
+                if (SeqBroken) { EndSequence(); yield break; }
+                TurnTo(land, 10f);
+                yield return null;
+            }
             yield return Breach(transform.position, land, 1.1f, 5f, a.damage * 1.5f, 3.2f, 3.6f);
             EndSequence();
             if (IsAlive && State == EnemyState.Attack) Beach(1.6f, true);
