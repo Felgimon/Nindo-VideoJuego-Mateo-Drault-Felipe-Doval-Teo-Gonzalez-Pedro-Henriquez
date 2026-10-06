@@ -54,11 +54,13 @@ namespace Nindo
             Shader.SetGlobalVectorArray(HolesId, holes);
 
             scanTimer -= dt;
-            // en un plano cinemático la cámara está en otro lado: se deja de buscar y lo disuelto vuelve solo
-            if (scanTimer <= 0f && Game.Camera != null && !Game.Camera.InShot)
+            if (scanTimer <= 0f)
             {
                 scanTimer = ScanInterval;
-                Scan(now);
+                // en un plano (habilidad por encima del hombro, órbita del torbellino, remate, presentación) se siguen
+                // abriendo los huecos desde donde está la cámara de verdad: la órbita baja atraviesa los grupos de bambú
+                // y tapaban a Kaito en cada Torbellino. La zona pegada a la cámara no: a 4-5 m disolvería el fondo entero
+                Scan(now, Game.Camera == null || !Game.Camera.InShot);
             }
             for (int i = active.Count - 1; i >= 0; i--)
             {
@@ -107,7 +109,7 @@ namespace Nindo
         }
 
         // ------------------------------------------------------------------ búsqueda
-        void Scan(float now)
+        void Scan(float now, bool nearZone)
         {
             Vector3 from = cam.transform.position;
             for (int h = 0; h < holeCount; h++)
@@ -118,6 +120,7 @@ namespace Nindo
                 int n = Physics.SphereCastNonAlloc(from, CastRadius, dir.normalized, hits, len, OccluderMask, QueryTriggerInteraction.Collide);
                 for (int i = 0; i < n; i++) Mark(hits[i].collider, false, now);
             }
+            if (!nearZone) return;
             // la zona pegada a la cámara: la caja que envuelve el tronco de pirámide de los primeros NearDepth metros
             float halfH = NearDepth * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
             var box = new Vector3(halfH * cam.aspect, halfH, NearDepth * 0.5f);
@@ -187,6 +190,8 @@ namespace Nindo
             }
             // el follaje es de doble cara (su shader tiene Cull Off fijo, sin propiedad)
             m.SetFloat("_Cull", src.HasProperty("_Cull") ? src.GetFloat("_Cull") : 0f);
+            // el Lit difunde 0.96 x (1 - metálico) (el resto es especular); Simple Lit y el follaje, todo el albedo
+            m.SetFloat("_DiffuseScale", sn == "Universal Render Pipeline/Lit" ? 0.96f * (1f - (src.HasProperty("_Metallic") ? src.GetFloat("_Metallic") : 0f)) : 1f);
             variants[src] = m;
             return m;
         }

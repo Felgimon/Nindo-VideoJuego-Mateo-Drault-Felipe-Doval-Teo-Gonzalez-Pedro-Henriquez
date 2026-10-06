@@ -106,9 +106,10 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 * **Filo de Ira**: con poca vida, Kaito pega más fuerte. Matar cura un poco.
 * Los enemigos atacan por turnos (*tokens*) para que las peleas grupales se lean bien.
 * **Cámara de combate**: baja a 45° y fijada nunca queda a menos de 19 m ni gira (los controles
-  no cambian de dirección). Lo que tapa a Kaito, al fijado, al jefe o a quien está por pegar se
-  disuelve con una trama (hueco en cono; lo pegado a la cámara, entero). Un aviso que arranca
-  fuera de pantalla tira del encuadre y marca el borde con un trazo de pincel y un ensō chico
+  no cambian de dirección); con Kaito casi centrado se ven ~5 m detrás de él. Lo que tapa a
+  Kaito, al fijado, al jefe o a quien está por pegar se disuelve con una trama (hueco en cono,
+  también en las tomas de habilidad; lo pegado a la cámara, entero). Un aviso que arranca fuera
+  de pantalla no mueve la cámara: se marca en el borde con un trazo de pincel y un ensō chico
   (dorado = parry, rojo doble = dash). El sonido se oye desde Kaito; avisos y parry no cambian
   de tono con la cámara lenta.
 * **Reintentos**: pasar a menos de 6 m de un santuario ya lo deja como punto de reaparición
@@ -164,7 +165,7 @@ B=/ruta/a/blender   # Blender 4.x
 # props (modelos low-poly con la paleta de Nindō)
 $B -b --python Tools/Blender/build_props.py -- --export [--module props_nature] [--only id1,id2] [--preview]
 # mundo (terreno, agua, límites, vegetación, marcadores)  ~2 min
-python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan (sin Blender)
+python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan y de los límites invisibles (sin Blender)
 $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview]
 # audio (descarga los packs CC0 la primera vez)
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]

@@ -8,10 +8,11 @@ namespace Nindo
     /// <summary>
     /// Cámara de Nindo. Base: cámara alta en ángulo estilo Tunic (perspectiva, FOV bajo = look de
     /// diorama). Encima se suman capas de game-feel:
-    ///  * encuadre de combate: se baja a 45° y se acomoda a los enemigos; fijado nunca más cerca de 19 m (más cerca
-    ///    no entraban en pantalla las embestidas que arrancan a 5 m) y sin girar (el giro rotaba los controles),
+    ///  * encuadre de combate: se baja a 45° y se acomoda a los enemigos; fijado nunca más cerca de 19 m, con Kaito casi
+    ///    centrado (~5 m de suelo a la vista detrás de él) y sin girar (el giro rotaba los controles),
     ///  * jefes: perfil propio (ICameraProfile) o distancia extra por altura, y auto-encuadre si se salen por arriba,
-    ///  * un atacante que avisa fuera de pantalla tira un poco del encuadre hacia él,
+    ///  * lo que avisa fuera de pantalla no mueve la cámara (la movía en plena ventana del parry): lo marca
+    ///    UI/ThreatIndicators,
     ///  * "planos" cinemáticos que se mezclan suavemente: habilidad por encima del hombro,
     ///    órbita baja del torbellino, órbita del finisher, presentación y muerte de jefes,
     ///  * temblor por trauma (Perlin), impulsos direccionales y golpe de FOV amortiguado (tope ±3°),
@@ -361,12 +362,10 @@ namespace Nindo
 
             if (lockTarget != null)
             {
-                Vector3 t = lockTarget.position + Vector3.up;
-                float d = CombatMath.FlatDistance(t, ppos);
-                targetFocus = Vector3.Lerp(ppos, t, Mathf.Clamp01(0.42f - d * 0.005f));
-                // nunca más cerca de 19 m: a 17 m quedaban ~5 m de suelo detrás de Kaito y la estocada del ninja
-                // (embestida de 3.2 m desde 5.5 m) arrancaba fuera de pantalla
-                targetDist = Mathf.Clamp(18f + d * 0.5f, lockDistanceMin, lockDistanceMax);
+                // nunca más cerca de 19 m (la cámara vieja, a 17 m y 47° mirando un 40 % hacia el fijado, dejaba ~2.7 m
+                // de suelo detrás de Kaito y la estocada del ninja, que arranca a 5.5 m, empezaba fuera de pantalla).
+                // El foco va al final, con la distancia y el ángulo definitivos
+                targetDist = Mathf.Clamp(18f + CombatMath.FlatDistance(lockTarget.position, ppos) * 0.5f, lockDistanceMin, lockDistanceMax);
             }
             else if (boss != null)
             {
@@ -399,12 +398,12 @@ namespace Nindo
                 }
                 else targetDist += Mathf.Clamp(0.9f * (boss.config.height * boss.config.scale - 1.7f), 0f, bossExtraMax);
             }
+            if (lockTarget != null) targetFocus = LockFocus(p, ppos, targetPitch, ref targetDist);
             baseTargetDist = targetDist;
             targetDist += fitExtra;
 
-            UpdateThreatFraming(ppos, fighting && !InShot, dt);
             focusBias = CombatMath.Damp(focusBias, focusBiasTarget, 2f, dt);
-            targetFocus += threatBias + focusBias;
+            targetFocus += focusBias;
 
             focus = CombatMath.Damp(focus, targetFocus, followDamping, dt);
             distance = CombatMath.Damp(distance, targetDist, paramDamping, dt);
@@ -420,50 +419,75 @@ namespace Nindo
             pos = focus - rot * Vector3.forward * distance;
         }
 
-        // ================================================================== amenazas fuera de cuadro
-        Vector3 threatBias;
-        /// <summary>Hasta qué fracción del camino Kaito→atacante se corre el punto de mira (y el tope en metros).</summary>
-        const float ThreatPull = 0.25f, ThreatPullMax = 3f, ThreatRange = 14f;
+        // ================================================================== fijado
+        /// <summary>Cuánto se inclina el foco hacia el fijado (fracción de la separación).</summary>
+        const float LockLean = 0.12f;
+        /// <summary>Alturas de pantalla que no pasan la cabeza del fijado (arriba) ni sus pies o los de Kaito (abajo).</summary>
+        const float LockTopV = 0.92f, LockBottomV = 0.10f;
+        /// <summary>Suelo que se quiere ver detrás de Kaito (m) y cuánto puede alejarse la cámara para lograrlo.</summary>
+        const float LockBehind = 4.5f, LockStretch = 2f;
+        /// <summary>Altura máxima del fijado que se encuadra acá: lo más alto de un jefe lo cubre el auto-encuadre.</summary>
+        const float LockHeightMax = 2.6f;
 
         /// <summary>
-        /// Un enemigo que ya dibuja su aviso pero está fuera del 84 % central de la pantalla (o detrás de la cámara)
-        /// corre el punto de mira hasta un 25 % hacia él: la estocada o la embestida que arranca fuera de cuadro entra.
-        /// Si hay varios, manda el que pega antes. Lo que no alcanza a entrar lo marca UI/ThreatIndicators.
+        /// Foco del fijado: Kaito casi centrado y el foco corrido hacia el objetivo solo lo justo para que su cabeza no
+        /// pase el 92 % de la pantalla y sus pies (o los de Kaito) no bajen del 10 %. Con el 40 % fijo hacia el objetivo
+        /// de antes, detrás de Kaito se veían 2.6-4.3 m de suelo y lo que atacaba por la espalda arrancaba fuera de
+        /// cuadro; así se ven ~5 m con el objetivo a 2-8 m. Si el objetivo está tan lejos hacia arriba que no se llega a
+        /// LockBehind, la cámara se aleja hasta LockStretch m más. Todo se mide en el plano vertical de la cámara (de
+        /// costado sobra pantalla: ±10 m a 21 m de distancia).
         /// </summary>
-        void UpdateThreatFraming(Vector3 ppos, bool active, float dt)
+        Vector3 LockFocus(PlayerController p, Vector3 ppos, float pitchDeg, ref float dist)
         {
-            Vector3 want = Vector3.zero;
-            var combat = Game.Combat;
-            if (active && combat != null)
+            var e = p.LockTarget;
+            float height = e != null && e.transform == lockTarget ? e.config.height * e.config.scale : 1.7f;
+            Vector3 fwd = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            Vector3 off = (lockTarget.position - ppos).Flat();
+            float along = Vector3.Dot(off, fwd);
+            // alturas sobre el foco (que está 1 m sobre los pies de Kaito)
+            const float kFeet = -1f, kHead = 0.7f;
+            float tFeet = lockTarget.position.y - ppos.y, tHead = tFeet + Mathf.Min(height, LockHeightMax);
+            float lo = 0f, hi = 0f;
+            for (int i = 0; i <= 8; i++)
             {
-                float best = float.PositiveInfinity;
-                var list = combat.Engaged;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var e = list[i];
-                    if (e == null || !e.InTell || e.StrikeEta >= best) continue;
-                    Vector3 off = (e.transform.position - ppos).Flat();
-                    if (off.sqrMagnitude > ThreatRange * ThreatRange) continue;
-                    Vector3 v = Cam.WorldToViewportPoint(e.AimPoint);
-                    if (v.z > 0f && v.x > 0.08f && v.x < 0.92f && v.y > 0.08f && v.y < 0.92f) continue;
-                    best = e.StrikeEta;
-                    want = Vector3.ClampMagnitude(off * ThreatPull, ThreatPullMax);
-                }
+                // un punto a x metros del foco queda por debajo de la altura v si x <= ViewX(v); correr el foco f le resta f
+                lo = Mathf.Max(along - ViewX(dist, pitchDeg, tHead, LockTopV), -ViewX(dist, pitchDeg, kHead, LockTopV));
+                hi = Mathf.Min(along - ViewX(dist, pitchDeg, tFeet, LockBottomV), -ViewX(dist, pitchDeg, kFeet, LockBottomV));
+                float behindOk = -ViewX(dist, pitchDeg, kFeet, 0f) - LockBehind;
+                if (lo <= behindOk || i == 8) break;
+                dist += LockStretch / 8f;
             }
-            threatBias = CombatMath.Damp(threatBias, want, 4f, dt);
+            // si no entran los dos, manda Kaito
+            float f = Mathf.Min(Mathf.Max(along * LockLean, lo), hi);
+            return ppos + fwd * f + (off - fwd * along) * LockLean;
+        }
+
+        /// <summary>
+        /// Con la cámara a 'dist' del foco y 'pitchDeg' de inclinación: a qué distancia sobre el suelo (hacia adelante de
+        /// la cámara, desde el foco) un punto a 'y' m sobre el foco cae a la altura de pantalla 'v' (0 abajo, 1 arriba).
+        /// </summary>
+        float ViewX(float dist, float pitchDeg, float y, float v)
+        {
+            float pr = pitchDeg * Mathf.Deg2Rad;
+            float b = Mathf.Atan((2f * v - 1f) * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
+            return (y - dist * Mathf.Sin(pr)) / Mathf.Tan(b - pr) - dist * Mathf.Cos(pr);
         }
 
         // ================================================================== auto-encuadre del jefe
-        float fitExtra, fitTarget, baseTargetDist;
+        float fitExtra, fitTarget, baseTargetDist, fitCalmSince;
         Boss fitBoss;
+        /// <summary>Segundos con el jefe quieto y bajo el 86 % antes de volver a acercarse.</summary>
+        const float FitCalmTime = 3f;
         readonly List<Renderer> fitRenderers = new List<Renderer>();
         readonly List<Transform> fitBones = new List<Transform>();
 
         /// <summary>
         /// Con un jefe en pelea se proyecta lo más alto de su cuerpo (renderers y huesos: el bounds de un skinned mesh
-        /// no sigue un arma levantada) con la pose base. Si pasa el 94 % de la altura de la pantalla, la cámara se aleja
-        /// lo justo para dejarlo en el 92 % (hasta autoFitMax); si baja del 86 % vuelve a acercarse. La banda evita que
-        /// "respire" con cada golpe.
+        /// no sigue un arma levantada) con la pose base. Funciona como trinquete: si pasa el 94 % de la altura de la
+        /// pantalla la cámara se aleja enseguida lo justo para dejarlo en el 92 % (hasta autoFitMax), y solo se vuelve
+        /// a acercar, despacio, después de FitCalmTime s con todo bajo el 86 % y el jefe sin atacar. Antes cada martillo
+        /// levantado alejaba la cámara un 8-11 % en pleno aviso y la acercaba al bajarlo: los anillos cambiaban de
+        /// tamaño en cada ataque.
         /// </summary>
         void UpdateAutoFit(Vector3 pos, Quaternion rot, float dt)
         {
@@ -471,7 +495,8 @@ namespace Nindo
             if (boss == null || !boss.IsAlive) { fitTarget = 0f; fitBoss = null; }
             else if (!InShot)
             {
-                if (boss != fitBoss) CacheFitParts(boss);
+                float now = Time.unscaledTime;
+                if (boss != fitBoss) { CacheFitParts(boss); fitCalmSince = now; }
                 float top = float.NegativeInfinity;
                 for (int i = 0; i < fitRenderers.Count; i++)
                 {
@@ -492,12 +517,15 @@ namespace Nindo
                         // alejarse Δ sobre el eje de la cámara suma Δ a local.z: Δ para que el punto quede en 'v'. Se mide
                         // contra la distancia actual y se resta la del encuadre sin ajuste (no se acumula mientras la
                         // cámara todavía viaja hacia la distancia pedida)
-                        if (vy > 0.94f) fitTarget = Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.92f) - baseTargetDist, 0f, autoFitMax);
-                        else if (vy < 0.86f) fitTarget = Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.90f) - baseTargetDist, 0f, autoFitMax);
+                        if (vy > 0.94f) fitTarget = Mathf.Max(fitTarget, Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.92f) - baseTargetDist, 0f, autoFitMax));
+                        if (vy >= 0.86f || boss.InTell || boss.State == EnemyState.Attack) fitCalmSince = now;
+                        else if (now - fitCalmSince >= FitCalmTime)
+                            fitTarget = Mathf.Min(fitTarget, Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.90f) - baseTargetDist, 0f, autoFitMax));
                     }
                 }
             }
-            fitExtra = CombatMath.Damp(fitExtra, fitTarget, 2.5f, dt);
+            // se aleja rápido y se acerca despacio: la vuelta, después de una pausa del jefe, no se lee como un zoom
+            fitExtra = CombatMath.Damp(fitExtra, fitTarget, fitTarget > fitExtra ? 2.5f : 0.8f, dt);
         }
 
         static float NeededPullBack(Vector3 local, float tanHalf, float v)

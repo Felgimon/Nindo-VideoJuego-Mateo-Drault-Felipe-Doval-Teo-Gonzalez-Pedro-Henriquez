@@ -25,6 +25,7 @@ Shader "Nindo/Occluder Fade"
         _NindoFade ("Disolución entera", Range(0, 1)) = 0
         _NindoHoleFade ("Disolución en los huecos", Range(0, 1)) = 0
         _NindoShadowFade ("Cuánto de la disolución pasa a la sombra", Range(0, 1)) = 0.6
+        _DiffuseScale ("Difuso del material original", Range(0, 1)) = 1
         [Toggle(_NINDO_WIND)] _NindoWind ("Viento (follaje)", Float) = 0
     }
 
@@ -49,6 +50,7 @@ Shader "Nindo/Occluder Fade"
             half _NindoFade;
             half _NindoHoleFade;
             half _NindoShadowFade;
+            half _DiffuseScale;
         CBUFFER_END
 
         TEXTURE2D(_BaseMap);
@@ -213,7 +215,9 @@ Shader "Nindo/Occluder Fade"
                 #endif
 
                 half3 emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, input.uv).rgb * _EmissionColor.rgb;
-                half3 color = albedo.rgb * lighting + emission;
+                // el Lit de la paleta (metálico 0) refleja un 4 % como especular y difunde el 96 %: sin esto el objeto se
+                // aclaraba de golpe al cambiar de material
+                half3 color = albedo.rgb * _DiffuseScale * lighting + emission;
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }
@@ -221,7 +225,8 @@ Shader "Nindo/Occluder Fade"
         }
 
         // la sombra se disuelve menos que el objeto (_NindoShadowFade): lo pegado a la cámara no deja sombras
-        // fantasma enteras sobre la pelea, pero el suelo no "salta" de sombra a luz
+        // fantasma enteras sobre la pelea, pero el suelo no "salta" de sombra a luz. Con hueco (una copa o un techo
+        // sobre Kaito) la sombra entera se aclara a la mitad de eso: desde la luz no se sabe dónde cae el cono
         Pass
         {
             Name "ShadowCaster"
@@ -275,7 +280,7 @@ Shader "Nindo/Occluder Fade"
 
             half4 fragShadow(Varyings input) : SV_Target
             {
-                clip(Bayer4(input.positionCS.xy) - _NindoFade * _NindoShadowFade);
+                clip(Bayer4(input.positionCS.xy) - max(_NindoFade, _NindoHoleFade * 0.5) * _NindoShadowFade);
                 return 0;
             }
             ENDHLSL

@@ -540,6 +540,9 @@ namespace Nindo
             yield return Say(b.bossId + "_intro");
             Game.Camera.CancelShot(shot);
             Game.Save.SetFlag(BossSeenFlag(b.bossId));
+            // se guarda ya: entre la presentación y una muerte nada más guarda (reaparecer no guarda y el santuario de la
+            // entrada ya era el punto de reaparición), y al salir y Continuar se repetía la presentación entera
+            SaveSystem.Save();
             yield return new WaitForSecondsRealtime(0.3f);
             b.ExitScripted(false);
             b.BeginFight();
@@ -551,11 +554,15 @@ namespace Nindo
         /// </summary>
         public static string BossSeenFlag(string bossId) => "boss_seen_" + bossId;
 
-        /// <summary>Re-presentación de 1.2 s: plano corto, rugido y a pelear (sin título ni diálogo).</summary>
+        /// <summary>
+        /// Re-presentación de 1.2 s: corte directo al jefe, rugido y a pelear (sin título ni diálogo). Corte y no fundido:
+        /// fundir 20 m en 0.35 s y volver en 0.5 s eran dos latigazos de cámara en cada reintento; la vuelta (0.7 s) es la
+        /// de cualquier plano que devuelve el control.
+        /// </summary>
         IEnumerator BossReintro(Boss b)
         {
             Game.Audio?.StopMusic(0.6f);
-            int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 1.2f, 0.35f, 0.5f);
+            int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 1.2f, 0f, 0.7f);
             b.ScriptedPlay(b.introAnim, 0.2f);
             Game.Audio?.Play("boss_roar", b.transform.position, 0.8f);
             Game.Camera.Shake(0.25f);

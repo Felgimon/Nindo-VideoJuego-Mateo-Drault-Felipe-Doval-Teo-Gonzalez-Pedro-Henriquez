@@ -107,13 +107,13 @@ namespace Nindo
 
         public void Activate(PlayerController p, bool fromPlayer)
         {
-            bool first = Game.Save.checkpoint != id;
             Game.Save.checkpoint = id;
             SaveSystem.Save();
             if (p != null) p.RestoreAll();
             Game.FX?.SealGlow(transform.position + Vector3.up);
             Game.Audio?.Play("checkpoint", transform.position, 0.9f);
-            if (fromPlayer) Game.UI?.ShowToast(first ? $"{displayName} — partida guardada" : "Vida restaurada", UIFactory.Gold);
+            // siempre dice que guardó: pasar cerca ya lo registra (y guarda), así que al rezar casi nunca es "el primero"
+            if (fromPlayer) Game.UI?.ShowToast("Vida restaurada — partida guardada", UIFactory.Gold);
             // reaparecen los enemigos de encuentros no completados (como en un souls, pero suave)
             if (fromPlayer) Encounter.ResetAllIncomplete();
             GameEvents.RaiseCheckpoint(id);
@@ -146,7 +146,7 @@ namespace Nindo
             Game.Audio?.Play("checkpoint", transform.position, 0.45f);
             // el cartel una vez por santuario y por sesión: yendo y viniendo entre dos santuarios cercanos (lago,
             // muelles) alcanzan el brillo y el sonido
-            if (toasted.Add(id)) Game.UI?.ShowToast($"{displayName}: volvés acá si caés", UIFactory.Gold, 2f);
+            if (toasted.Add(id)) Game.UI?.ShowToast($"{displayName} — partida guardada", UIFactory.Gold, 2f);
             GameEvents.RaiseCheckpoint(id);
         }
 

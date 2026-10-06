@@ -19,9 +19,12 @@ namespace Nindo
         /// <summary>Margen al borde de la pantalla (unidades del canvas de 1920x1080): la flecha sale 62 hacia afuera del
         /// centro del ensō y mide 92, así que con menos se cortaba contra el borde.</summary>
         const float EdgeMargin = 116f;
-        /// <summary>Zonas a esquivar: la bandana y el dragón (arriba a la izquierda) y la barra del jefe (abajo al centro).</summary>
-        const float HudWidth = 620f, HudHeight = 250f, BossBarHalfWidth = 600f, BossBarHeight = 190f;
+        /// <summary>Zonas a esquivar: la bandana y el dragón (arriba a la izquierda), los sellos y el objetivo (arriba a
+        /// la derecha) y la barra del jefe con sus rombos de postura (abajo al centro, 1400 de ancho más el brillo).</summary>
+        const float HudWidth = 620f, HudHeight = 250f, TopRightWidth = 760f, TopRightHeight = 240f, BossBarHalfWidth = 720f, BossBarHeight = 190f;
         const float RingSize = 84f, ArrowSize = 92f, ArrowOffset = 62f;
+        /// <summary>Hasta dónde llega la marca desde su centro: el anillo y la flecha que sale hacia afuera.</summary>
+        const float MarkExtent = ArrowOffset + ArrowSize * 0.5f;
         const float FadeOut = 0.15f;
 
         class Mark
@@ -45,7 +48,8 @@ namespace Nindo
             float dt = Time.unscaledDeltaTime, now = Time.unscaledTime;
             var cam = Game.Camera != null ? Game.Camera.Cam : null;
             var combat = Game.Combat;
-            bool show = cam != null && combat != null && Game.Player != null && Game.Player.IsAlive && !Game.InCutscene && !Game.IsPaused;
+            // en un plano (habilidad, remate) la cámara orbita a 4-5 m: las marcas girarían por el borde con la órbita
+            bool show = cam != null && !Game.Camera.InShot && combat != null && Game.Player != null && Game.Player.IsAlive && !Game.InCutscene && !Game.IsPaused;
             if (show)
             {
                 var list = combat.Engaged;
@@ -113,14 +117,24 @@ namespace Nindo
             if (d.sqrMagnitude < 1e-6f) d = Vector2.down;
             d.x *= size.x; d.y *= size.y;
             // intersección del rayo desde el centro con el rectángulo interior (los bordes, no una elipse: en 16:9
-            // la elipse dejaba las marcas laterales demasiado adentro). Si cae sobre el HUD o la barra del jefe, se
-            // repite con ese borde corrido para que la marca quede afuera de ellos
+            // la elipse dejaba las marcas laterales demasiado adentro). Si la marca entera (no solo su centro) pisa el
+            // HUD, los sellos y el objetivo o la barra del jefe, se repite con ese borde corrido para que quede afuera
+            // (y si igual cae en el borde de costado, se baja por ese borde)
             float hx = size.x * 0.5f - EdgeMargin, top = size.y * 0.5f - EdgeMargin, bottom = top;
             Vector2 pos = EdgeHit(d, hx, top, bottom);
-            if (pos.x < -size.x * 0.5f + HudWidth && pos.y > size.y * 0.5f - HudHeight)
-                pos = EdgeHit(d, hx, size.y * 0.5f - HudHeight - RingSize * 0.5f, bottom);
-            if (Game.Combat != null && Game.Combat.ActiveBoss != null && Mathf.Abs(pos.x) < BossBarHalfWidth && pos.y < -size.y * 0.5f + BossBarHeight)
-                pos = EdgeHit(d, hx, top, size.y * 0.5f - BossBarHeight - RingSize * 0.5f);
+            float leftLimit = size.y * 0.5f - HudHeight - MarkExtent, rightLimit = size.y * 0.5f - TopRightHeight - MarkExtent;
+            if (pos.x < -size.x * 0.5f + HudWidth + MarkExtent && pos.y > leftLimit)
+            {
+                pos = EdgeHit(d, hx, leftLimit, bottom);
+                pos.y = Mathf.Min(pos.y, leftLimit);
+            }
+            else if (pos.x > size.x * 0.5f - TopRightWidth - MarkExtent && pos.y > rightLimit)
+            {
+                pos = EdgeHit(d, hx, rightLimit, bottom);
+                pos.y = Mathf.Min(pos.y, rightLimit);
+            }
+            if (Game.Combat != null && Game.Combat.ActiveBoss != null && Mathf.Abs(pos.x) < BossBarHalfWidth + MarkExtent && pos.y < -size.y * 0.5f + BossBarHeight + MarkExtent)
+                pos = EdgeHit(d, hx, top, size.y * 0.5f - BossBarHeight - MarkExtent);
             m.root.anchoredPosition = pos;
             m.arrow.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
 
