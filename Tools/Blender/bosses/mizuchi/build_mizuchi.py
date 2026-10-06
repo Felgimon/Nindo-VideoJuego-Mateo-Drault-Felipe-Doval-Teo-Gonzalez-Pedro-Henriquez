@@ -67,6 +67,13 @@ def facing_guard(arm):
 def model_sheet(arm, p1, p2, rip):
     """Hoja del modelo: fase 1 y 2 en perfil, frente, arriba, 3/4 y cámara del juego sobre la plataforma."""
     os.makedirs(OUT, exist_ok=True)
+    # en reposo: después de las hojas de clips el esqueleto quedaba con la última acción puesta (ClimbFalls,
+    # el koi parado en vertical)
+    if arm.animation_data:
+        arm.animation_data.action = None
+    for pb in arm.pose.bones:
+        pb.location, pb.rotation_quaternion, pb.scale = (0, 0, 0), (1, 0, 0, 0), (1, 1, 1)
+    bpy.context.scene.frame_set(0)
     RV.setup(res=(640, 360), samples=24)
     RV.place_kaito((-1.2, 6.0), 180)
     views = [
