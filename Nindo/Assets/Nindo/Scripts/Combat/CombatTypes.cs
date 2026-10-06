@@ -12,6 +12,7 @@ namespace Nindo
         Parried,     // el defensor desvió el golpe (parry)
         PerfectParry,
         Guarded,     // el enemigo estaba en guardia y contraatacó
+        Blocked,     // el enemigo lo frenó con la guardia (o un jefe rugiendo) sin contraatacar: rebota y avisa
         Dodged,      // i-frames del dash
         Killed
     }
@@ -30,6 +31,7 @@ namespace Nindo
         public Faction sourceFaction;
         public Component source;       // PlayerController / Enemy
         public string attackName;
+        public bool riposte;           // contraataque de Kaito tras un parry: rompe la armadura del golpe enemigo
 
         public bool CanBeParried => kind != AttackKind.Unblockable && kind != AttackKind.Finisher;
     }

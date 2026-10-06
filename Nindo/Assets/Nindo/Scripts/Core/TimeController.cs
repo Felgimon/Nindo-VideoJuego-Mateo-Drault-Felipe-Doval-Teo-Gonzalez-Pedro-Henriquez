@@ -26,6 +26,12 @@ namespace Nindo
 
         /// <summary>Escala actual sin contar pausa (útil para el audio).</summary>
         public float GameplayScale { get; private set; } = 1f;
+        /// <summary>
+        /// Solo la cámara lenta, sin el hit-stop. Para lo que debe reaccionar a la cámara lenta pero no a los
+        /// congelados de 2-6 frames de cada golpe (desaturar la pantalla, bajar el pitch): si no, cada golpe
+        /// parpadea en gris y su sonido arranca grave.
+        /// </summary>
+        public float SlowMoScale { get; private set; } = 1f;
 
         void Awake()
         {
@@ -92,6 +98,7 @@ namespace Nindo
                 float k = Mathf.Lerp(1f, s.scale, Smooth(w));
                 if (k < scale) scale = k;
             }
+            SlowMoScale = scale;
             if (Time.unscaledTime < hitStopUntil) scale = 0f;
             GameplayScale = scale;
             Apply();

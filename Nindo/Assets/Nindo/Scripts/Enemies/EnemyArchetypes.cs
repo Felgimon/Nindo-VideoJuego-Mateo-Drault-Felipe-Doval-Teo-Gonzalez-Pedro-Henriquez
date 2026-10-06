@@ -51,8 +51,10 @@ namespace Nindo
             var c = new EnemyConfig
             {
                 id = "ninja", displayName = "Ninja del Clan", maxHealth = 60, runSpeed = 5.0f, walkSpeed = 2.0f,
-                radius = 0.42f, height = 1.7f, scale = 1f, maxImbalance = 3, exhaustedTime = 3.2f, guardTime = 1.4f,
-                poiseHits = 2, preferredDistance = 3.4f, detectRadius = 10f,
+                // aguanta el combo entero de Kaito (3 cortes) antes de cubrirse; agotado 2.4 s (ya no se le gasta el
+                // desequilibrio por golpe: hasta 4 golpes o ese tiempo)
+                radius = 0.42f, height = 1.7f, scale = 1f, maxImbalance = 3, exhaustedTime = 2.4f, guardTime = 1.4f,
+                poiseHits = 3, preferredDistance = 3.4f, detectRadius = 10f,
                 animGuard = "Guard", animCounter = "Counter", animExhausted = "Exhausted", animHit = "Hit",
                 animSpotted = "Spotted", animDeath = "Death", animParried = "Hit",
             };
@@ -75,7 +77,7 @@ namespace Nindo
         {
             var c = Ninja();
             c.id = "ninja_elite"; c.displayName = "Ninja de Élite";
-            c.maxHealth = 90; c.runSpeed = 5.6f; c.maxImbalance = 4; c.guardTime = 1.8f; c.poiseHits = 1;
+            c.maxHealth = 90; c.runSpeed = 5.6f; c.maxImbalance = 4; c.guardTime = 1.8f; c.poiseHits = 2; c.cinematicFinisher = true;
             c.tint = new Color(0.75f, 0.18f, 0.15f); c.tintStrength = 0.55f;
             c.ScaleSteps(1.25f, 1.12f); // a1/a2 del ninja están en dos patrones: se escalan una sola vez
             var a1 = Hit("Attack1", 14, 0.6f, 0.78f, telegraph: 0.1f, speed: 1.12f, apex: NinjaApex1);
@@ -94,7 +96,7 @@ namespace Nindo
                 id = "sumo", displayName = "Luchador de Sumo", maxHealth = 150, runSpeed = 3.4f, walkSpeed = 1.6f, turnSpeed = 6f,
                 radius = 0.85f, height = 2.5f, scale = 1f, maxImbalance = 2, exhaustedTime = 3.8f, guardTime = 0.8f,
                 poiseHits = 4, hyperArmor = true, knockbackResist = 0.7f, preferredDistance = 3.6f, detectRadius = 11f,
-                staggerTime = 0.25f,
+                staggerTime = 0.25f, cinematicFinisher = true,
                 animGuard = "Idle", animCounter = "Attack1", animExhausted = "Exhausted", animHit = "Hit",
                 animSpotted = "Spotted", animDeath = "Exhausted", animParried = "Hit",
             };

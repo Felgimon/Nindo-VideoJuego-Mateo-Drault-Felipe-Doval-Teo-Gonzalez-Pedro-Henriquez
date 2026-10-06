@@ -14,6 +14,10 @@ namespace Nindo
         public int maxAttackers = 2;
         [Tooltip("Radio en el que un enemigo alerta cuenta como 'en combate'")]
         public float engageRadius = 16f;
+        [Tooltip("Separación mínima entre turnos de ataque de distintos enemigos (s)")]
+        public float tokenGap = 1.0f;
+        [Tooltip("No se da un turno nuevo si otro atacante pega en menos de esto (s)")]
+        public float busyStrikeEta = 0.6f;
 
         readonly List<Enemy> enemies = new List<Enemy>(64);
         readonly List<Enemy> engaged = new List<Enemy>(16);
@@ -33,7 +37,7 @@ namespace Nindo
         public void Register(Enemy e) { if (!enemies.Contains(e)) enemies.Add(e); }
         public void Unregister(Enemy e)
         {
-            enemies.Remove(e); engaged.Remove(e); attackers.Remove(e); strikes.Remove(e);
+            enemies.Remove(e); engaged.Remove(e); attackers.Remove(e); strikes.Remove(e); slots.Remove(e);
         }
 
         // ------------------------------------------------------------ tokens
@@ -42,8 +46,13 @@ namespace Nindo
             if (attackers.Contains(e)) return true;
             int limit = ActiveBoss != null ? 1 + (e is Boss ? 1 : 0) : maxAttackers;
             if (attackers.Count >= limit) return false;
-            // pequeño escalonado entre ataques de distintos enemigos
-            if (attackers.Count > 0 && Time.time - lastTokenTime < 0.6f) return false;
+            if (attackers.Count > 0)
+            {
+                // escalonado entre ataques de distintos enemigos (con 0.6 s los golpes de dos ninjas se intercalaban)
+                if (Time.time - lastTokenTime < tokenGap) return false;
+                // y nadie arranca mientras otro está por pegar: Kaito tiene que poder resolver un golpe por vez
+                foreach (var a in attackers) if (a != null && a.StrikeEta < busyStrikeEta) return false;
+            }
             attackers.Add(e);
             lastTokenTime = Time.time;
             return true;
@@ -113,6 +122,7 @@ namespace Nindo
                 foreach (var kv in strikes) if (kv.Key == null || !kv.Key.IsAlive || kv.Value < Time.time - 1f) tmp.Add(kv.Key);
                 foreach (var a in tmp) { attackers.Remove(a); strikes.Remove(a); }
             }
+            UpdateSlots(p);
             bool now = engaged.Count > 0 || ActiveBoss != null;
             if (now) leaveCombatTimer = 2.5f;
             else leaveCombatTimer -= Time.deltaTime;
@@ -125,6 +135,59 @@ namespace Nindo
         }
 
         readonly List<Enemy> tmp = new List<Enemy>(8);
+
+        // ------------------------------------------------------------ lugares alrededor de Kaito
+        // Los que esperan turno rondaban cada uno por su lado y terminaban apilados (tres ninjas en 1.5 m, barras
+        // encimadas). Cada uno tiene un ángulo alrededor de Kaito, repartidos entre 70° y 120° (con dos no lo
+        // encierran por delante y por detrás). Se reparten en el orden en que ya están, así nadie cruza al otro.
+        readonly Dictionary<Enemy, float> slots = new Dictionary<Enemy, float>(16);
+        readonly List<Enemy> slotBuf = new List<Enemy>(16);
+        Vector3 slotCenter;
+        System.Comparison<Enemy> byBearing;
+
+        /// <summary>Ángulo (yaw en grados, alrededor de Kaito) al que tiene que rondar este enemigo.</summary>
+        public bool TryGetStrafeSlot(Enemy e, out float yawDeg) => slots.TryGetValue(e, out yawDeg);
+
+        void UpdateSlots(PlayerController p)
+        {
+            slots.Clear();
+            if (p == null || !p.IsAlive) return;
+            Vector3 c = slotCenter = p.transform.position;
+            slotBuf.Clear();
+            foreach (var e in engaged) if (e != null && !attackers.Contains(e) && !(e is Boss)) slotBuf.Add(e);
+            int n = slotBuf.Count;
+            if (n == 0) return;
+            if (byBearing == null) byBearing = (a, b) => Bearing(a, slotCenter).CompareTo(Bearing(b, slotCenter));
+            slotBuf.Sort(byBearing);
+            // el reparto arranca después del hueco más grande entre vecinos (si no, dos pegados a ambos lados de 0°
+            // quedaban en los extremos de la lista y los mandaba a cruzar toda la ronda)
+            int start = 0; float gap = -1f;
+            for (int i = 0; i < n; i++)
+            {
+                float a = Bearing(slotBuf[i], c), b = Bearing(slotBuf[(i + 1) % n], c);
+                float g = Mathf.Repeat(b - a, 360f);
+                if (n == 1) g = 360f;
+                if (g > gap) { gap = g; start = (i + 1) % n; }
+            }
+            float spacing = Mathf.Clamp(360f / n, 70f, 120f);
+            float baseSum = 0f, prev = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float a = Bearing(slotBuf[(start + i) % n], c);
+                if (i > 0) while (a < prev) a += 360f;   // desenrollado: crecen en el orden del reparto
+                prev = a;
+                baseSum += a - i * spacing;
+            }
+            // los lugares siguen al grupo tal como está: centrados en el promedio de dónde andan
+            float baseAng = baseSum / n;
+            for (int i = 0; i < n; i++) slots[slotBuf[(start + i) % n]] = Mathf.Repeat(baseAng + i * spacing, 360f);
+        }
+
+        static float Bearing(Enemy e, Vector3 c)
+        {
+            Vector3 d = e.transform.position - c;
+            return Mathf.Repeat(Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg, 360f);
+        }
 
         // ------------------------------------------------------------ queries
         public Enemy FindBestTarget(Vector3 from, Vector3 facing, float range, Enemy exclude = null)

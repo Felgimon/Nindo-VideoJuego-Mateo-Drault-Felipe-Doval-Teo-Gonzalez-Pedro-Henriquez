@@ -28,7 +28,15 @@ namespace Nindo
         public bool Fighting { get; private set; }
         public bool Defeated { get; private set; }
         public bool FinisherAllowed => Health01 <= config.finisherHealth + 0.001f;
-        int phase;
+        /// <summary>
+        /// Postura del jefe para su barra (0..1; 1 = quebrada, queda agotado). Se conserva entre fases: los parries
+        /// que le metiste antes de que se enfurezca siguen contando.
+        /// </summary>
+        public float Posture01 => Imbalance01;
+        /// <summary>Rugiendo al cambiar de fase: se lo puede fijar pero los golpes rebotan.</summary>
+        public bool Roaring => IsAlive && Time.time < roarUntil;
+        int phase, pendingPhase;
+        float roarUntil;
         public override int CurrentPhase => phase;
 
         readonly List<Enemy> minions = new List<Enemy>();
@@ -78,7 +86,8 @@ namespace Nindo
             if (pristineConfig != null) config = pristineConfig.Clone();
             base.ResetEnemy();
             Fighting = false;
-            phase = 0;
+            phase = pendingPhase = 0;
+            roarUntil = 0f;
             ShowModel(true);
             foreach (var m in minions) if (m != null) Destroy(m.gameObject);
             minions.Clear();
@@ -101,28 +110,49 @@ namespace Nindo
             int newPhase = 0;
             for (int i = 0; i < phaseThresholds.Length; i++)
                 if (Health01 <= phaseThresholds[i]) newPhase = i + 1;
-            if (newPhase > phase) StartCoroutine(PhaseChange(newPhase));
+            if (newPhase <= phase) return;
+            // agotado no se enfurece: la ventana de daño que se ganó Kaito no se corta; cambia al recuperarse
+            if (State == EnemyState.Exhausted) pendingPhase = newPhase;
+            else PhaseChange(newPhase);
         }
 
-        IEnumerator PhaseChange(int newPhase)
+        protected override void OnExhaustionEnded()
         {
+            if (pendingPhase > phase && IsAlive) PhaseChange(pendingPhase);
+            pendingPhase = 0;
+        }
+
+        // los golpes durante el rugido rebotan (clang y chispas del lado de Kaito): antes no pasaba nada y parecía un error
+        public override HitResult ReceiveHit(in DamageInfo info)
+        {
+            if (Roaring && info.sourceFaction == Faction.Player) { LastHitTime = Time.time; return HitResult.Blocked; }
+            return base.ReceiveHit(info);
+        }
+
+        /// <summary>
+        /// Se enfurece: ruge 1.1 s sin dejar de ser un objetivo (antes pasaba a "guion": se perdía el fijado y la
+        /// cámara se reacomodaba), conserva la postura acumulada y vuelve más rápido.
+        /// </summary>
+        void PhaseChange(int newPhase)
+        {
+            const float roar = 1.1f;
             phase = newPhase;
+            pendingPhase = 0;
             ReleaseToken();
-            SetState(EnemyState.Scripted);
-            Imbalance = 0f;
+            SetState(EnemyState.Alert);   // mira a Kaito mientras ruge y después vuelve a perseguirlo
+            stateDuration = roar;
+            roarUntil = Time.time + roar;
+            nextAttackTime = Time.time + roar + 0.3f;
             anim.Play(phaseAnim, 0.1f);
             Game.Audio?.Play("boss_roar", transform.position, 1f);
             Game.Camera?.Shake(0.7f);
             Game.Camera?.Punch(-4f, 0.5f);
-            Game.Time?.SlowMotion(0.4f, 0.7f, 0.05f, 0.3f);
             Game.FX?.Shockwave(transform.position, 6f, new Color(1f, 0.4f, 0.3f));
             Game.UI?.ShowToast($"{title} se enfurece", new Color(1f, 0.5f, 0.4f));
             if (target != null && CombatMath.FlatDistance(target.transform.position, transform.position) < 5f)
                 target.Push((target.transform.position - transform.position), 3f);
             config.attackCooldown *= 0.75f;
             config.ScaleSteps(1f, 1f + phaseSpeedBonus); // cada golpe una vez, aunque lo compartan varios patrones
-            yield return new WaitForSeconds(1.1f);
-            if (IsAlive) { SetState(EnemyState.Chase); nextAttackTime = Time.time + 0.3f; }
         }
 
         // ---------------------------------------------------------------- especiales

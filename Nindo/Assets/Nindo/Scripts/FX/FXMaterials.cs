@@ -9,10 +9,10 @@ namespace Nindo
     /// </summary>
     public static class FXMaterials
     {
-        static Material additive, alpha, flash, ghost;
+        static Material additive, alpha, flash, hurtFlash, ghost;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { additive = alpha = flash = ghost = null; }
+        static void Reset() { additive = alpha = flash = hurtFlash = ghost = null; }
 
         public static Material Additive
         {
@@ -45,6 +45,21 @@ namespace Nindo
                     SetColor(flash, new Color(1f, 0.97f, 0.9f, 1f));
                 }
                 return flash;
+            }
+        }
+
+        /// <summary>Destello rojo de Kaito al recibir un golpe (el blanco es el de los enemigos: no se confunden).</summary>
+        public static Material HurtFlash
+        {
+            get
+            {
+                if (hurtFlash == null)
+                {
+                    var sh = FindShader("Universal Render Pipeline/Unlit", "Unlit/Color");
+                    hurtFlash = new Material(sh) { name = "Nindo_HurtFlash" };
+                    SetColor(hurtFlash, new Color(1f, 0.22f, 0.16f, 1f));
+                }
+                return hurtFlash;
             }
         }
 

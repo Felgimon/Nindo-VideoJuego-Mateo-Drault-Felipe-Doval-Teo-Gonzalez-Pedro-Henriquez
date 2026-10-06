@@ -7,8 +7,8 @@ namespace Nindo
     /// <summary>
     /// Post-procesado URP creado por código: el "look" base (bloom para faroles y luciérnagas,
     /// tonemapping, viñeta, profundidad de campo tipo diorama) y los golpes de pantalla del
-    /// game-feel (aberración cromática en parry perfecto, desaturación en cámara lenta,
-    /// viñeta roja al recibir daño, tinte naranja en Filo de Ira, foco en habilidades).
+    /// game-feel (el parry ILUMINA la escena, desaturación en cámara lenta, viñeta roja al
+    /// recibir daño, tinte naranja en Filo de Ira, foco en habilidades).
     /// </summary>
     public class ScreenFX : MonoBehaviour
     {
@@ -25,6 +25,9 @@ namespace Nindo
 
         float chromaPunch, damagePulse, abilityFocus, abilityTarget, rageAmount, rageTarget, shadowInstant, finisher, finisherTarget;
         float lowHealth;
+        // parry: golpe de luz (exposición, bloom, viñeta abierta) que se apaga en ~0.1 s, y un rato en que la
+        // cámara lenta del quiebre de postura no desatura (el parry tiene que encender la noche, no apagarla)
+        float parryLight, parryVivid, parryHold;
         Color baseFilter = Color.white;
 
         // visibilidad de noche: con 12 de contraste, viñeta 0.28 y exposición 0.15 los ninjas negros
@@ -99,6 +102,17 @@ namespace Nindo
         public void Finisher(bool on) => finisherTarget = on ? 1f : 0f;
         public void WhiteFlash(float amount) => Game.UI?.ScreenFlash(new Color(1f, 0.97f, 0.9f, amount), 0.35f);
 
+        /// <summary>
+        /// El parry enciende la escena: perfecto +0.9 EV / bloom +2.5 / viñeta -0.12; normal ~+0.4 EV / +1.1.
+        /// Decae con τ = 0.09 s. Durante 'hold' segundos reales la cámara lenta no desatura (quiebre de postura).
+        /// </summary>
+        public void ParryLight(bool perfect, float hold = 0f)
+        {
+            parryLight = Mathf.Max(parryLight, perfect ? 1f : 0.45f);
+            parryVivid = Mathf.Max(parryVivid, perfect ? 0.25f : 0.15f);
+            parryHold = Mathf.Max(parryHold, hold);
+        }
+
         /// <summary>Distancia focal de la cámara (para el desenfoque de fondo tipo diorama).</summary>
         public void SetFocusDistance(float d)
         {
@@ -116,27 +130,33 @@ namespace Nindo
             abilityFocus = Mathf.MoveTowards(abilityFocus, abilityTarget, dt * 4f);
             rageAmount = Mathf.MoveTowards(rageAmount, rageTarget, dt * 2f);
             finisher = Mathf.MoveTowards(finisher, finisherTarget, dt * 4f);
+            parryLight *= Mathf.Exp(-dt / 0.09f);
+            parryVivid = Mathf.Max(0f, parryVivid - dt);
+            parryHold = Mathf.Max(0f, parryHold - dt);
             var p = Game.Player;
             float lh = p != null && p.IsAlive ? Mathf.Clamp01((0.3f - p.Health01) / 0.3f) : 0f;
             lowHealth = Mathf.MoveTowards(lowHealth, lh, dt);
 
-            // cámara lenta = mundo más frío y desaturado
-            float slow = Game.Time != null ? 1f - Mathf.Clamp01(Game.Time.GameplayScale) : 0f;
+            // cámara lenta = mundo más frío y desaturado (salvo la del parry, que es un momento de luz)
+            float slow = Game.Time != null ? 1f - Mathf.Clamp01(Game.Time.SlowMoScale) : 0f;
+            slow *= 1f - Mathf.Clamp01(parryHold / 0.15f);
+            float vivid = Mathf.Clamp01(parryVivid / 0.1f);
 
             chroma.intensity.value = 0.04f + chromaPunch * 0.9f + abilityFocus * 0.35f + shadowInstant * 0.4f;
             lens.intensity.value = -0.18f * chromaPunch - 0.22f * abilityFocus - 0.12f * finisher;
             float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);
-            vignette.intensity.value = BaseVignette + damagePulse * 0.25f + abilityFocus * 0.18f + lowHealth * (0.12f + 0.06f * pulse) + finisher * 0.2f + shadowInstant * 0.15f;
+            vignette.intensity.value = Mathf.Max(0f, BaseVignette + damagePulse * 0.25f + abilityFocus * 0.18f + lowHealth * (0.12f + 0.06f * pulse) + finisher * 0.2f + shadowInstant * 0.15f - parryLight * 0.12f);
             Color vc = new Color(0.02f, 0.02f, 0.06f);
             vc = Color.Lerp(vc, new Color(0.45f, 0.02f, 0.02f), Mathf.Max(damagePulse, lowHealth * 0.6f));
             vc = Color.Lerp(vc, new Color(0.35f, 0.12f, 0.0f), rageAmount * 0.6f);
             vignette.color.value = vc;
-            color.saturation.value = BaseSaturation - slow * 45f - shadowInstant * 35f + rageAmount * 10f - finisher * 30f;
+            color.saturation.value = BaseSaturation - slow * 45f - shadowInstant * 35f + rageAmount * 10f - finisher * 30f + vivid * 12f;
+            color.postExposure.value = BaseExposure + parryLight * 0.9f;
             color.contrast.value = BaseContrast + abilityFocus * 15f + finisher * 15f;
             Color filter = Color.Lerp(Color.white, new Color(1f, 0.86f, 0.75f), rageAmount * 0.6f);
             filter = Color.Lerp(filter, new Color(0.8f, 0.9f, 1.05f), shadowInstant * 0.6f);
             color.colorFilter.value = filter;
-            bloom.intensity.value = 0.9f + rageAmount * 0.5f + chromaPunch * 0.8f;
+            bloom.intensity.value = 0.9f + rageAmount * 0.5f + chromaPunch * 0.8f + parryLight * 2.5f;
         }
     }
 }

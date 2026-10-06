@@ -16,7 +16,8 @@ namespace Nindo
     ///   move X Y [seg]         mover con el "stick" (x derecha, y adelante); sin seg queda puesto
     ///   wait seg               esperar (tiempo real: no le afecta la cámara lenta)
     ///   bot on|off             peleador automático: parry a los golpes que llegan, dash a los
-    ///                          imparables, remata a los desequilibrados y si no, ataca/se acerca.
+    ///                          imparables, remata a los de postura quebrada (o casi muertos) y si no,
+    ///                          ataca/se acerca (no le pega a una guardia).
     ///                          Defiende como una persona: no lee StrikeEta, reacciona al aviso
     ///                          "¡ya!" (hyōshigi) con ~0.25 s de reacción; si el aviso llega tarde, falla
     ///   talk [max]             espera un diálogo (hasta 'max' s) y lo avanza hasta que no quede ninguno
@@ -187,8 +188,9 @@ namespace Nindo
 
             if (Time.unscaledTime < nextBotAction) return;
             if (p.FinisherCandidate() != null) { InputReader.VirtualTap(Act.Finisher); BotFinishers++; nextBotAction = Time.unscaledTime + 1.2f; }
-            // no empezar un ataque si alguien está por pegar: el parry no cancela el golpe a mitad
-            else if (best < 2.6f && !threatened && pending.Count == 0) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
+            // no empezar un ataque si alguien está por pegar (el anillo ya se está dibujando) ni contra una guardia
+            // (una persona ve el rebote: el segundo golpe contra la guardia se lo devuelven)
+            else if (best < 2.6f && !threatened && pending.Count == 0 && nearest.State != EnemyState.Guard) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
         }
 
         IEnumerator Loop()

@@ -636,6 +636,12 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: parry_whiff
+    clips:
+    - {fileID: 8300000, guid: 911502802da4c709bacd2cba1658b31d, type: 3}
+    volume: 1.0
+    pitchVariance: 0.06
+    spatial: 1
   - key: perfect_dodge
     clips:
     - {fileID: 8300000, guid: 2029dd5fb31957dc698e4f9fceee4f0d, type: 3}

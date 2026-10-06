@@ -166,6 +166,16 @@ def _parry_ready(i):
     return mix((K("metalClick", 0.5), 0, 0.6), (ping, 0.005, 0.5))
 
 
+@sfx("parry_whiff")
+def _parry_whiff(i):
+    # parry al aire: la hoja corta el vacío y "se desinfla" (silbido corto que baja + roce de tela). Sin metal:
+    # tiene que decir "no había nada que desviar" sin confundirse con un choque. Solo síntesis (sin Kenney).
+    d = 0.22
+    air = whoosh(d, 2600, 700, peak_t=0.3, q=1.3, seed=176)
+    cloth = filt(noise(d, 177), 300, 1400) * env_ar(d, d * 0.2)
+    return reverb(mix((air, 0, 1.0), (cloth, 0.01, 0.45)), 0.12, 0.5, 0.2)
+
+
 @sfx("perfect_dodge")
 def _pdodge(i):
     d = 0.6
@@ -470,7 +480,8 @@ SFX["step_stone"] = (_steps("footstep_concrete"), 5)
 
 # pico de normalización por clave (los clips cortos de interfaz no deben sonar como un golpe)
 PEAK = {"ui_move": -10, "ui_open": -7, "ui_close": -7, "dialogue": -12, "denied": -8, "lock": -8,
-        "step": -4, "step_snow": -4, "step_wood": -4, "step_stone": -4, "parry_ready": -6, "area_title": -4}
+        "step": -4, "step_snow": -4, "step_wood": -4, "step_stone": -4, "parry_ready": -6, "area_title": -4,
+        "parry_whiff": -6}
 
 
 # ============================================================================ AMBIENTES

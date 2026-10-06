@@ -81,18 +81,23 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 ## Sistema de combate (se mantuvo el formato original, pulido)
 
 * **Parry**: cada toque abre una ventana corta (~0,24 s; los primeros ~0,11 s son
-  *perfectos*); mantener el botón no hace nada extra. Si el golpe llega dentro de la ventana
-  se desvía y desequilibra al enemigo, y el contraataque inmediato pega más fuerte. En la
-  ventana perfecta hay cámara lenta y un destello. Si no llega nada, Kaito queda un instante
-  en recuperación, y apretarlo seguido después de fallar achica la ventana (anti‑spam). Si el
-  enemigo termina su combo desequilibrado queda **Exhausto** (vulnerable, se lo puede
-  **rematar**).
-* Pegarle a un enemigo exhausto le consume el desequilibrio; cuando se recupera vuelve a la
-  **guardia** y puede contraatacar.
+  *perfectos*), marcada con una media luna dorada delante de Kaito; mantener el botón no hace
+  nada extra. Si el golpe llega dentro de la ventana se desvía, la escena se ilumina y el
+  enemigo pierde postura; el contraataque inmediato pega más fuerte. Si el golpe llega apenas
+  cerrada la ventana es una *guardia imperfecta* (35 % del daño, sin aturdimiento). Las primeras
+  veces aparece "TEMPRANO" / "TARDE" sobre Kaito. Apretarlo al aire cuando no venía nada achica
+  la ventana un instante (anti‑spam).
+* **Postura**: si el enemigo termina su combo con al menos un parry encima queda **Exhausto**
+  (hasta 4 golpes libres). Con la postura llena se **quiebra** (cámara lenta breve) y se lo
+  puede **rematar**; también con poca vida. Los comunes se rematan rápido; la ejecución
+  cinemática queda para élites, sumos, jefes y el último enemigo de la pelea.
+* En **guardia** el primer golpe rebota (clang, le suma postura) y el segundo lo devuelve con
+  un contraataque. En los últimos 0,3 s antes de su golpe un enemigo ya no se interrumpe con
+  un corte liviano: hay que desviar o esquivar.
 * **Ataques 危 (imparables)**: se marcan en rojo; no se bloquean, se esquivan con el dash.
   La esquiva perfecta también ralentiza el tiempo.
 * **Espíritu (maná)**: se llena con parries y golpes; lo gastan el dash, el remate y las dos
-  habilidades. Al usar una habilidad la cámara se mueve detrás de Kaito (Corte del Viento:
+  habilidades. Sin Espíritu igual hay un dash *cansado* (más corto, con espera de 1,2 s). Al usar una habilidad la cámara se mueve detrás de Kaito (Corte del Viento:
   sobre el hombro; Torbellino: órbita baja).
 * **Filo de Ira**: con poca vida, Kaito pega más fuerte. Matar cura un poco.
 * Los enemigos atacan por turnos (*tokens*) para que las peleas grupales se lean bien.

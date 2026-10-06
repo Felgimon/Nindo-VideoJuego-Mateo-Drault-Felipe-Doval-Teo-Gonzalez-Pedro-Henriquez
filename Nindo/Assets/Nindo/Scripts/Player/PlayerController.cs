@@ -50,6 +50,7 @@ namespace Nindo
         CharacterAnimator anim = new CharacterAnimator();
         BladeTrail trail;
         KatanaFire katanaFire;
+        HitFlash hurtFlash;
         Vector3 velocity;          // horizontal
         float verticalSpeed;
         float stateTime;           // segundos en el estado actual (escalados)
@@ -75,6 +76,7 @@ namespace Nindo
             if (model != null) { modelBaseRot = model.localRotation; modelBasePos = model.localPosition; }
             anim.Init(animator);
             SetupKatana();
+            hurtFlash = HitFlash.Attach(model != null ? model.gameObject : gameObject);
             Health = config.maxHealth;
             Spirit = config.startSpirit;
             Rage = 0f;
@@ -111,9 +113,16 @@ namespace Nindo
         // =============================================================== update
         void Update()
         {
+            var input = Game.Input;
+            // "TARDE": apretó parry justo después de comerse un golpe desviable (se mira también durante el
+            // hit-stop del golpe, que es cuando suele llegar esa pulsación)
+            if (input != null && input.Pressed(Act.Parry) && Time.unscaledTime - lastParryableHitAt <= LateFeedback && IsAlive && !Game.InCutscene && !Game.IsPaused)
+            {
+                lastParryableHitAt = -9f;
+                Game.FX?.Coach?.Timing(false);
+            }
             float dt = Time.deltaTime;
             if (dt <= 0f) { anim.Tick(); return; }
-            var input = Game.Input;
             stateTime += dt;
             noDamageTime += dt;
 
@@ -144,6 +153,8 @@ namespace Nindo
         void SetState(PlayerState s)
         {
             if (State == PlayerState.Attack || State == PlayerState.Ability) trail?.Stop();
+            // la media luna del parry se deshace si sale por otra cosa (si ya desvió o se cerró, no hace nada)
+            if (State == PlayerState.Parry && s != PlayerState.Parry) Game.FX?.Crescent?.Cancel();
             State = s;
             stateTime = 0f;
             anim.SetSpeed(RageActive ? config.rageSpeedMul : 1f);
@@ -192,8 +203,8 @@ namespace Nindo
             if (input.Buffered(Act.Finisher, 0.15f) && TryFinisher()) { input.Consume(Act.Finisher); return true; }
             if (input.Buffered(Act.Ability1) && AbilitiesUnlocked && TryAbility(1)) { input.Consume(Act.Ability1); return true; }
             if (input.Buffered(Act.Ability2) && AbilitiesUnlocked && TryAbility(2)) { input.Consume(Act.Ability2); return true; }
-            if (input.Buffered(Act.Parry, 0.12f)) { input.Consume(Act.Parry); StartParry(); return true; }
-            if (input.Buffered(Act.Dash, 0.15f)) { input.Consume(Act.Dash); if (TryDash()) return true; }
+            if (input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return true; }
+            if (input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return true; }
             if (allowAttack && input.Buffered(Act.Attack, 0.2f)) { input.Consume(Act.Attack); StartAttack(0); return true; }
             return false;
         }
@@ -283,8 +294,10 @@ namespace Nindo
                 }
                 else
                 {
+                    // con más de un objetivo cambia; con uno solo el toque lo suelta (antes no hacía nada y parecía roto)
                     var next = Game.Combat?.CycleTarget(transform.position, lockTarget, config.lockRange, 1);
                     if (next != null && next != lockTarget) SetLock(next);
+                    else { SetLock(null); lockHeldTime = -999f; Game.Audio?.Play("ui_move", null, 0.4f); }
                 }
             }
             if (lockTarget != null && (input.Pressed(Act.LockNext) || input.Pressed(Act.LockPrev)))
@@ -423,10 +436,49 @@ namespace Nindo
                 OnParrySuccess(info, false);
                 return HitResult.Parried;
             }
+            // 2b) guardia imperfecta: el golpe llegó apenas cerrada la ventana (apretó un pelito antes). Antes era
+            // daño completo y aturdimiento igual que no haber hecho nada: no se aprendía y castigaba de más
+            if (State == PlayerState.ParryRecover && info.CanBeParried && stateTime < config.imperfectGuardTime)
+            {
+                Game.FX?.Coach?.Timing(true);
+                return ImperfectGuard(info);
+            }
 
-            // 3) daño
+            // 3) daño (y la pista de aprendizaje: "TEMPRANO" si la ventana se había cerrado hace un instante)
+            bool early = info.CanBeParried && Time.time - parryClosedAt <= EarlyFeedback;
             TakeDamage(info);
-            return Health <= 0f ? HitResult.Killed : HitResult.Hit;
+            if (Health <= 0f) return HitResult.Killed;
+            if (early) Game.FX?.Coach?.Timing(true);
+            else if (info.CanBeParried) lastParryableHitAt = Time.unscaledTime;
+            return HitResult.Hit;
+        }
+
+        // pistas de tiempo del parry (TimingCoach): golpe hasta 0.25 s después de cerrada la ventana = temprano;
+        // parry hasta 0.2 s (reales) después de recibir el golpe = tarde
+        const float EarlyFeedback = 0.25f, LateFeedback = 0.2f;
+        float parryClosedAt = -9f, lastParryableHitAt = -9f;
+
+        /// <summary>Guardia imperfecta: pasa parte del daño, sin aturdimiento; el enemigo igual pierde algo de postura.</summary>
+        HitResult ImperfectGuard(in DamageInfo info)
+        {
+            float dmg = info.damage * config.imperfectGuardDamage;
+            Health = Mathf.Max(0f, Health - dmg);
+            noDamageTime = 0f;
+            if (!RageActive) Rage = Mathf.Max(0f, Rage - config.rageLossOnDamage * config.imperfectGuardDamage);
+            GameEvents.RaisePlayerDamaged(dmg);
+            Vector3 dir = info.direction.sqrMagnitude > 0.01f ? info.direction.Flat().normalized : -transform.forward;
+            Vector3 p = AimPoint - dir * 0.55f;
+            Game.FX?.Clash(p, -dir, false);
+            Game.Audio?.Play("clang", p, 0.85f, 0.08f);
+            Game.Camera?.Shake(0.25f);
+            Game.Input?.Rumble(0.4f, 0.3f, 0.12f);
+            hurtFlash?.Flash(0.05f, FXMaterials.HurtFlash);
+            (info.source as Enemy)?.AddImbalance(config.imperfectGuardImbalance);
+            if (Health <= 0f) { Die(); return HitResult.Killed; }
+            FaceInstant(-dir);
+            Push(dir, 0.4f);
+            anim.Play("Blocked", 0.03f, 0f, 1.3f);
+            return HitResult.Hit;
         }
 
         void TakeDamage(in DamageInfo info)
@@ -440,6 +492,8 @@ namespace Nindo
 
             Vector3 dir = info.direction.sqrMagnitude > 0.01f ? info.direction.Flat().normalized : -transform.forward;
             bool heavy = info.kind == AttackKind.Heavy || info.kind == AttackKind.Unblockable || dmg >= 20f;
+            // Kaito destella en rojo (los enemigos en blanco): se ve al instante que el golpe fue a él
+            hurtFlash?.Flash(heavy ? 0.12f : 0.08f, FXMaterials.HurtFlash);
             Game.FX?.PlayerHurt(AimPoint, dir, heavy);
             Game.Audio?.Play("hurt", transform.position, 0.9f, 0.1f);
             Game.Camera?.Shake(heavy ? 0.6f : 0.4f);
@@ -470,7 +524,7 @@ namespace Nindo
                 return;
             }
             // permite escapar con dash al final del aturdimiento
-            if (stateTime > hurtDuration * 0.6f && input != null && input.Buffered(Act.Dash))
+            if (stateTime > hurtDuration * 0.6f && input != null && input.Buffered(Act.Dash, config.defenseBuffer))
             {
                 input.Consume(Act.Dash);
                 TryDash();

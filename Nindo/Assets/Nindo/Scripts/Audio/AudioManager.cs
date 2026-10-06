@@ -181,8 +181,8 @@ namespace Nindo
                 if (src.isPlaying) src.volume = Mathf.MoveTowards(src.volume, MusicVolume * musicTargets[musicActive], Time.unscaledDeltaTime);
             }
             ambience.volume = Mathf.MoveTowards(ambience.volume, Settings.MasterVolume * Settings.SfxVolume * ambienceVol, Time.unscaledDeltaTime * 0.5f);
-            // cámara lenta: el mundo suena más grave
-            float scale = Game.Time != null ? Game.Time.GameplayScale : 1f;
+            // cámara lenta: el mundo suena más grave (el hit-stop de cada golpe no: el choque arrancaba grave)
+            float scale = Game.Time != null ? Game.Time.SlowMoScale : 1f;
             float pitch = Game.IsPaused ? 1f : Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(scale));
             foreach (var s in sfxPool) if (s.isPlaying) s.pitch = s.pitch / Mathf.Max(0.01f, lastPitchMul) * pitch;
             lastPitchMul = pitch;
