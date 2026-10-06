@@ -309,6 +309,8 @@ namespace Nindo
                         break;
                 }
             }
+            // lo que también tapa la pelea aunque el manifest no lo marque (acantilados, campana, bambú joven)
+            if (Occluder.AlsoOccludes(spec.id) && go.GetComponent<Occluder>() == null) go.AddComponent<Occluder>();
             foreach (var t in go.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = Array.IndexOf(spec.tags, "nonstatic") < 0;
         }
 
