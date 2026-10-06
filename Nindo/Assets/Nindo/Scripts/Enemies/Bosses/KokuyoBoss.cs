@@ -40,6 +40,14 @@ namespace Nindo
         const float TransitionHeal = 30f, TransitionSpirit = 30f;
         /// <summary>El cuerpo no arranca a pegar hasta esto después del golpe de la sombra (más su anticipación ≥ 0.6 s).</summary>
         const float ShadowGap = 0.35f;
+        /// <summary>El Counter suelta recién esto después del impacto de la sombra: con su resto (≥ 0.05 s) y la
+        /// anticipación del gyakugiri (≥ 0.7 s) el corte llega a más de 0.9 s del golpe de la sombra.</summary>
+        const float CounterAfterShadow = 0.2f;
+        /// <summary>Paso de Sombra: si el charco no llega (borde de la malla, un brasero en el camino) sale igual.</summary>
+        const float SinkTimeout = 1.8f;
+        /// <summary>De rodillas los golpes lo devuelven a este punto del Kneel como mucho: después del último
+        /// respiro (0.69) y antes de que se pare (si no, cada golpe tardío lo volvía a bajar).</summary>
+        const float KneelReplayMax = 0.72f;
         const float RageLightRange = 5f;
 
         KageArenaFX fx;
@@ -55,6 +63,9 @@ namespace Nindo
         int act1Deaths;
         bool hintPending, shadowTipShown;
         int retryAct = 1;
+        // el arranque rápido del reintento espera al primer Update de la pelea: BeginFight levanta el evento ANTES de
+        // ponerlo en Chase, y una escena empezada ahí adentro quedaba pisada (caminaba y pegaba siendo inmune)
+        bool retryTearPending;
 
         // paso en curso
         KokuyoClip clip;
@@ -68,7 +79,14 @@ namespace Nindo
         // Paso de Sombra
         bool sinking, sinkArrived;
         Vector3 emergeDir;
-        float sinkArriveTime, sinkHoldClock = -1f;
+        float sinkStart, sinkArriveTime, sinkHoldClock = -1f;
+        // un clavado de la sombra mientras está hundido: la postura se cobra cuando terminó de salir
+        float pendingPosture;
+        // de rodillas: reloj del clip que se detiene con el hit-stop (Time.time no)
+        float kneelClock;
+        // cuándo pega (o pegó) la sombra suelta: el Counter del cuerpo espera a eso
+        float kageImpactAt = -99f;
+        bool pulledOut;
         readonly List<Collider> colliders = new List<Collider>();
         // el parry lo empuja knock_m (0.6) con la curva de Enemy: lo que falta (o sobra) respecto de 0.4 / 0.8
         Vector3 knockExtra;
@@ -139,7 +157,7 @@ namespace Nindo
             if (retryAct >= 2)
             {
                 Health = Mathf.Min(Health, Gates[1] * config.maxHealth);
-                StartTransition(2, true);
+                retryTearPending = true;
             }
         }
 
@@ -157,6 +175,9 @@ namespace Nindo
             if (look == null) return;
             Act = 1;
             LastStand = lastStandKneel = false;
+            retryTearPending = false;
+            pendingPosture = 0f;
+            kageImpactAt = -99f;
             sinking = false;
             sinkHoldClock = -1f;
             knockExtra = Vector3.zero;
@@ -178,9 +199,13 @@ namespace Nindo
         protected override void Update()
         {
             if (look == null) { base.Update(); return; }
+            if (retryTearPending && Fighting && IsAlive && State == EnemyState.Chase) { retryTearPending = false; StartTransition(2, true); }
+            ApplyPendingPosture();
+            TrackShadowImpact();
             BiasStrafe();
             base.Update();
             float dt = Time.deltaTime;
+            if (State == EnemyState.Exhausted && !anim.Frozen) kneelClock += dt * anim.StateSpeed;
             if (knockExtra.sqrMagnitude > 1e-4f && !anim.Frozen)
             {
                 Vector3 s = knockExtra * Mathf.Min(1f, dt * 10f);
@@ -192,7 +217,8 @@ namespace Nindo
             if (State == EnemyState.Counter)
             {
                 if (pattern != counterPattern) pattern = counterPattern;
-                if (kage != null && kage.Busy && stateTime < 1.8f) stateDuration = Mathf.Max(stateDuration, stateTime + 0.05f);
+                if (kage != null && (kage.Busy || Time.time < kageImpactAt + CounterAfterShadow) && stateTime < 2.8f)
+                    stateDuration = Mathf.Max(stateDuration, stateTime + 0.05f);
             }
             if (State != EnemyState.Attack)
             {
@@ -225,6 +251,26 @@ namespace Nindo
             strafeSwitch = Time.time + 0.5f;
         }
 
+        /// <summary>La postura de un clavado hecho con él bajo el piso se cobra cuando ya salió del charco: si no, se
+        /// arrodillaba a mitad del viaje, pegado a Kaito (sin colliders) y con el charco dibujado.</summary>
+        void ApplyPendingPosture()
+        {
+            if (pendingPosture <= 0f || sinking) return;
+            var a = CurrentAttack;
+            if (State == EnemyState.Attack && a != null && a.state == KokuyoTimings.ShadowEmerge.State
+                && stepNorm < KokuyoTimings.ShadowEmerge.Event("ShadowErupt") + 0.08f) return;
+            float p = pendingPosture;
+            pendingPosture = 0f;
+            if (IsAlive && transition == null) AddImbalance(p);
+        }
+
+        void TrackShadowImpact()
+        {
+            if (kage == null) return;
+            float e = kage.StrikeEta;
+            if (!float.IsInfinity(e)) kageImpactAt = Time.time + e;
+        }
+
         void UpdateStrafeAnim(float dt)
         {
             string want = "Locomotion";
@@ -247,7 +293,7 @@ namespace Nindo
             clip = c;
             travelDone = 0f;
             goFired = false;
-            riftOn = riftHit = false;
+            riftOn = riftHit = pulledOut = false;
             emberAt = 0f;
             if (c != null)
             {
@@ -294,6 +340,15 @@ namespace Nindo
                 case KokuyoMoves.Rift:
                     HitArc(a, 0f);
                     TickRift(a);
+                    // arranca la hoja de la piedra: el polvo marca que se terminó el castigo gratis
+                    if (!pulledOut && stepNorm >= KokuyoTimings.KabutoStuckEnd && katanaTip != null)
+                    {
+                        pulledOut = true;
+                        Vector3 tip = katanaTip.position;
+                        tip.y = transform.position.y;
+                        Game.FX?.Dust(tip, 1.1f);
+                        Game.FX?.GroundCrack(tip, 0.8f);
+                    }
                     break;
                 case KokuyoMoves.Sink:
                     TickSink();
@@ -315,7 +370,14 @@ namespace Nindo
             float d = x - travelDone;
             travelDone = x;
             if (d <= 0f) return;
-            float room = target != null ? DistToTarget - Radius - target.Radius - 0.25f : d;
+            // solo frena contra lo que tiene adelante: con Kaito al costado de la estocada la embestida sigue entera
+            float room = d;
+            if (target != null)
+            {
+                Vector3 to = (target.transform.position - transform.position).Flat();
+                float along = Vector3.Dot(to, transform.forward), lat = Mathf.Abs(Vector3.Dot(to, transform.right));
+                if (along > 0f && lat < Radius + target.Radius) room = along - Radius - target.Radius - 0.25f;
+            }
             if (room > 0f) MoveBy(transform.forward * Mathf.Min(d, room));
         }
 
@@ -449,6 +511,7 @@ namespace Nindo
         {
             sinking = true;
             sinkArrived = false;
+            sinkStart = Time.time;
             sinkHoldClock = -1f;
             emergeDir = PickEmergeDir();
             Game.Audio?.Play("teleport", transform.position, 0.8f);
@@ -485,11 +548,14 @@ namespace Nindo
             if (!sinkArrived)
             {
                 hazards.Boil(20f);
+                // sobre la malla (escalera del dojo, el poste, los braseros): agent.Move no sale de ella y el charco
+                // se quedaba frotando el borde, hundido e inmune. Y si igual no llega, sale donde esté
                 Vector3 dest = ClampToArena(target.transform.position + emergeDir * 3f, 1.5f);
+                if (UnityEngine.AI.NavMesh.SamplePosition(dest, out var hit, 1.5f, UnityEngine.AI.NavMesh.AllAreas)) dest = hit.position;
                 Vector3 d = (dest - transform.position).Flat();
                 float m = d.magnitude;
                 if (m > 0.05f && !anim.Frozen) MoveBy(d / m * Mathf.Min(m, 9f * Time.deltaTime));
-                if (m < 0.3f)
+                if (m < 0.3f || Time.time - sinkStart > SinkTimeout)
                 {
                     sinkArrived = true;
                     sinkArriveTime = Time.time;
@@ -514,6 +580,14 @@ namespace Nindo
             sinking = false;
             sinkHoldClock = -1f;
             foreach (var c in colliders) if (c != null) c.enabled = true;
+            hazards.Puddle(Vector3.zero, 0f);   // la salida lo vuelve a dibujar donde corresponde
+            // sin colliders pudo quedar encima de Kaito (salida por tiempo, o cortado): lo corre a un costado
+            if (target != null)
+            {
+                Vector3 away = (transform.position - target.transform.position).Flat();
+                float gap = Radius + target.Radius + 0.1f, m = away.magnitude;
+                if (m < gap) MoveBy((m > 0.05f ? away / m : -transform.forward) * (gap - m));
+            }
         }
 
         // ------------------------------------------------------------------ sombra adelantada (Acto 1)
@@ -567,7 +641,13 @@ namespace Nindo
             {
                 // de rodillas no hace la reacción de golpe parado (Flinch lo levantaba): sigue en el clip, con chispas
                 if (kneeling && State == EnemyState.Exhausted)
-                    anim.Play(config.animExhausted, 0.05f, Mathf.Min((Time.time - kneelStart) / KokuyoTimings.Kneel.Seconds, 0.8f));
+                {
+                    // vuelve al punto del clip que se ve (el reloj se frena con el hit-stop), nunca a la parte en
+                    // que se para: los golpes tardíos lo dejaban subiendo y bajando
+                    float n = Mathf.Min(kneelClock / KokuyoTimings.Kneel.Seconds, KneelReplayMax);
+                    kneelClock = n * KokuyoTimings.Kneel.Seconds;
+                    anim.Play(config.animExhausted, 0.05f, n);
+                }
                 if (early && State == EnemyState.Stagger)
                 {
                     int before = Mathf.FloorToInt(Imbalance + 0.001f);
@@ -621,6 +701,7 @@ namespace Nindo
         {
             base.BecomeExhausted();
             kneelStart = Time.time;
+            kneelClock = 0f;
             if (look == null) return;
             look.FlareAll();
             Game.FX?.Dust(transform.position + transform.forward * 0.8f, 1.6f);
@@ -656,7 +737,7 @@ namespace Nindo
 
         public void OnShadowPinned()
         {
-            AddImbalance(2f);
+            if (sinking) pendingPosture += 2f; else AddImbalance(2f);
             look?.FlareAll();
             Game.Camera?.Shake(0.3f);
         }
@@ -708,6 +789,7 @@ namespace Nindo
             else yield return LastStandRise();
             transition = null;
             if (!IsAlive) yield break;
+            ReleaseToken();
             SetState(EnemyState.Chase);
             nextAttackTime = Time.time + 0.5f;
         }
@@ -944,14 +1026,22 @@ namespace Nindo
             Game.FX?.SlashLine(c + right * 2.4f + Vector3.up * 1.6f, c - right * 2.4f - Vector3.up * 1.2f);
             Game.FX?.FlashLight(c, new Color(1f, 0.85f, 0.45f), 9f, 16f, 0.5f);
             base.Execute(by);
-            StartCoroutine(BellWhenTimeReturns(c));
+            StartCoroutine(BellWithTheMoon(c));
         }
 
-        /// <summary>La campana suena cuando termina la cámara lenta de la muerte (Boss.Die, 2.2 s): en cámara lenta el
-        /// audio baja de tono y una campana deslizándose de 0.55 a 1 suena a cinta gastada. Llega con la luna.</summary>
-        IEnumerator BellWhenTimeReturns(Vector3 at)
+        /// <summary>
+        /// Tiempos reales del final desde el golpe (la cámara lenta de Boss.Die estira el Defeat de 3 s a ~4.5 s):
+        /// suelta la espada a ~2.2 s y la máscara pega en las losas a ~3.4 s, con el plano de su muerte encima. Recién
+        /// a los 3.6 s el plano sube al cielo (la luna vuelve a los 4.2 s), baja a los braseros encendiéndose y a los
+        /// 6.6 s StoryDirector funde al final. Antes el cielo tapaba la espada y la máscara.
+        /// </summary>
+        public const float FinaleSkyAt = 3.6f, FinaleSeconds = 6.6f;
+
+        /// <summary>La campana llega con la luna, ya fuera de la cámara lenta (en cámara lenta el audio baja de tono y
+        /// una campana deslizándose de 0.55 a 1 suena a cinta gastada).</summary>
+        IEnumerator BellWithTheMoon(Vector3 at)
         {
-            yield return new WaitForSecondsRealtime(2.3f);
+            yield return new WaitForSecondsRealtime(FinaleSkyAt + 0.6f);
             Game.Audio?.Play("temple_bell", at, 0.9f);
         }
 
@@ -966,8 +1056,22 @@ namespace Nindo
             Game.Camera?.SetFocusBias(Vector3.zero);
             if (rageLight != null) rageLight.enabled = false;
             base.Die(info, finisher);
-            // la luna vuelve; las cuerdas del abuelo se deshacen en el plano del final (StoryDirector)
-            fx?.Finale(true, -1f);
+            // el plano genérico de muerte (a 6 m, mirando a 1.5 m) es para alguien de 1.7 m: este, más lejos y más
+            // alto, deja ver la espada clavándose y la máscara cayendo hasta las losas. Gana por ser el último
+            if (Game.Camera != null)
+            {
+                Vector3 center = transform.position;
+                Vector3 start = (Game.Camera.transform.position - center).Flat().normalized;
+                if (start.sqrMagnitude < 0.01f) start = -transform.forward;
+                Game.Camera.PlayShot(t =>
+                {
+                    Vector3 dir = Quaternion.Euler(0f, t * 12f, 0f) * start;
+                    Vector3 pos = center + dir * Mathf.Lerp(11f, 8.5f, Mathf.Clamp01(t / FinaleSkyAt)) + Vector3.up * 3.6f;
+                    return new Pose(pos, Quaternion.LookRotation(center + Vector3.up * 2f - pos));
+                }, () => 34f, 0.4f, FinaleSkyAt + 0.2f, 1.0f);
+            }
+            // la luna vuelve después de la máscara; las cuerdas del abuelo se deshacen en el plano del final (StoryDirector)
+            fx?.Finale(true, -1f, FinaleSkyAt);
         }
 
         /// <summary>No cae ni se hace humo: suelta la espada (queda clavada), se le cae la máscara y queda en seiza.</summary>
@@ -992,24 +1096,41 @@ namespace Nindo
             look?.FlareAll();
         }
 
-        /// <summary>La luna rompe las nubes: la sombra viva aparece y se estira hasta los pies de Kaito.</summary>
-        public void RevealShadow(float seconds)
+        /// <summary>La luna rompe las nubes: la sombra viva aparece y se estira hasta los pies de Kaito (en 'reach').</summary>
+        public void RevealShadow(float seconds, Vector3 reach)
         {
             if (fx == null) return;
             var sh = fx.AttachShadow(this);
-            if (sh != null) StartCoroutine(SwingInShadow(sh, seconds));
+            if (sh != null) StartCoroutine(SwingInShadow(sh, seconds, reach));
         }
 
-        IEnumerator SwingInShadow(PlanarShadow sh, float seconds)
+        /// <summary>
+        /// A largo 1 la sombra mide ~6.4 m (4.5 m de cuerpo con la luna a 35°): no llegaba a un Kaito a 15 m. Se estira
+        /// hasta 0.6 m antes de sus pies (tope x2.5), aguanta así mientras habla el abuelo y vuelve a su largo real
+        /// cuando arranca la pelea (el adelanto del Acto 1 se lee contra la sombra de verdad, no contra una estirada).
+        /// </summary>
+        IEnumerator SwingInShadow(PlanarShadow sh, float seconds, Vector3 reach)
         {
             sh.FadeTo(0f, 0f);
             sh.FadeTo(1f, seconds * 0.6f);
+            // lo que hay que cubrir se mide a lo largo de la sombra (la luna puede no estar justo detrás de él)
+            float unit = sh.Stretch > 0.01f ? sh.Length / sh.Stretch : 0f;
+            Vector3 axis = (sh.ProjectToGround(transform.position + Vector3.up) - transform.position).Flat();
+            float along = axis.sqrMagnitude > 1e-4f ? Vector3.Dot((reach - transform.position).Flat(), axis.normalized) : 0f;
+            float full = unit > 0.1f ? Mathf.Clamp((along - 0.6f) / unit, 1f, 2.5f) : 1f;
             float t = 0f;
             while (t < seconds && sh != null)
             {
                 t += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
-                sh.Stretch = Mathf.Lerp(0.15f, 1f, 1f - (1f - k) * (1f - k));
+                sh.Stretch = Mathf.Lerp(0.15f, full, 1f - (1f - k) * (1f - k));
+                yield return null;
+            }
+            while (sh != null && !Fighting && IsAlive) yield return null;
+            // (si el reintento ya la arrancó, la Kage la maneja: vuelve a 1 de una)
+            for (t = 0f; t < 0.8f && sh != null && !sh.Detached; t += Time.deltaTime)
+            {
+                sh.Stretch = Mathf.Lerp(full, 1f, Mathf.SmoothStep(0f, 1f, t / 0.8f));
                 yield return null;
             }
             if (sh != null) sh.Stretch = 1f;
@@ -1038,7 +1159,13 @@ namespace Nindo
                 fx?.ShadowTear(true);
                 Act = 2;
             }
-            if (act == 4 && Act == 2) { fx?.Eclipse(); look.SetEclipse(true); Act = 3; }
+            if (act == 4 && Act == 2)
+            {
+                if (kage != null) { kage.Dismiss(); kage = null; }   // el salto se saltea el regreso a sus pies
+                fx?.Eclipse();
+                look.SetEclipse(true);
+                Act = 3;
+            }
             Health = Gates[act - 1] * config.maxHealth + 1f;
             StartTransition(act, false);
         }

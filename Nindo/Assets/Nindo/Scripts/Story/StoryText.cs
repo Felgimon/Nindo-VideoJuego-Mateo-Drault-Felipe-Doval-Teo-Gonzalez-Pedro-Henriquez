@@ -215,6 +215,9 @@ namespace Nindo
                         L(Kokuyo, "...Te eligió a vos. Como a él."),
                         L(Abuelo, "No te dejé solo, Kokuyō. Vos cortaste la cinta."),
                         L(Abuelo, "El verdadero poder nace del lazo que nos une a los nuestros."),
+                    };
+                case "ending_ribbon":
+                    return new List<DialogueLine> {
                         L(Kaito, "Tomá. Es tuya."),
                     };
                 case "ending_final":

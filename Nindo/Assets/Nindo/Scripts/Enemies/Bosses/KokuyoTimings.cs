@@ -143,7 +143,7 @@ namespace Nindo
         /// <summary>KabutoWari: la hoja queda clavada entre estos normalizados (castigo libre).</summary>
         public static readonly float KabutoStuckStart = 0.4667f, KabutoStuckEnd = 0.7333f;
         /// <summary>Ichimonji: radio bajo la empuñadura que la hoja no toca (m).</summary>
-        public const float IchimonjiSafeCore = 1.4f;
+        public const float IchimonjiSafeCore = 1.65f;
         /// <summary>Parried: metros que retrocede con la curva 1 - e^(-10 t) (los pies no patinan con eso).</summary>
         public const float ParriedKnock = 0.6f;
     }

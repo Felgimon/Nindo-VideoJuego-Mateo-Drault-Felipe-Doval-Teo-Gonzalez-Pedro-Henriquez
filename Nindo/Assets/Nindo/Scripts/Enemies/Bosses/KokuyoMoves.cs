@@ -33,8 +33,9 @@ namespace Nindo
         public const float RiftLength = 14f, RiftHalfWidth = 1.0f, RiftSpeed = 28f;
         public const float RiftDamage = 26f, RiftKnockback = 2.5f;
         /// <summary>Ichimonji: dentro de este radio la hoja pasa por encima de la cabeza de Kaito (la empuñadura va a
-        /// 1.9 m y la punta baja a 0.97 m: a menos de ~2 m del centro la hoja corta arriba de 1.5 m).</summary>
-        public const float SweepCore = 1.65f;
+        /// 1.9 m y la punta baja a 0.97 m: a menos de ~2 m del centro la hoja corta arriba de 1.5 m). Sale del sidecar
+        /// (safe_core_m), que es la única fuente: el disco pálido y el golpe usan el mismo número.</summary>
+        public const float SweepCore = KokuyoTimings.IchimonjiSafeCore;
 
         static readonly Dictionary<string, KokuyoClip> clips = new Dictionary<string, KokuyoClip>
         {

@@ -64,9 +64,11 @@ namespace Nindo
             {
                 // el plano del cielo de KageArenaFX (1.4 + 1.0 + 2.8 s): al volver, la sombra ya está en el piso
                 yield return Wait(4.0f);
+                // desde atrás de Kaito, alto: él abajo, Kokuyō arriba y entre los dos la sombra que corre hacia sus pies
+                // (proyectado a 8, 11 y 15 m: los dos enteros y la punta de la sombra adentro del cuadro)
                 Vector3 kp = P.transform.position;
-                int floor = Game.Camera.PlayStaticShot(kp - f * 4.5f + right * 1.5f + Vector3.up * 10f, Vector3.Lerp(kp, b, 0.45f), 36f, 0f, 1.0f, 0.9f);
-                k.RevealShadow(1.3f);
+                int floor = Game.Camera.PlayStaticShot(kp + f * 9f + right * 3f + Vector3.up * 9f, Vector3.Lerp(kp, b, 0.45f) + Vector3.up * 0.8f, 38f, 0f, 1.0f, 0.9f);
+                k.RevealShadow(1.3f, kp);
                 yield return Wait(1.4f);
                 yield return Say("kage_intro_abuelo");
                 Game.Camera.CancelShot(floor);
@@ -75,7 +77,7 @@ namespace Nindo
             }
             else
             {
-                k.RevealShadow(0.8f);
+                k.RevealShadow(0.8f, P.transform.position);
                 yield return Wait(0.5f);
             }
             yield return Wait(0.3f);
@@ -127,11 +129,15 @@ namespace Nindo
             yield return Say("ending");
             if (k != null)
             {
+                // se da vuelta hacia él ANTES de hablarle: la media cinta se la da mirándolo, y él se inclina
                 P.ScriptedFace(k.transform.position);
+                yield return Wait(0.4f);
+                yield return Say("ending_ribbon");
                 k.Bow();
                 yield return Wait(2.2f);
                 P.ScriptedFace(g);
             }
+            else yield return Say("ending_ribbon");
             yield return Say("ending_final");
             Game.Camera.CancelShot(shot);
             Game.Save.SetFlag(Flags.Ending);

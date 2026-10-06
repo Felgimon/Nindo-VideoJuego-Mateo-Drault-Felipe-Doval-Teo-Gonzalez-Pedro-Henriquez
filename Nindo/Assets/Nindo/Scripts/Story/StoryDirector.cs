@@ -665,7 +665,8 @@ namespace Nindo
         {
             Game.Save.SetFlag(Flags.FinalBossDone);
             SaveSystem.Save();
-            yield return new WaitForSecondsRealtime(3.5f);
+            // Kokuyō suelta la espada, pierde la máscara y la luna vuelve antes del fundido (KokuyoBoss.FinaleSeconds)
+            yield return new WaitForSecondsRealtime(FinalBoss() != null ? KokuyoBoss.FinaleSeconds : 3.5f);
             yield return Cutscene(EndingScene());
             Game.Audio?.PlayMusic("ending", 3f);
             Game.UI.ShowEnding();
