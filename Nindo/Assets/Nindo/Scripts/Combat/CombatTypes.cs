@@ -12,6 +12,7 @@ namespace Nindo
         Parried,     // el defensor desvió el golpe (parry)
         PerfectParry,
         Guarded,     // el enemigo estaba en guardia y contraatacó
+        Blocked,     // el enemigo lo frenó con la guardia (o un jefe rugiendo) sin contraatacar: rebota y avisa
         Dodged,      // i-frames del dash
         Killed
     }
@@ -30,6 +31,7 @@ namespace Nindo
         public Faction sourceFaction;
         public Component source;       // PlayerController / Enemy
         public string attackName;
+        public bool riposte;           // contraataque de Kaito tras un parry: rompe la armadura del golpe enemigo
 
         public bool CanBeParried => kind != AttackKind.Unblockable && kind != AttackKind.Finisher;
     }
@@ -46,8 +48,9 @@ namespace Nindo
 
     /// <summary>
     /// Definición de un ataque. Los tiempos son normalizados respecto del clip (0..1).
-    /// La curva "timing" re-timea la animación en runtime: valores &lt; 1 = anticipación lenta,
-    /// &gt; 1 = golpe rápido. Así las animaciones de Blender ganan "peso" sin re-exportarlas.
+    /// Kaito: la curva "timing" re-timea la animación en runtime (&lt; 1 = anticipación lenta, &gt; 1 = golpe rápido).
+    /// Enemigos: el ritmo lo arma StepTimeline con apex / windup / releaseRate, en segundos exactos, para que
+    /// el aviso de ataque se cierre justo cuando hay que apretar parry.
     /// </summary>
     [Serializable]
     public class AttackDef
@@ -71,7 +74,11 @@ namespace Nindo
         public float shake = 0.25f;
         public float speed = 1f;
         public AnimationCurve timing;
-        [Tooltip("Para enemigos: duración del aviso antes del golpe (s, extra)")] public float telegraph = 0f;
+        [Tooltip("Para enemigos: windup extra (s) sobre el mínimo de su tipo de golpe")] public float telegraph = 0f;
+        [Tooltip("Enemigos: pose de máxima carga del arma (normalizado; -1 = activeStart - 0.15)")] public float apex = -1f;
+        [Tooltip("Enemigos: segundos mínimos desde que arranca el paso hasta que pega (0 = según el tipo de golpe)")] public float windup = 0f;
+        [Tooltip("Enemigos: velocidad del clip en la suelta (apex → activeStart)")] public float releaseRate = 1.6f;
+        [Tooltip("Enemigos: el aviso se cierra esto antes del golpe (s; -1 = 0.08 desviable / 0.12 imparable)")] public float tellBias = -1f;
         public string sfx = "swing";
         public string hitSfx = "hit";
         [Tooltip("Movimiento especial de jefe: spin, slam, wave, charge, teleport, summon, clones, windslash")]
@@ -83,16 +90,8 @@ namespace Nindo
 
         public AttackDef Clone() => (AttackDef)MemberwiseClone();
 
-        /// <summary>Curva típica: anticipación lenta, impacto rápido, recuperación normal.</summary>
-        public static AnimationCurve Snappy(float windup = 0.75f, float strike = 1.6f, float strikeAt = 0.3f, float recover = 1.05f)
-        {
-            return new AnimationCurve(
-                new Keyframe(0f, windup),
-                new Keyframe(Mathf.Max(0.05f, strikeAt - 0.12f), windup),
-                new Keyframe(strikeAt, strike),
-                new Keyframe(Mathf.Min(0.95f, strikeAt + 0.2f), recover),
-                new Keyframe(1f, recover));
-        }
+        /// <summary>Cuánto antes del golpe se cierra el aviso (ver TellStyle).</summary>
+        public float TellBias => tellBias >= 0f ? tellBias : TellStyle.Bias(kind);
     }
 
     public static class CombatMath

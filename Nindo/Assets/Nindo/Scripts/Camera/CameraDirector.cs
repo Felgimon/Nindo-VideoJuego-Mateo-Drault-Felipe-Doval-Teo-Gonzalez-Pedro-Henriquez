@@ -106,11 +106,13 @@ namespace Nindo
             impulseVel += dir.normalized * strength * 6f * Settings.ScreenShake;
         }
 
-        /// <summary>Golpe de FOV (negativo = zoom in).</summary>
+        /// <summary>
+        /// Golpe de FOV (negativo = zoom in): un impulso al resorte que llega a 'fovDelta' en ~0.1 s. Antes el FOV
+        /// saltaba entero en un frame (el parry perfecto achicaba un 20 % de golpe todo lo que había en pantalla).
+        /// </summary>
         public void Punch(float fovDelta, float duration)
         {
-            fovPunch = fovDelta;
-            fovPunchVel = 0f;
+            fovPunchVel += fovDelta * 24f;
         }
 
         public void Snap()
@@ -279,7 +281,8 @@ namespace Nindo
             // punch de FOV (resorte subamortiguado: se siente como un golpe)
             fovPunchVel += -fovPunch * 160f * dt;
             fovPunchVel *= Mathf.Exp(-12f * dt);
-            fovPunch += fovPunchVel * dt;
+            // dos golpes seguidos (remate y muerte) suman velocidad: tope en el más grande que se pide
+            fovPunch = Mathf.Clamp(fovPunch + fovPunchVel * dt, -7f, 7f);
             if (Mathf.Abs(fovPunch) < 0.01f && Mathf.Abs(fovPunchVel) < 0.01f) fovPunch = 0f;
 
             transform.SetPositionAndRotation(pos, rot);

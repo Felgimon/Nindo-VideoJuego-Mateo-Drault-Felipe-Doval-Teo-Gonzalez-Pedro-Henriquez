@@ -108,6 +108,20 @@ namespace Nindo
 
         public bool Frozen => Time.unscaledTime < freezeUntil;
 
+        /// <summary>
+        /// Tiempo normalizado real del estado en el Animator (false si está en una transición o en otro
+        /// estado): sirve para corregir la deriva entre el reloj del golpe y lo que se ve.
+        /// </summary>
+        public bool TryNormalizedTime(string state, out float n)
+        {
+            n = 0f;
+            if (!Valid || Animator.IsInTransition(0)) return false;
+            var info = Animator.GetCurrentAnimatorStateInfo(0);
+            if (info.shortNameHash != Hash(state)) return false;
+            n = info.normalizedTime;
+            return true;
+        }
+
         /// <summary>Llamar en Update.</summary>
         public void Tick()
         {

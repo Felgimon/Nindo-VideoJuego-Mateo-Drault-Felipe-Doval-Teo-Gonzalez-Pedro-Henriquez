@@ -13,9 +13,15 @@ namespace Nindo
     public class FXManager : MonoBehaviour
     {
         public ScreenFX Screen { get; private set; }
+        /// <summary>Avisos de ataque en el suelo (ensō).</summary>
+        public CombatTelegraphs Tells { get; private set; }
+        /// <summary>Media luna de la ventana de parry de Kaito.</summary>
+        public ParryCrescent Crescent { get; private set; }
+        /// <summary>"TEMPRANO" / "TARDE" sobre Kaito cuando erra un parry por poco.</summary>
+        public TimingCoach Coach { get; private set; }
 
-        GameObject sparksGold, sparksWhite, sparksRed, flashWhite, flashGold, flashRed, dust, smoke, smokeDark,
-            leaves, petals, heal, rage, inward, splash, debris, embers, ink;
+        GameObject sparksGold, sparksWhite, sparksRed, flashWhite, flashGold, flashRed, flashParry, dust, smoke, smokeDark,
+            leaves, petals, heal, rage, inward, splash, debris, embers, ink, goldInk;
         readonly Dictionary<VisualEffectAsset, GameObject> vfxTemplates = new Dictionary<VisualEffectAsset, GameObject>();
         readonly List<AfterImage> afterImages = new List<AfterImage>();
         int afterIndex;
@@ -26,7 +32,9 @@ namespace Nindo
         {
             Game.FX = this;
             Screen = gameObject.AddComponent<ScreenFX>();
-            gameObject.AddComponent<CombatTelegraphs>();   // avisos de ataque en el suelo
+            Tells = gameObject.AddComponent<CombatTelegraphs>();   // avisos de ataque en el suelo
+            Crescent = gameObject.AddComponent<ParryCrescent>();
+            Coach = gameObject.AddComponent<TimingCoach>();
             BuildTemplates();
             flashLights = new Light[4];
             for (int i = 0; i < flashLights.Length; i++)
@@ -50,6 +58,8 @@ namespace Nindo
             flashWhite = FXFactory.FlashSprite(new Color(1f, 1f, 1f, 0.9f), 1.8f, 0.09f, "FlashWhite");
             flashGold = FXFactory.FlashSprite(new Color(1f, 0.85f, 0.45f, 0.9f), 2.6f, 0.13f, "FlashGold");
             flashRed = FXFactory.FlashSprite(new Color(1f, 0.25f, 0.2f, 0.8f), 2.2f, 0.18f, "FlashRed");
+            // destello del parry: corto (≤ 0.1 s) para no tapar el golpe siguiente; la luz la pone ScreenFX.ParryLight
+            flashParry = FXFactory.FlashSprite(new Color(1f, 0.88f, 0.55f, 0.9f), 2.6f, 0.09f, "FlashParry");
             dust = FXFactory.Puff(new Color(0.65f, 0.58f, 0.48f, 0.45f), 6, 0.7f, 0.6f, 1.2f, false, "Dust");
             smoke = FXFactory.Puff(new Color(0.72f, 0.72f, 0.8f, 0.55f), 10, 1.3f, 1.1f, 1.4f, false, "Smoke", -0.15f);
             smokeDark = FXFactory.Puff(new Color(0.2f, 0.15f, 0.28f, 0.7f), 12, 1.4f, 1.2f, 1.6f, false, "SmokeDark", -0.2f);
@@ -63,6 +73,11 @@ namespace Nindo
             debris = FXFactory.Puff(new Color(0.45f, 0.42f, 0.4f, 0.9f), 10, 0.25f, 0.9f, 6f, false, "Debris", 1.4f);
             ink = FXFactory.Sparks(new Color(0.12f, 0.08f, 0.1f), 8, 12, 6f, "InkFlecks");
             ink.GetComponent<ParticleSystemRenderer>().sharedMaterial = FXMaterials.Alpha;
+            // "tinta dorada" del parry: gotas gruesas que salen del choque (brillan con el bloom)
+            goldInk = FXFactory.Sparks(new Color(1f, 0.8f, 0.36f), 10, 16, 7.5f, "GoldInk");
+            var gm = goldInk.GetComponent<ParticleSystem>().main;
+            gm.startSize = new ParticleSystem.MinMaxCurve(0.09f, 0.18f);
+            gm.gravityModifier = 0.8f;
         }
 
         // ------------------------------------------------------------------ helpers
@@ -127,12 +142,21 @@ namespace Nindo
             FlashLight(p, new Color(0.85f, 0.9f, 1f), big ? 7f : 4f, 6f, 0.15f);
         }
 
-        public void ParryFlash(Vector3 p, bool perfect)
+        /// <summary>
+        /// El parry ILUMINA la escena: luz cálida fuerte y corta, golpe de exposición/bloom (ScreenFX.ParryLight),
+        /// tinta dorada que sale del choque hacia el atacante. El destello es chico y corto (antes un sprite de
+        /// 4.7 m tapaba a los dos y al golpe siguiente). 'dir' = de Kaito hacia el atacante.
+        /// </summary>
+        public void ParryFlash(Vector3 p, Vector3 dir, bool perfect)
         {
             if (C != null) PlayVfx(C.vfxParry, p, Quaternion.identity);
-            Emit(flashGold, p, Quaternion.identity, 0.3f, perfect ? 1.8f : 1.1f);
+            Emit(flashParry, p, Quaternion.identity, 0.2f, perfect ? 1.0f : 0.7f);
+            Emit(sparksWhite, p, Dir(dir), 0.6f, perfect ? 1.2f : 0.9f);
+            Emit(goldInk, p, Dir(dir), 1f, perfect ? 1.4f : 1f);
             RingWave.Spawn(new Vector3(p.x, Game.Player != null ? Game.Player.transform.position.y : p.y, p.z), perfect ? 3.5f : 2.2f, new Color(1f, 0.85f, 0.45f, 0.8f), 0.35f);
-            if (perfect) { Emit(inward, p, Quaternion.identity, 0.6f, 0.6f); FlashLight(p, new Color(1f, 0.9f, 0.6f), 10f, 9f, 0.25f); }
+            if (perfect) Emit(inward, p, Quaternion.identity, 0.6f, 0.6f);
+            FlashLight(p, new Color(1f, 0.9f, 0.68f), perfect ? 28f : 12f, perfect ? 14f : 9f, perfect ? 0.22f : 0.15f);
+            Screen?.ParryLight(perfect, 0.15f);
         }
 
         public void PlayerHurt(Vector3 p, Vector3 dir, bool heavy)
@@ -152,14 +176,19 @@ namespace Nindo
 
         public void AfterImages(Transform model, float duration, float interval, bool hot)
         {
-            StartCoroutine(AfterImageRoutine(model, duration, interval, hot));
+            AfterImages(model, duration, interval, hot ? new Color(1f, 0.55f, 0.2f, 0.45f) : new Color(1f, 0.88f, 0.5f, 0.4f));
         }
 
-        IEnumerator AfterImageRoutine(Transform model, float duration, float interval, bool hot)
+        /// <summary>Imágenes residuales de un color dado (p. ej. gris en el dash cansado, sin Espíritu).</summary>
+        public void AfterImages(Transform model, float duration, float interval, Color c)
+        {
+            StartCoroutine(AfterImageRoutine(model, duration, interval, c));
+        }
+
+        IEnumerator AfterImageRoutine(Transform model, float duration, float interval, Color c)
         {
             var smrs = model.GetComponentsInChildren<SkinnedMeshRenderer>();
             float t = 0f;
-            Color c = hot ? new Color(1f, 0.55f, 0.2f, 0.45f) : new Color(1f, 0.88f, 0.5f, 0.4f);
             while (t < duration && model != null)
             {
                 foreach (var smr in smrs)
@@ -229,9 +258,14 @@ namespace Nindo
         }
 
         // ------------------------------------------------------------------ enemigos
+        /// <summary>Empieza el aviso de un golpe (el anillo se dibuja desde Enemy.TellStart, ver CombatTelegraphs).</summary>
+        public void BeginTell(Enemy e) { if (Tells != null && Tells.enabled) Tells.Begin(e); }
+        public void EndTell(Enemy e, TellOutcome outcome) { if (Tells != null && Tells.enabled) Tells.End(e, outcome); }
+
+        /// <summary>Brillo del arma en el instante en que se cierra el anillo (el "¡ahora!").</summary>
         public void BladeGlint(Vector3 p, bool danger)
         {
-            Emit(danger ? flashRed : flashWhite, p, Quaternion.identity, 0.3f, danger ? 0.9f : 0.5f);
+            Emit(danger ? flashRed : flashWhite, p, Quaternion.identity, 0.3f, danger ? 1.1f : 0.8f);
         }
 
         public void DangerTelegraph(Enemy e)
@@ -245,12 +279,15 @@ namespace Nindo
             Emit(sparksGold, e.AimPoint + Vector3.up * 0.4f, Quaternion.Euler(-90, 0, 0), 1f, 0.7f);
         }
 
+        /// <summary>Postura quebrada: estallido dorado y la escena se enciende (la cámara lenta que la acompaña no desatura).</summary>
         public void PostureBreak(Vector3 p)
         {
-            Emit(flashGold, p, Quaternion.identity, 0.4f, 2.4f);
+            Emit(flashGold, p, Quaternion.identity, 0.4f, 1.6f);
             Emit(sparksGold, p, Quaternion.Euler(-90, 0, 0), 1f, 1.6f);
+            Emit(goldInk, p, Quaternion.Euler(-90, 0, 0), 1f, 1.6f);
             RingWave.Spawn(p - Vector3.up, 3.5f, new Color(1f, 0.85f, 0.4f, 0.9f), 0.4f);
-            FlashLight(p, new Color(1f, 0.85f, 0.4f), 8f, 7f, 0.3f);
+            FlashLight(p, new Color(1f, 0.85f, 0.4f), 14f, 9f, 0.3f);
+            Screen?.ParryLight(true, 0.45f);
         }
 
         public void EnemyDeath(Vector3 p, Vector3 dir, bool finisher)

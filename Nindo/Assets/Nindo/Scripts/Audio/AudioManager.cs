@@ -25,6 +25,25 @@ namespace Nindo
         float musicDuck = 1f;
         readonly Dictionary<string, float> lastPlayed = new Dictionary<string, float>();
 
+        /// <summary>
+        /// Latencia de salida del audio (s reales): lo que tarda un Play() en sonar por los buffers del DSP
+        /// (tamaño x cantidad / frecuencia; ~21 ms con el buffer de 256 de ProjectSettings, ~85 ms con 1024).
+        /// </summary>
+        public static float OutputLatency { get; private set; }
+
+        /// <summary>
+        /// ¿Ya hay que darle Play a un aviso que se tiene que OÍR 'lead' segundos (de juego) antes de algo que llega en
+        /// 'eta'? Suma la latencia de salida y medio frame (el chequeo cae en el primer frame que cruza el umbral: en
+        /// promedio medio frame tarde). Sin esto el hyōshigi se oía 50-90 ms tarde y reaccionarle caía fuera del parry.
+        /// </summary>
+        public static bool CueDue(float eta, float lead) => eta <= lead + OutputLatency * Time.timeScale + 0.5f * Time.deltaTime;
+
+        static void MeasureLatency(bool deviceChanged = false)
+        {
+            AudioSettings.GetDSPBufferSize(out int len, out int num);
+            OutputLatency = len * num / (float)Mathf.Max(1, AudioSettings.outputSampleRate);
+        }
+
         public static AudioManager Ensure()
         {
             if (Game.Audio != null) return Game.Audio;
@@ -55,12 +74,16 @@ namespace Nindo
             }
             GameEvents.CombatStateChanged += OnCombat;
             SceneManager.sceneLoaded += OnSceneLoaded;
+            // cambiar de dispositivo (auriculares, HDMI) cambia la frecuencia y los buffers
+            MeasureLatency();
+            AudioSettings.OnAudioConfigurationChanged += MeasureLatency;
         }
 
         void OnDestroy()
         {
             GameEvents.CombatStateChanged -= OnCombat;
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            AudioSettings.OnAudioConfigurationChanged -= MeasureLatency;
             if (Game.Audio == this) Game.Audio = null;
         }
 
@@ -181,8 +204,8 @@ namespace Nindo
                 if (src.isPlaying) src.volume = Mathf.MoveTowards(src.volume, MusicVolume * musicTargets[musicActive], Time.unscaledDeltaTime);
             }
             ambience.volume = Mathf.MoveTowards(ambience.volume, Settings.MasterVolume * Settings.SfxVolume * ambienceVol, Time.unscaledDeltaTime * 0.5f);
-            // cámara lenta: el mundo suena más grave
-            float scale = Game.Time != null ? Game.Time.GameplayScale : 1f;
+            // cámara lenta: el mundo suena más grave (el hit-stop de cada golpe no: el choque arrancaba grave)
+            float scale = Game.Time != null ? Game.Time.SlowMoScale : 1f;
             float pitch = Game.IsPaused ? 1f : Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(scale));
             foreach (var s in sfxPool) if (s.isPlaying) s.pitch = s.pitch / Mathf.Max(0.01f, lastPitchMul) * pitch;
             lastPitchMul = pitch;

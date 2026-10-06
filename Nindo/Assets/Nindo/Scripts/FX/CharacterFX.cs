@@ -85,6 +85,8 @@ namespace Nindo
         public void Begin() { emitting = true; count = 0; }
         public void Stop() { emitting = false; }
         public void SetColor(Color c) { color = c; }
+        /// <summary>Cuánto dura cada punto de la estela (s).</summary>
+        public void SetLifetime(float seconds) { lifetime = Mathf.Max(0.02f, seconds); }
 
         void LateUpdate()
         {
@@ -175,11 +177,12 @@ namespace Nindo
         }
     }
 
-    /// <summary>Destello blanco al recibir daño: cambia los materiales un instante (no necesita shaders especiales).</summary>
+    /// <summary>Destello al recibir daño (blanco; rojo en Kaito): cambia los materiales un instante (no necesita shaders especiales).</summary>
     public class HitFlash : MonoBehaviour
     {
         Renderer[] renderers;
         Material[][] originals;
+        Material current;
         float until;
         bool flashing;
 
@@ -203,27 +206,34 @@ namespace Nindo
 
         public void Flash(float seconds = 0.07f)
         {
+            Flash(seconds, Game.Content != null && Game.Content.flashMaterial != null ? Game.Content.flashMaterial : FXMaterials.Flash);
+        }
+
+        /// <summary>Destello con un material propio (p. ej. FXMaterials.HurtFlash).</summary>
+        public void Flash(float seconds, Material m)
+        {
             if (renderers == null) Cache();
-            var m = Game.Content != null && Game.Content.flashMaterial != null ? Game.Content.flashMaterial : FXMaterials.Flash;
-            if (!flashing)
+            if (!flashing || m != current)
             {
                 for (int i = 0; i < renderers.Length; i++)
                 {
                     if (renderers[i] == null) continue;
-                    originals[i] = renderers[i].sharedMaterials;
+                    if (!flashing) originals[i] = renderers[i].sharedMaterials;
                     var arr = new Material[originals[i].Length];
                     for (int k = 0; k < arr.Length; k++) arr[k] = m;
                     renderers[i].sharedMaterials = arr;
                 }
             }
+            current = m;
             flashing = true;
-            until = Time.unscaledTime + seconds;
+            until = Mathf.Max(until, Time.unscaledTime + seconds);
         }
 
         void LateUpdate()
         {
             if (!flashing || Time.unscaledTime < until) return;
             flashing = false;
+            current = null;
             for (int i = 0; i < renderers.Length; i++)
                 if (renderers[i] != null && originals[i] != null) renderers[i].sharedMaterials = originals[i];
         }

@@ -639,7 +639,9 @@ def audio_entries():
         full = A(p)
         return read_guid(full) if os.path.exists(full) else None
     team = {
-        "swing": ["Audios/SwordSwing.wav"], "enemy_swing": ["Audios/SwordSwing.wav"], "enemy_swing_heavy": ["Audios/SwordSwing.wav"],
+        # el silbido de los enemigos son solo los generados: su pico está medido (TellStyle.SwingLight/Heavy) y el del
+        # equipo llega a su pico ~50 ms antes y ~20 dB más bajo (además así no suenan igual que los cortes de Kaito)
+        "swing": ["Audios/SwordSwing.wav"],
         "clang": ["Audios/SwordClash.wav"], "parry": ["Audios/SwordClash.wav"], "hurt": ["Audios/Hurt.wav"],
         "dash": ["Audios/Dash.wav"], "finisher_hit": ["Audios/Finisher.flac"], "ui_select": ["Audios/Boton.mp3"],
         "step": ["Audios/Footsteps.wav"],

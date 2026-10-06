@@ -15,11 +15,15 @@ namespace Nindo
         float riposteUntil;
         readonly HashSet<IHittable> hitThisSwing = new HashSet<IHittable>();
         bool swingSoundPlayed;
+        bool swingConnected;          // el primer impacto de cada corte lleva hit-stop global
+        Vector3 lungeVelocity, carry; // avance del corte e inercia de la carrera (se suman)
+        float cutStartedAt = -1f;     // tiempo real en que la hoja empezó a cortar (-1 = todavía no)
 
         void StartAttack(int index)
         {
             var defs = config.combo;
             if (defs == null || defs.Length == 0) return;
+            Vector3 run = State == PlayerState.Locomotion ? velocity : Vector3.zero;
             comboIndex = Mathf.Clamp(index, 0, defs.Length - 1);
             currentAttack = defs[comboIndex];
             attackLen = anim.Length(currentAttack.state, 0.45f) / Mathf.Max(0.05f, currentAttack.speed);
@@ -27,12 +31,17 @@ namespace Nindo
             lungeDone = 0f;
             hitThisSwing.Clear();
             swingSoundPlayed = false;
+            swingConnected = false;
+            cutStartedAt = -1f;
             SetState(PlayerState.Attack);
 
             attackTarget = AttackTarget(config.attackMagnetRange);
             Vector3 aim = attackTarget != null ? attackTarget.transform.position - transform.position : InputToWorld(MoveInput);
             if (aim.sqrMagnitude > 0.01f) FaceInstant(aim);
-            velocity = Vector3.zero;
+            // atacar corriendo ya no frena en seco: conserva parte de la carrera hacia donde corta
+            carry = transform.forward * Mathf.Max(0f, Vector3.Dot(run, transform.forward)) * config.attackMomentum;
+            lungeVelocity = Vector3.zero;
+            velocity = carry;
             anim.Play(currentAttack.state, comboIndex == 0 ? 0.05f : 0.03f);
             Game.UI?.HideInteractPrompt();
         }
@@ -42,28 +51,28 @@ namespace Nindo
             var a = currentAttack;
             float timing = a.Timing(attackNorm) * a.speed * (RageActive ? config.rageSpeedMul : 1f);
             anim.SetSpeed(timing);
-            if (!anim.Frozen) attackNorm += dt * timing / Mathf.Max(0.05f, attackLen * a.speed);
+            bool frozen = anim.Frozen;
+            if (!frozen) attackNorm += dt * timing / Mathf.Max(0.05f, attackLen * a.speed);
 
             // seguir apuntando al objetivo durante la anticipación
             if (attackTarget != null && attackNorm < a.activeStart && attackTarget.IsAlive)
                 FaceTowards(attackTarget.transform.position - transform.position, 25f, dt);
 
             // avance (lunge) con imán: se frena antes de atravesar al enemigo
-            if (attackNorm >= a.lungeStart && attackNorm <= a.lungeEnd && lungeDone < a.lunge)
+            float room = attackTarget != null && attackTarget.IsAlive
+                ? CombatMath.FlatDistance(attackTarget.transform.position, transform.position) - attackTarget.Radius - Radius - 0.35f
+                : float.MaxValue;
+            if (!frozen && attackNorm >= a.lungeStart && attackNorm <= a.lungeEnd && lungeDone < a.lunge)
             {
                 float span = Mathf.Max(0.01f, (a.lungeEnd - a.lungeStart) * attackLen);
-                float step = a.lunge / span * dt;
-                float maxStep = a.lunge - lungeDone;
-                if (attackTarget != null && attackTarget.IsAlive)
-                {
-                    float room = CombatMath.FlatDistance(attackTarget.transform.position, transform.position) - attackTarget.Radius - Radius - 0.35f;
-                    maxStep = Mathf.Min(maxStep, Mathf.Max(0f, room));
-                }
-                step = Mathf.Min(step, maxStep);
+                float step = Mathf.Min(a.lunge / span * dt, Mathf.Min(a.lunge - lungeDone, Mathf.Max(0f, room)));
                 lungeDone += step;
-                velocity = transform.forward * (step / dt);
+                lungeVelocity = transform.forward * (step / dt);
             }
-            else velocity = Vector3.MoveTowards(velocity, Vector3.zero, 60f * dt);
+            else lungeVelocity = Vector3.MoveTowards(lungeVelocity, Vector3.zero, 60f * dt);
+            carry = room > 0.1f ? CombatMath.Damp(carry, Vector3.zero, 7f, dt) : Vector3.zero;
+            // durante el hit-stop del impacto, quieto (antes seguía deslizándose congelado como una estatua)
+            velocity = frozen ? Vector3.zero : lungeVelocity + carry;
 
             if (!swingSoundPlayed && attackNorm >= a.activeStart - 0.08f)
             {
@@ -78,17 +87,32 @@ namespace Nindo
 
             if (input != null && !Game.InCutscene)
             {
-                // cancelaciones: parry durante la anticipación, dash/parry al final
-                bool earlyCancel = attackNorm < a.activeStart * 0.7f;
-                bool lateCancel = attackNorm >= a.cancelWindow;
-                if ((earlyCancel || lateCancel) && input.Buffered(Act.Parry, 0.1f)) { input.Consume(Act.Parry); StartParry(); return; }
-                if (lateCancel && input.Buffered(Act.Dash, 0.12f)) { input.Consume(Act.Dash); if (TryDash()) return; }
+                // parry y dash en cualquier momento del corte salvo mientras la hoja está cortando: los avisos arrancan
+                // 0.4-0.85 s antes del golpe y antes casi todo el corte quedaba bloqueado. Lo que se aprieta mientras
+                // corta queda en el buffer y sale apenas termina el tramo activo
+                float cutEnd = Mathf.Min(a.cancelWindow, a.activeEnd);
+                bool cutting = attackNorm >= a.activeStart && attackNorm <= cutEnd;
+                bool lateCancel = attackNorm > cutEnd;
+                // el buffer se estira lo que duró el corte: con el hit-stop del impacto el tramo activo dura 0.2-0.35 s
+                // reales y lo apretado al principio del corte vencía antes de que terminara
+                if (cutting && cutStartedAt < 0f) cutStartedAt = Time.unscaledTime;
+                float defenseWindow = config.defenseBuffer + (cutStartedAt >= 0f ? Time.unscaledTime - cutStartedAt : 0f);
+                if (!cutting && input.Buffered(Act.Parry, defenseWindow)) { input.Consume(Act.Parry); StartParry(); return; }
+                if (!cutting && input.Buffered(Act.Dash, defenseWindow)) { input.Consume(Act.Dash); if (TryDash()) return; }
                 if (lateCancel && input.Buffered(Act.Finisher, 0.12f) && TryFinisher()) { input.Consume(Act.Finisher); return; }
                 // combo
                 if (attackNorm >= a.comboWindow && comboIndex < config.combo.Length - 1 && input.Buffered(Act.Attack, 0.3f))
                 {
                     input.Consume(Act.Attack);
                     StartAttack(comboIndex + 1);
+                    return;
+                }
+                // después del último corte se puede volver a empezar sin esperar el final del clip (antes se perdían
+                // pulsaciones y el reinicio se sentía pegajoso)
+                if (comboIndex == config.combo.Length - 1 && attackNorm >= config.comboRestart && input.Buffered(Act.Attack, 0.3f))
+                {
+                    input.Consume(Act.Attack);
+                    StartAttack(0);
                     return;
                 }
             }
@@ -142,6 +166,7 @@ namespace Nindo
                 sourceFaction = Faction.Player,
                 source = this,
                 attackName = attackName,
+                riposte = riposte,
             };
             if (info.direction.sqrMagnitude < 0.01f) info.direction = transform.forward;
             var r = e.ReceiveHit(info);
@@ -155,11 +180,13 @@ namespace Nindo
                     bool heavy = kind != AttackKind.Light || kill || riposte;
                     anim.Freeze(hitStop * (kill ? 1.6f : 1f));
                     e.Anim.Freeze(hitStop * (kill ? 1.6f : 1f));
-                    if (kill) Game.Time?.HitStop(0.05f);
+                    // el primer impacto de cada corte congela el mundo un instante (los siguientes del mismo corte
+                    // solo congelan a los dos): antes los cortes livianos casi no se sentían
+                    if (!swingConnected) { swingConnected = true; Game.Time?.HitStop(heavy ? 0.07f : 0.035f); }
                     Game.FX?.HitImpact(p, info.direction, heavy, RageActive);
                     Game.Audio?.Play(heavy ? "hit_heavy" : "hit", p, 0.85f, 0.12f);
                     Game.Camera?.Shake(shake * (kill ? 1.6f : 1f));
-                    Game.Camera?.Impulse(info.direction, shake * 0.5f);
+                    Game.Camera?.Impulse(info.direction, shake * 0.55f);
                     Game.Input?.Rumble(0.25f, 0.55f, 0.08f);
                     AddSpirit(config.spiritOnHit);
                     AddRage(config.rageOnHit);
@@ -167,6 +194,18 @@ namespace Nindo
                     if (kill) OnKilledEnemy(e, false);
                     break;
                 }
+                case HitResult.Blocked:
+                    // rebotó en la guardia (o en un jefe que ruge): clang y un empujoncito, sin castigo. Es el aviso:
+                    // el próximo golpe contra esa guardia se lo devuelve
+                    Game.FX?.Clash(p, -info.direction, false);
+                    Game.Audio?.Play("clang", p, 0.8f, 0.08f);
+                    Game.Camera?.Shake(0.2f);
+                    Game.Time?.HitStop(0.05f);
+                    Game.Input?.Rumble(0.3f, 0.2f, 0.08f);
+                    anim.Freeze(0.06f);
+                    Push(-info.direction, 0.3f);
+                    if (State == PlayerState.Attack && currentAttack != null) lungeDone = currentAttack.lunge;   // no sigue avanzando contra la guardia
+                    break;
                 case HitResult.Guarded:
                     // el enemigo desvió el golpe: Kaito rebota
                     Game.FX?.Clash(p, -info.direction, false);
@@ -180,13 +219,38 @@ namespace Nindo
             return r;
         }
 
+        float lastKillAt = -9f;
+
         void OnKilledEnemy(Enemy e, bool finisher)
         {
             Heal(finisher ? config.healOnFinisher : config.healOnKill);
             AddSpirit(config.spiritOnKill);
             AddRage(finisher ? 20f : 8f);
-            if (!finisher) Game.Time?.SlowMotion(0.3f, 0.35f, 0.01f, 0.25f);
+            if (!finisher)
+            {
+                // cámara lenta solo para cerrar la pelea o un doble kill: en cada muerte se perdía de vista el
+                // golpe siguiente (y medio combate grupal pasaba en cámara lenta). Si no, un hit-stop seco
+                if (LastOfFight(e) || Time.unscaledTime - lastKillAt < 1f) Game.Time?.SlowMotion(0.3f, 0.35f, 0.01f, 0.25f);
+                else Game.Time?.HitStop(0.06f);
+            }
+            lastKillAt = Time.unscaledTime;
             Game.Camera?.Punch(-3f, 0.25f);
+        }
+
+        /// <summary>¿No queda nadie más vivo en esta pelea? (su encuentro; si no tiene, los enemigos en combate y el jefe)</summary>
+        static bool LastOfFight(Enemy e)
+        {
+            if (e.encounter != null)
+            {
+                foreach (var m in e.encounter.Members) if (m != null && m != e && m.IsAlive) return false;
+                return true;
+            }
+            var cd = Game.Combat;
+            if (cd == null) return true;
+            if (cd.ActiveBoss != null && cd.ActiveBoss != e && cd.ActiveBoss.IsAlive) return false;
+            var list = cd.Engaged;
+            for (int i = 0; i < list.Count; i++) if (list[i] != null && list[i] != e && list[i].IsAlive) return false;
+            return true;
         }
 
         /// <summary>El enemigo estaba en guardia y contraatacó: animación "Bloked".</summary>
@@ -201,28 +265,50 @@ namespace Nindo
         void TickBlocked(InputReader input, float dt)
         {
             velocity = Vector3.MoveTowards(velocity, Vector3.zero, 40f * dt);
-            if (stateTime > 0.28f && input != null && input.Buffered(Act.Parry, 0.12f)) { input.Consume(Act.Parry); StartParry(); return; }
-            if (stateTime > 0.32f && input != null && input.Buffered(Act.Dash, 0.12f)) { input.Consume(Act.Dash); if (TryDash()) return; }
+            if (stateTime > 0.28f && input != null && input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
+            if (stateTime > 0.32f && input != null && input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return; }
             if (stateTime >= 0.5f) SetState(PlayerState.Locomotion);
         }
 
         // =============================================================== PARRY
         float lastParryWhiff = -9f;
         float parryWindowMul = 1f;
+        bool parryHadThreat;
         float CurrentParryWindow => config.parryWindow * parryWindowMul;
+        // "venía algo" al apretar parry: un golpe a menos de 0.6 s de un enemigo a menos de 6 m (o una ola)
+        const float SpamThreatEta = 0.6f, SpamThreatRange = 6f;
 
         void StartParry()
         {
             CancelAbilityCamera();
             trail?.Stop();
-            // spam: si fallaste un parry hace muy poco, la ventana se achica
-            parryWindowMul = Time.time - lastParryWhiff < 0.55f ? config.spamPenalty : 1f;
+            // anti-spam: la ventana se achica solo si el parry anterior fue al aire SIN que viniera nada. Apretar
+            // contra un golpe real (aunque sea temprano) es un intento legítimo: antes eso achicaba la ventana del
+            // golpe siguiente del combo a 0.13 s
+            parryWindowMul = Time.time - lastParryWhiff < config.spamDecay ? config.spamPenalty : 1f;
+            parryHadThreat = ThreatNear();
             SetState(PlayerState.Parry);
             velocity = Vector3.zero;
             var t = lockTarget != null ? lockTarget : AttackTarget(5f);
             if (t != null) FaceInstant(t.transform.position - transform.position);
             anim.Play("ParryStance", 0.03f);
             Game.Audio?.Play("parry_ready", transform.position, 0.25f, 0.1f);
+            // media luna de la ventana: dorada mientras es perfecta, se achica hasta cerrarse
+            Game.FX?.Crescent?.Begin(transform, CurrentParryWindow, config.perfectWindow * parryWindowMul);
+        }
+
+        bool ThreatNear()
+        {
+            var list = Game.Combat != null ? Game.Combat.All : null;
+            if (list == null) return false;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var e = list[i];
+                if (e == null || !e.IsAlive) continue;
+                if (e.ProjectileEta < SpamThreatEta) return true;
+                if (e.StrikeEta < SpamThreatEta && CombatMath.FlatDistance(e.transform.position, transform.position) < SpamThreatRange) return true;
+            }
+            return false;
         }
 
         void TickParry(InputReader input, float dt)
@@ -230,7 +316,11 @@ namespace Nindo
             velocity = Vector3.MoveTowards(velocity, Vector3.zero, 50f * dt);
             if (stateTime > CurrentParryWindow)
             {
-                lastParryWhiff = Time.time;
+                // al aire: la media luna se rompe en gris con un "fiu" (antes no pasaba nada y no se aprendía)
+                parryClosedAt = Time.time;
+                if (!parryHadThreat) lastParryWhiff = Time.time;
+                Game.FX?.Crescent?.Whiff();
+                Game.Audio?.Play("parry_whiff", transform.position, 0.5f, 0.08f);
                 SetState(PlayerState.ParryRecover);
             }
         }
@@ -247,6 +337,7 @@ namespace Nindo
 
         void OnParrySuccess(in DamageInfo info, bool perfect)
         {
+            Game.FX?.Crescent?.Success();
             SetState(PlayerState.ParrySuccess);
             anim.Play("ParrySuccess", 0.02f);
             riposteUntil = Time.time + config.riposteWindow;
@@ -254,19 +345,26 @@ namespace Nindo
             FaceInstant(-dir);
             Push(dir, perfect ? 0.25f : 0.55f);
             var e = info.source as Enemy;
+            // si le quiebra la postura, el enemigo pone la cámara lenta (la única del parry) y enciende la escena
             if (e != null) e.OnParried(perfect);
 
+            // el parry ILUMINA la escena (luz, exposición, bloom, tinta dorada): ya no la apaga con cámara lenta gris
             Vector3 p = AimPoint + transform.forward * 0.55f;
-            Game.FX?.Clash(p, transform.forward, true);
-            Game.FX?.ParryFlash(p, perfect);
+            Game.FX?.ParryFlash(p, transform.forward, perfect);
             Game.Audio?.Play(perfect ? "parry_perfect" : "parry", p, 1f, 0.06f);
-            Game.Camera?.Punch(perfect ? -6f : -3.5f, perfect ? 0.35f : 0.22f);
+            // golpe de FOV chico: los anillos en pantalla no pueden saltar de tamaño justo cuando arranca el siguiente
+            Game.Camera?.Punch(perfect ? -3f : -1.5f, perfect ? 0.35f : 0.22f);
             Game.Camera?.Shake(perfect ? 0.45f : 0.3f);
-            Game.Time?.HitStop(perfect ? 0.11f : 0.07f);
             if (perfect)
             {
-                Game.Time?.SlowMotion(0.3f, 0.45f, 0.02f, 0.3f);
-                Game.FX?.Screen?.ChromaticPunch(1f);
+                Game.Time?.HitStop(0.09f);
+                Game.FX?.Screen?.ChromaticPunch(0.6f);
+            }
+            else
+            {
+                // el normal congela solo a los dos que chocan: un hit-stop global frenaba también al resto del grupo
+                anim.Freeze(0.07f);
+                if (e != null && CombatMath.FlatDistance(e.transform.position, transform.position) < 5f) e.Anim.Freeze(0.07f);
             }
             Game.Input?.Rumble(0.4f, 0.9f, perfect ? 0.2f : 0.12f);
             AddSpirit(perfect ? config.spiritOnPerfectParry : config.spiritOnParry);
@@ -282,8 +380,8 @@ namespace Nindo
             {
                 // contraataque inmediato o nuevo parry
                 if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0); return; }
-                if (input.Buffered(Act.Parry, 0.1f)) { input.Consume(Act.Parry); StartParry(); return; }
-                if (input.Buffered(Act.Dash, 0.12f)) { input.Consume(Act.Dash); if (TryDash()) return; }
+                if (input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
+                if (input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return; }
                 if (input.Buffered(Act.Finisher, 0.12f) && TryFinisher()) { input.Consume(Act.Finisher); return; }
             }
             if (stateTime >= 0.38f) SetState(PlayerState.Locomotion);
@@ -292,12 +390,28 @@ namespace Nindo
         // =============================================================== DASH MÁGICO
         Vector3 dashDir;
         bool perfectDodgeDone;
+        bool dashTired;
+        float tiredDashReadyAt = -9f;
+
+        /// <summary>Sin Espíritu para el dash normal: el próximo será el "cansado" (más corto, con espera).</summary>
+        public bool DashTired => Spirit + 0.01f < config.dashCost;
+        /// <summary>Segundos hasta que se pueda volver a hacer el dash cansado (0 = listo). Para el HUD.</summary>
+        public float TiredDashReadyIn => Mathf.Max(0f, tiredDashReadyAt - Time.time);
 
         bool TryDash()
         {
             if (!DashUnlocked) return false;
             if (State == PlayerState.Dash) return false;
-            if (!SpendSpirit(config.dashCost)) return false;
+            // sin Espíritu igual se puede esquivar: los imparables no tienen otra respuesta y quien gastó bien el
+            // Espíritu (remate, habilidades) quedaba indefenso. Mismos i-frames, más corto, con espera y sin premio
+            bool tired = DashTired;
+            if (tired)
+            {
+                if (Time.time < tiredDashReadyAt) { Game.UI?.DenySpirit(); Game.Audio?.Play("denied", null, 0.5f); return false; }
+                tiredDashReadyAt = Time.time + config.tiredDashCooldown;
+            }
+            else Spirit -= config.dashCost;
+            dashTired = tired;
             CancelAbilityCamera();
             trail?.Stop();
             Vector3 d = InputToWorld(MoveInput);
@@ -309,9 +423,18 @@ namespace Nindo
             perfectDodgeDone = false;
             anim.Play("Dash", 0.03f, 0f, 1.4f);
             Game.FX?.DashBurst(transform.position, dashDir);
-            Game.FX?.AfterImages(model != null ? model : transform, 0.3f, 0.045f, RageActive);
-            Game.Audio?.Play("dash", transform.position, 0.8f, 0.1f);
-            Game.Camera?.Punch(2.5f, 0.2f);
+            if (tired)
+            {
+                // estela gris y apagada: se lee que fue el dash de emergencia
+                Game.FX?.AfterImages(model != null ? model : transform, 0.24f, 0.06f, new Color(0.55f, 0.57f, 0.62f, 0.3f));
+                Game.Audio?.Play("dash", transform.position, 0.55f, 0.1f);
+            }
+            else
+            {
+                Game.FX?.AfterImages(model != null ? model : transform, 0.3f, 0.045f, RageActive);
+                Game.Audio?.Play("dash", transform.position, 0.8f, 0.1f);
+                Game.Camera?.Punch(2.5f, 0.2f);
+            }
             return true;
         }
 
@@ -320,8 +443,9 @@ namespace Nindo
             float t = stateTime / config.dashDuration;
             if (t < 1f)
             {
-                // curva rápida al principio, frena al final
-                float speed = config.dashDistance / config.dashDuration * (1.6f - 1.2f * t);
+                // curva rápida al principio, frena al final (el cansado recorre menos en el mismo tiempo: mismos i-frames)
+                float dist = dashTired ? config.tiredDashDistance : config.dashDistance;
+                float speed = dist / config.dashDuration * (1.6f - 1.2f * t);
                 velocity = dashDir * speed;
             }
             else
@@ -330,7 +454,7 @@ namespace Nindo
                 if (input != null)
                 {
                     if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0); return; }
-                    if (input.Buffered(Act.Parry, 0.12f)) { input.Consume(Act.Parry); StartParry(); return; }
+                    if (input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
                 }
                 if (stateTime >= config.dashDuration + config.dashRecover)
                 {
@@ -340,22 +464,30 @@ namespace Nindo
             }
         }
 
+        float lastShadowAt = -99f;
+        const float ShadowCooldown = 6f;
+
         void OnDodged(in DamageInfo info)
         {
             Game.FX?.DodgeSpark(AimPoint);
-            if (perfectDodgeDone) return;
-            if (stateTime <= config.perfectDodgeWindow + config.dashIFrameStart || info.kind == AttackKind.Unblockable)
-            {
-                perfectDodgeDone = true;
-                // "Instante Sombra": el mundo se ralentiza, recuperás espíritu
-                Game.Time?.SlowMotion(0.25f, 1.0f, 0.03f, 0.4f);
-                Game.FX?.Screen?.ShadowInstant();
-                Game.Audio?.Play("perfect_dodge", transform.position, 0.9f);
-                Game.UI?.ShowToast("Instante sombra", new Color(0.6f, 0.85f, 1f));
-                AddSpirit(config.dashCost);
-                AddRage(10f);
-                Game.Input?.Rumble(0.2f, 0.5f, 0.15f);
-            }
+            // el dash cansado salva pero no premia (sin Instante Sombra, sin devolver Espíritu ni sumar furia)
+            if (perfectDodgeDone || dashTired) return;
+            bool perfect = stateTime <= config.perfectDodgeWindow + config.dashIFrameStart;
+            if (!perfect && info.kind != AttackKind.Unblockable) return;
+            // esquivar a tiempo (o un imparable) devuelve el Espíritu y suma furia
+            perfectDodgeDone = true;
+            Game.Audio?.Play("perfect_dodge", transform.position, 0.9f);
+            AddSpirit(config.dashCost);
+            AddRage(10f);
+            Game.Input?.Rumble(0.2f, 0.5f, 0.15f);
+            // "Instante Sombra" (el mundo se frena): solo la esquiva perfecta, corta y no más de una cada 6 s. Antes
+            // cada imparable esquivado daba 1 s de cámara lenta gris: en un jefe era un 10-18 % de la pelea y el
+            // anillo siguiente corría a otro ritmo del que se aprendió
+            if (!perfect || Time.unscaledTime - lastShadowAt < ShadowCooldown) return;
+            lastShadowAt = Time.unscaledTime;
+            Game.Time?.SlowMotion(0.35f, 0.4f, 0.02f, 0.15f);
+            Game.FX?.Screen?.ShadowInstant();
+            Game.UI?.ShowToast("Instante sombra", new Color(0.6f, 0.85f, 1f));
         }
 
         // =============================================================== FINISHER
@@ -363,6 +495,17 @@ namespace Nindo
         bool finisherStruck;
         int finisherShot = -1;
         int finisherSlowMo = -1;
+        // los comunes se rematan rápido (≤ 1 s, sin plano de cámara); la cinemática (~2.6 s) queda para élites,
+        // sumos, jefes y el último de la pelea: antes cada ejecución era mirar una película
+        bool finisherCinematic;
+        float finisherSpeed = CinematicFinisherSpeed;
+        // corto: clip x2.8 con cámara lenta 0.6 hasta el tajo → tajo a 0.75 s y control de vuelta a 1.0 s reales
+        // (el cinemático: tajo a 1.85 s, fin a 2.5 s)
+        const float CinematicFinisherSpeed = 1.7f, ShortFinisherSpeed = 2.8f;
+        const float FinisherStrikeAt = 0.68f, ShortFinisherEnd = 0.85f;
+        // después del remate: los que estaban cerca salen despedidos y esperan antes de atacar; Kaito queda
+        // invulnerable un instante (el control volvía en medio del golpe de otro)
+        const float FinisherRoomRadius = 4f, FinisherPush = 1.5f, FinisherAttackDelay = 0.8f, FinisherGrace = 0.6f;
 
         public Enemy FinisherCandidate()
         {
@@ -390,16 +533,22 @@ namespace Nindo
             if (!SpendSpirit(config.finisherCost)) return false;
             finisherTarget = e;
             finisherStruck = false;
+            finisherCinematic = e is Boss || e.config.cinematicFinisher || LastOfFight(e);
+            finisherSpeed = finisherCinematic ? CinematicFinisherSpeed : ShortFinisherSpeed;
             CancelAbilityCamera();
             trail?.Stop();
             SetState(PlayerState.Finisher);
             velocity = Vector3.zero;
             FaceInstant(e.transform.position - transform.position);
             e.BeginExecution(this);
-            anim.Play("Finisher", 0.05f, 0f, 1.7f);
-            finisherSlowMo = Game.Time != null ? Game.Time.SlowMotion(0.45f, 1.6f, 0.05f, 0.3f) : -1;
-            finisherShot = Game.Camera != null ? Game.Camera.PlayFinisherShot(transform, e.transform) : -1;
-            Game.FX?.Screen?.Finisher(true);
+            anim.Play("Finisher", 0.05f, 0f, finisherSpeed);
+            if (finisherCinematic)
+            {
+                finisherSlowMo = Game.Time != null ? Game.Time.SlowMotion(0.45f, 1.6f, 0.05f, 0.3f) : -1;
+                finisherShot = Game.Camera != null ? Game.Camera.PlayFinisherShot(transform, e.transform) : -1;
+                Game.FX?.Screen?.Finisher(true);
+            }
+            else finisherSlowMo = Game.Time != null ? Game.Time.SlowMotion(0.6f, 0.35f, 0.03f, 0.15f) : -1;
             Game.Audio?.Play("finisher_start", transform.position, 0.9f);
             Game.UI?.HideInteractPrompt();
             return true;
@@ -408,12 +557,12 @@ namespace Nindo
         void TickFinisher(float dt)
         {
             velocity = Vector3.zero;
-            // la línea de tiempo asume el clip a 1.7 (Play de TryFinisher): la furia no lo acelera
+            // la línea de tiempo asume el clip a finisherSpeed (Play de TryFinisher): la furia no lo acelera
             // (SetState pone su multiplicador y puede activarse en plena ejecución con la muerte)
             anim.SetSpeed(1f);
-            float len = anim.Length("Finisher", 2.6f) / 1.7f;
+            float len = anim.Length("Finisher", 2.6f) / finisherSpeed;
             float n = stateTime / len;
-            if (!finisherStruck && n >= 0.68f)
+            if (!finisherStruck && n >= FinisherStrikeAt)
             {
                 finisherStruck = true;
                 var e = finisherTarget;
@@ -430,12 +579,13 @@ namespace Nindo
                     Game.FX?.Execution(e.AimPoint, dir);
                     Game.Audio?.Play("finisher_hit", e.transform.position, 1f);
                     Game.Camera?.CancelShot(finisherShot);
-                    Game.Camera?.Shake(0.8f);
-                    Game.Camera?.Punch(-7f, 0.4f);
+                    Game.Camera?.Shake(finisherCinematic ? 0.8f : 0.6f);
+                    Game.Camera?.Punch(finisherCinematic ? -7f : -3f, 0.4f);
                     Game.Time?.CancelSlowMotion(finisherSlowMo);
-                    Game.Time?.HitStop(0.16f);
-                    Game.FX?.Screen?.WhiteFlash(0.8f);
+                    Game.Time?.HitStop(finisherCinematic ? 0.16f : 0.08f);
+                    Game.FX?.Screen?.WhiteFlash(finisherCinematic ? 0.8f : 0.35f);
                     Game.Input?.Rumble(1f, 1f, 0.35f);
+                    GiveRoomAround(transform.position);
                     e.Execute(this);
                     OnKilledEnemy(e, true);
                     GameEvents.RaiseEnemyFinished(e, true);
@@ -444,15 +594,30 @@ namespace Nindo
                 // limpió todo y Kaito no debe volver a Locomotion en medio de ella
                 if (State != PlayerState.Finisher) return;
             }
-            if (n >= 1f)
+            // el corto devuelve el control apenas termina el tajo (el resto del clip es la vuelta a la guardia)
+            if (n >= (finisherCinematic ? 1f : ShortFinisherEnd))
             {
                 Game.FX?.Screen?.Finisher(false);
                 Game.Camera?.CancelShot(finisherShot);
                 finisherShot = -1;
                 finisherSlowMo = -1;
+                invulnUntil = Mathf.Max(invulnUntil, Time.time + FinisherGrace);
                 SetState(PlayerState.Locomotion);
                 anim.Play("Locomotion", 0.2f);
                 finisherTarget = null;
+            }
+        }
+
+        /// <summary>El tajo del remate despide a los que están cerca y les da un respiro antes de volver a atacar.</summary>
+        void GiveRoomAround(Vector3 c)
+        {
+            var list = Game.Combat != null ? Game.Combat.All : null;
+            if (list == null) return;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var o = list[i];
+                if (o != null && o.IsAlive && CombatMath.FlatDistance(o.transform.position, c) <= FinisherRoomRadius)
+                    o.GiveRoom(c, FinisherPush, FinisherAttackDelay);
             }
         }
 
@@ -474,6 +639,7 @@ namespace Nindo
             abilityFired = false;
             abilityVictims.Clear();
             whirlTicks = 0;
+            swingConnected = false;
             SetState(PlayerState.Ability);
             velocity = Vector3.zero;
             GameEvents.RaiseAbility(index);

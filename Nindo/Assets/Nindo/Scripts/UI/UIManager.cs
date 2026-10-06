@@ -20,6 +20,7 @@ namespace Nindo
         // jefe
         CanvasGroup bossGroup;
         Image bossFill, bossGhost;
+        Image[] bossPosture;   // mitades izquierda y derecha: se llenan desde el centro
         TextMeshProUGUI bossName, bossSub;
         Boss boss;
         float bossGhostValue = 1f;
@@ -90,11 +91,27 @@ namespace Nindo
             bossGhost.type = Image.Type.Filled; bossGhost.fillMethod = Image.FillMethod.Horizontal; bossGhost.rectTransform.Fill(new Vector2(3, 3), new Vector2(-3, -3));
             bossFill = UIFactory.Image("Fill", back.transform, new Color(0.75f, 0.1f, 0.08f), UIFactory.White);
             bossFill.type = Image.Type.Filled; bossFill.fillMethod = Image.FillMethod.Horizontal; bossFill.rectTransform.Fill(new Vector2(3, 3), new Vector2(-3, -3));
+            // postura del jefe bajo la vida: cada parry (y cada golpe a su guardia) la llena desde el centro; llena, se
+            // quiebra y queda agotado. Los jefes no tienen las marcas de los comunes y no había forma de saber cuánto faltaba
+            var pb = UIFactory.Image("PostureBack", r, new Color(0.05f, 0.03f, 0.03f, 0.8f), new Vector2(0.5f, 0.5f), new Vector2(0, -34), new Vector2(520, 10));
+            bossPosture = new Image[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var img = UIFactory.Image(i == 0 ? "PostureL" : "PostureR", pb.transform, UIFactory.Gold, UIFactory.White);
+                img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal;
+                img.fillOrigin = (int)(i == 0 ? Image.OriginHorizontal.Right : Image.OriginHorizontal.Left);
+                img.fillAmount = 0f;
+                var rt = img.rectTransform;
+                rt.anchorMin = new Vector2(i == 0 ? 0f : 0.5f, 0f); rt.anchorMax = new Vector2(i == 0 ? 0.5f : 1f, 1f);
+                rt.offsetMin = new Vector2(i == 0 ? 2f : 0f, 2f); rt.offsetMax = new Vector2(i == 0 ? 0f : -2f, -2f);
+                bossPosture[i] = img;
+            }
         }
 
         public void ShowBossBar(Boss b)
         {
             boss = b; bossGhostValue = 1f;
+            foreach (var img in bossPosture) img.fillAmount = b.Posture01;
             bossName.text = b.title;
             bossSub.text = b.subtitle;
         }
@@ -111,6 +128,12 @@ namespace Nindo
             if (hp < bossGhostValue) bossGhostValue = Mathf.MoveTowards(bossGhostValue, hp, dt * 0.3f); else bossGhostValue = hp;
             bossGhost.fillAmount = bossGhostValue;
             bossFill.color = boss.IsExhausted ? Color.Lerp(new Color(0.75f, 0.1f, 0.08f), UIFactory.Gold, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f)) : new Color(0.75f, 0.1f, 0.08f);
+            float posture = boss.Posture01;
+            float fill = Mathf.MoveTowards(bossPosture[0].fillAmount, posture, dt * 3f);
+            // ámbar apagado que se enciende a dorado al llenarse; agotado, late dorado y blanco
+            Color pc = boss.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f))
+                : Color.Lerp(new Color(0.7f, 0.5f, 0.22f), UIFactory.Gold, posture);
+            foreach (var img in bossPosture) { img.fillAmount = fill; img.color = pc; }
         }
 
         // ================================================================== marcadores
@@ -203,11 +226,16 @@ namespace Nindo
                     if (i < max)
                     {
                         w.pips[i].rectTransform.anchoredPosition = new Vector2((i - (max - 1) * 0.5f) * 17f, 18f);
-                        bool filled = e.Imbalance >= i + 1 - 0.01f;
-                        w.pips[i].color = filled ? (e.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f)) : UIFactory.Gold) : new Color(1, 1, 1, 0.18f);
+                        // las fracciones también se ven (parry perfecto +0.5, guardia imperfecta, rebote en la guardia):
+                        // un pip a medias se enciende a medias. Antes pasaba de 1 pip a quebrado sin aviso
+                        float f = Mathf.Clamp01(e.Imbalance - i);
+                        Color off = new Color(1, 1, 1, 0.18f);
+                        w.pips[i].color = f >= 0.99f ? (e.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f)) : UIFactory.Gold)
+                            : f > 0.01f ? Color.Lerp(off, UIFactory.Gold, 0.25f + 0.45f * f) : off;
                     }
                 }
-                w.status.text = e.IsExhausted ? "¡DESEQUILIBRADO!" : (e.State == EnemyState.Guard ? "<color=#9fc8ff>EN GUARDIA</color>" : "");
+                // agotado con la postura quebrada (se lo puede ejecutar) o solo abierto tras el combo (ventana de daño)
+                w.status.text = e.PostureBroken ? "¡DESEQUILIBRADO!" : e.IsExhausted ? "¡ABIERTO!" : (e.State == EnemyState.Guard ? "<color=#9fc8ff>EN GUARDIA</color>" : "");
             }
 
             // fijado

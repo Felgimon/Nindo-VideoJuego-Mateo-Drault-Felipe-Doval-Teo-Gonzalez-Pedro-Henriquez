@@ -16,7 +16,10 @@ namespace Nindo
     ///   move X Y [seg]         mover con el "stick" (x derecha, y adelante); sin seg queda puesto
     ///   wait seg               esperar (tiempo real: no le afecta la cámara lenta)
     ///   bot on|off             peleador automático: parry a los golpes que llegan, dash a los
-    ///                          imparables, remata a los desequilibrados y si no, ataca/se acerca
+    ///                          imparables, remata a los de postura quebrada (o casi muertos) y si no,
+    ///                          ataca/se acerca (no le pega a una guardia).
+    ///                          Defiende como una persona: no lee StrikeEta, reacciona al aviso
+    ///                          "¡ya!" (hyōshigi) con ~0.25 s de reacción; si el aviso llega tarde, falla
     ///   talk [max]             espera un diálogo (hasta 'max' s) y lo avanza hasta que no quede ninguno
     ///   waitcontrol [max]      espera a que no haya cinemática ni diálogo
     ///   goto X Z [max]         camina hasta el punto (x, z) del mundo (o hasta 'max' s)
@@ -59,6 +62,7 @@ namespace Nindo
                 inst.StopAllCoroutines();
                 inst.loop = null;
                 inst.bot = false;
+                inst.pending.Clear();
             }
             InputReader.ClearVirtual();
         }
@@ -74,7 +78,13 @@ namespace Nindo
         public static bool Bot
         {
             get => inst != null && inst.bot;
-            set { if (inst == null) Run(""); inst.bot = value; }
+            set
+            {
+                if (inst == null) Run("");
+                inst.bot = value;
+                // las reacciones que quedaron en espera no pueden salir solas en el próximo "bot on"
+                if (!value) inst.pending.Clear();
+            }
         }
         /// <summary>Contadores del bot (pulsaciones) para los informes de prueba.</summary>
         public static int BotParries, BotDashes, BotFinishers, BotAttacks;
@@ -93,6 +103,7 @@ namespace Nindo
 
         void OnEnable()
         {
+            GameEvents.StrikeCue += OnCue;
             GameEvents.Parry += OnParry;
             GameEvents.PlayerDamaged += OnDamaged;
             GameEvents.EnemyFinished += OnFinished;
@@ -100,6 +111,7 @@ namespace Nindo
         }
         void OnDisable()
         {
+            GameEvents.StrikeCue -= OnCue;
             GameEvents.Parry -= OnParry;
             GameEvents.PlayerDamaged -= OnDamaged;
             GameEvents.EnemyFinished -= OnFinished;
@@ -112,15 +124,44 @@ namespace Nindo
 
         bool bot;
         float nextBotAction;
-        Enemy lastParried;
         readonly List<Enemy> botTargets = new List<Enemy>();
+        // pulsaciones de defensa pendientes: (tiempo real en que se aprieta, acción)
+        readonly List<KeyValuePair<float, Act>> pending = new List<KeyValuePair<float, Act>>();
+        /// <summary>Tiempo de reacción del bot a un aviso sonoro (media y desvío, s).</summary>
+        public const float ReactionMean = 0.25f, ReactionSd = 0.04f;
+
+        /// <summary>
+        /// Sonó el "¡ya!" de un golpe: el bot aprieta un tiempo de reacción humano después (tiempo real, como
+        /// una persona). Así las pruebas fallan si el aviso llega más tarde de lo que se puede reaccionar.
+        /// </summary>
+        void OnCue(Component source, bool unblockable)
+        {
+            var p = Game.Player;
+            if (!bot || p == null || !p.IsAlive) return;
+            // ¿viene hacia Kaito? (lo que una persona ve: el anillo del atacante lo alcanza o una ola le apunta)
+            var e = source as Enemy;
+            bool mine = source is WaveProjectile || e != null && (e.StrikeCanReach(p.transform.position, p.Radius + 0.5f) || e.ProjectileEta < 0.5f);
+            if (!mine) return;
+            // una persona lo oye cuando sale por los parlantes (latencia de salida) y su tecla entra uno o dos frames
+            // después: el evento sale con el Play(), así que se suman las dos para medir lo mismo que ella
+            float rt = Mathf.Clamp(ReactionMean + Gaussian() * ReactionSd, 0.15f, 0.4f) + AudioManager.OutputLatency + 1f / 60f;
+            pending.Add(new KeyValuePair<float, Act>(Time.unscaledTime + rt, unblockable ? Act.Dash : Act.Parry));
+        }
+
+        static float Gaussian()
+        {
+            // Box-Muller
+            float u1 = Mathf.Max(1e-6f, Random.value), u2 = Random.value;
+            return Mathf.Sqrt(-2f * Mathf.Log(u1)) * Mathf.Cos(2f * Mathf.PI * u2);
+        }
 
         void Update()
         {
             if (!bot || Game.Player == null || !Game.Player.IsAlive || Game.Combat == null) return;
             var p = Game.Player;
-            Enemy nearest = null, striking = null;
-            float best = float.MaxValue, soonest = float.PositiveInfinity;
+            Enemy nearest = null;
+            float best = float.MaxValue;
+            bool threatened = false;
             botTargets.Clear();
             foreach (var e in Game.Combat.Engaged) botTargets.Add(e);
             // el jefe activo no siempre está en Engaged (lo maneja la arena)
@@ -130,19 +171,20 @@ namespace Nindo
                 if (e == null || !e.IsAlive) continue;
                 float d = CombatMath.FlatDistance(e.transform.position, p.transform.position);
                 if (d < best) { best = d; nearest = e; }
-                if (e.AboutToStrike && d < 7f) striking = e;
-                if (d < 7f) soonest = Mathf.Min(soonest, e.StrikeEta);
+                // un anillo de aviso a la vista: mejor no empezar un ataque (no se puede desviar a mitad del tajo)
+                if (e.InTell && d < 7f) threatened = true;
             }
-            // defensa: no depende del cooldown de acciones
-            if (striking != null && striking != lastParried)
+            // defensa: aprieta cuando se cumple su tiempo de reacción (no depende del cooldown de acciones)
+            for (int i = pending.Count - 1; i >= 0; i--)
             {
-                lastParried = striking;
-                if (striking.IsTelegraphingUnblockable) { InputReader.VirtualTap(Act.Dash); BotDashes++; }
-                else { InputReader.VirtualTap(Act.Parry); BotParries++; }
+                if (Time.unscaledTime < pending[i].Key) continue;
+                var act = pending[i].Value;
+                pending.RemoveAt(i);
+                InputReader.VirtualTap(act);
+                if (act == Act.Dash) BotDashes++; else BotParries++;
                 nextBotAction = Time.unscaledTime + 0.25f;
                 return;
             }
-            if (striking == null) lastParried = null;
             if (nearest == null) { InputReader.VirtualMove = Vector2.zero; return; }
 
             // acercarse en espacio de cámara (el "stick" es relativo a la cámara)
@@ -154,8 +196,9 @@ namespace Nindo
 
             if (Time.unscaledTime < nextBotAction) return;
             if (p.FinisherCandidate() != null) { InputReader.VirtualTap(Act.Finisher); BotFinishers++; nextBotAction = Time.unscaledTime + 1.2f; }
-            // no empezar un ataque si alguien está por pegar: el parry no cancela el golpe a mitad
-            else if (best < 2.6f && soonest > 0.6f) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
+            // no empezar un ataque si alguien está por pegar (el anillo ya se está dibujando) ni contra una guardia
+            // (una persona ve el rebote: el segundo golpe contra la guardia se lo devuelven)
+            else if (best < 2.6f && !threatened && pending.Count == 0 && nearest.State != EnemyState.Guard) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
         }
 
         IEnumerator Loop()

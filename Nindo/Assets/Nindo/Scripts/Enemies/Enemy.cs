@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -8,10 +9,10 @@ namespace Nindo
 
     /// <summary>
     /// IA de enemigo genérica y data-driven. Mantiene el ritmo de combate original de Nindo:
-    ///  * el enemigo ataca en combos; cada PARRY de Kaito le suma DESEQUILIBRIO;
-    ///  * si termina el combo desequilibrado queda AGOTADO (vulnerable, se lo puede ejecutar);
-    ///  * cada golpe a un enemigo agotado le consume desequilibrio; al quedar en 0 se pone en GUARDIA;
-    ///  * si le pegás en guardia te DESVÍA el golpe y contraataca.
+    ///  * el enemigo ataca en combos; cada PARRY de Kaito le suma DESEQUILIBRIO (postura);
+    ///  * si termina el combo con al menos un parry encima queda AGOTADO: ventana de daño (4 golpes o su tiempo);
+    ///  * con la postura llena se QUIEBRA: agotado y, si es común, se lo puede EJECUTAR (o con poca vida);
+    ///  * en GUARDIA el primer golpe rebota (suma postura) y el segundo te lo DESVÍA con un contraataque.
     /// Reemplaza a EnemyMovement + EnemyCombat + EnemyBeingDamaged + versiones del luchador.
     /// </summary>
     public class Enemy : MonoBehaviour, IHittable
@@ -35,20 +36,59 @@ namespace Nindo
         public CharacterAnimator Anim => anim;
         public bool IsTelegraphingUnblockable { get; private set; }
         public bool IsExhausted => State == EnemyState.Exhausted;
-        /// <summary>El golpe actual está por salir (para tutoriales en cámara lenta).</summary>
-        /// <remarks>Se mide en segundos de juego (no en tiempo normalizado del clip): a cualquier framerate
-        /// hay al menos un frame dentro de la ventana, y si el jugador aprieta parry en ese momento
-        /// el golpe cae dentro de su ventana de parry (PlayerConfig.parryWindow).</remarks>
+        /// <summary>Agotado con la postura llena (parries o golpes a la guardia): la ejecución está disponible.</summary>
+        public bool PostureBroken => State == EnemyState.Exhausted && Imbalance >= config.maxImbalance - 0.01f;
+        /// <summary>El golpe actual está por salir (exacto: sale de la línea de tiempo del paso).</summary>
+        /// <remarks>Se mide en segundos de juego: si el jugador aprieta parry en ese momento el golpe cae
+        /// dentro de su ventana de parry (PlayerConfig.parryWindow).</remarks>
         public bool AboutToStrike => State == EnemyState.Attack && StrikeEta <= StrikeWarning;
-        /// <summary>Segundos de juego que faltan para que salga el golpe actual (infinito si no hay uno por salir).</summary>
-        public float StrikeEta => State == EnemyState.Attack ? strikeEta : float.PositiveInfinity;
+        /// <summary>Segundos de juego que faltan para el próximo golpe de este enemigo: el del paso actual o el de
+        /// un proyectil suyo en camino hacia Kaito (infinito si no hay ninguno).</summary>
+        public float StrikeEta => Mathf.Min(State == EnemyState.Attack ? strikeEta : float.PositiveInfinity, ProjectileEta);
         float strikeEta = float.PositiveInfinity;
+        /// <summary>Segundos hasta que un proyectil de este enemigo alcance a Kaito (las olas de Mizuchi).</summary>
+        public virtual float ProjectileEta => float.PositiveInfinity;
+        /// <summary>De dónde viene ese proyectil (para orientar el aviso a los pies de Kaito).</summary>
+        public virtual Vector3 ProjectileFrom => transform.position;
         /// <summary>Alcance del golpe en curso: arco del ataque más lo que le queda de embestida.</summary>
         public float StrikeReach { get; private set; }
         /// <summary>Paso del combo que está ejecutando (null si no ataca). Lo usa el aviso en el suelo.</summary>
         public AttackDef CurrentAttack => State == EnemyState.Attack && pattern != null && pattern.steps != null && step >= 0 && step < pattern.steps.Length ? pattern.steps[step] : null;
         public const float StrikeWarning = 0.18f;
-        public float LastHitTime { get; private set; } = -99f;
+        /// <summary>Desde este tiempo antes del golpe un corte liviano de Kaito ya no lo interrumpe (s).</summary>
+        public const float CommitArmorLead = 0.30f;
+        /// <summary>En los últimos segundos antes del golpe deja de girar hacia Kaito (s).</summary>
+        public const float TrackingStopLead = 0.20f;
+        /// <summary>Golpes que aguanta agotado antes de volver a la guardia.</summary>
+        public const int ExhaustedMaxHits = 4;
+        /// <summary>Desequilibrio mínimo al terminar el combo para quedar agotado: un parry entero (la guardia
+        /// imperfecta y los golpes contra la guardia suman de a poco, solos no alcanzan).</summary>
+        public const float ExhaustThreshold = 1f;
+        /// <summary>Postura que suma cada golpe que rebota en la guardia.</summary>
+        public const float GuardHitImbalance = 0.25f;
+
+        // ---- aviso de ataque (ensō): honesto en el tiempo, sale de la línea de tiempo del paso
+        /// <summary>El anillo de aviso se está dibujando (desde TellStart hasta el golpe).</summary>
+        public bool InTell => tellActive && State == EnemyState.Attack && stepClock >= tellStart;
+        /// <summary>Cambia con cada aviso nuevo (para distinguir dos golpes seguidos del mismo enemigo).</summary>
+        public int TellId { get; private set; }
+        /// <summary>Tipo del golpe del paso actual (desviable o imparable).</summary>
+        public AttackKind StepKind { get; private set; }
+        /// <summary>
+        /// 0..1: cuánto del anillo está dibujado. Llega a 1 justo 'TellBias' antes del golpe (el momento de
+        /// apretar parry o dash). Si el golpe se demora (Kaito se aleja de una embestida) retrocede: nunca miente.
+        /// </summary>
+        public float TellProgress01
+        {
+            get
+            {
+                if (!InTell) return 0f;
+                if (float.IsInfinity(strikeEta)) return 1f;
+                float close = stepClock + strikeEta - pattern.steps[step].TellBias;
+                return close <= tellStart ? 1f : Mathf.Clamp01((stepClock - tellStart) / (close - tellStart));
+            }
+        }
+        public float LastHitTime { get; protected set; } = -99f;
         public Transform katanaTip, katanaBase;
 
         protected CharacterAnimator anim = new CharacterAnimator();
@@ -61,13 +101,28 @@ namespace Nindo
         protected float nextAttackTime;
         protected AttackPattern pattern;
         protected int step;
-        protected float stepNorm, stepLen;
+        protected float stepNorm;
         protected bool stepHit;
-        protected bool telegraphed;
+        // línea de tiempo del paso: el golpe sale en tl.T segundos de 'stepClock', que avanza con el tiempo de
+        // juego salvo en el hit-stop local (así el aviso, el sonido y el golpe nunca se desfasan)
+        protected StepTimeline tl;
+        protected float stepClock;
+        protected bool specialFired;
+        float clipLen;
+        bool counterAttack;
+        bool tellActive, tellShown, ticked, swung, glinted, released;
+        float tellStart, lungeStartT, lungeEndT;
+        // carril de la embestida: queda fijo al soltar (desde ahí no corrige la puntería)
+        Vector3 laneOrigin, laneDir;
+        float laneLength;
+        const float ChargeMaxTravel = 9f;
         protected float strafeDir = 1f;
         protected float strafeSwitch;
         protected int neutralHits;
         protected float lastNeutralHit;
+        int guardHits, exhaustedHits;
+        // armadura de compromiso: a menos de CommitArmorLead s del golpe un corte liviano ya no lo interrumpe
+        bool armored;
         protected float stateDuration;
         protected BladeTrail trail;
         HitFlash flash;
@@ -117,7 +172,7 @@ namespace Nindo
             if (katanaBase == null || katanaTip == null)
                 KatanaRig.Find(model, new[] { "Katana", "katana", "Isan", "Cylinder.005", "Martillo", "Arma" }, out katanaBase, out katanaTip);
             if (katanaBase != null && katanaTip != null)
-                trail = BladeTrail.Create(transform, katanaBase, katanaTip, Game.Content != null ? Game.Content.trailMaterial : null, new Color(0.85f, 0.85f, 1f, 0.6f));
+                trail = BladeTrail.Create(transform, katanaBase, katanaTip, Game.Content != null ? Game.Content.trailMaterial : null, TellStyle.TrailParry);
             Game.Combat?.Register(this);
             anim.Play(config.animLocomotion, 0f);
             nextAttackTime = Time.time + Random.Range(0.4f, 1.2f);
@@ -174,10 +229,49 @@ namespace Nindo
             encounter?.OnMemberAlerted(this);
         }
 
+        // práctica del parry del prólogo: la config original queda guardada mientras dura
+        EnemyConfig practiceBackup;
+        /// <summary>Vida mínima en la práctica del parry: por encima del umbral de ejecución (0.25).</summary>
+        const float PracticeMinHealth = 0.35f;
+        /// <summary>Tope de la postura: en la práctica se queda a medio pip de quebrarse (las marcas se siguen viendo).</summary>
+        float PostureCap => practiceBackup != null ? config.maxImbalance - 0.5f : config.maxImbalance;
+
+        /// <summary>
+        /// Práctica del parry del prólogo (StoryDirector): ataca de a un golpe liviano con el aviso largo, la postura
+        /// no se quiebra y no baja del 35 % de vida (cada parry igual lo deja abierto un rato corto). Con la config
+        /// normal los dos parries guiados ya le quebraban la postura y moría en la ventana de daño antes de que se
+        /// practicara a velocidad real. Con 'false' vuelve a la config original.
+        /// </summary>
+        public void SetParryPractice(bool on)
+        {
+            if (on == (practiceBackup != null)) return;
+            if (!on) { config = practiceBackup; practiceBackup = null; return; }
+            practiceBackup = config;
+            var c = config.Clone();
+            c.exhaustedTime = 1.2f;
+            var singles = new List<AttackPattern>();
+            var seen = new HashSet<AttackDef>();
+            if (c.patterns != null)
+                foreach (var p in c.patterns)
+                    if (p != null && p.steps != null)
+                        foreach (var s in p.steps)
+                            if (s != null && s.kind == AttackKind.Light && seen.Add(s))
+                            {
+                                s.windup = Mathf.Max(s.windup, 0.75f);
+                                singles.Add(new AttackPattern { name = s.name, steps = new[] { s }, maxRange = p.maxRange });
+                            }
+            if (singles.Count > 0) c.patterns = singles.ToArray();
+            config = c;
+        }
+
         public bool CanBeFinished(float healthThreshold)
         {
-            if (!IsAlive || State == EnemyState.Scripted || this is Boss && !((Boss)this).FinisherAllowed) return false;
-            return State == EnemyState.Exhausted || Health01 <= Mathf.Max(config.finisherHealth, healthThreshold) && Health01 > 0f;
+            if (!IsAlive || State == EnemyState.Scripted) return false;
+            bool lowHealth = Health01 <= Mathf.Max(config.finisherHealth, healthThreshold) && Health01 > 0f;
+            if (this is Boss boss) return boss.FinisherAllowed && (State == EnemyState.Exhausted || lowHealth);
+            // comunes: solo con la postura quebrada o casi muertos. Un parry suelto abre una ventana de daño, no
+            // la ejecución (si no, el mejor juego era parry → F → mirar la cinemática)
+            return PostureBroken || lowHealth;
         }
 
         // =============================================================== update
@@ -208,7 +302,8 @@ namespace Nindo
             if ((State == EnemyState.Chase || State == EnemyState.Strafe || State == EnemyState.Idle) && stateTime > 0.02f && anim.Current != config.animLocomotion)
                 anim.Play(config.animLocomotion, 0.15f);
 
-            if (knock.sqrMagnitude > 0.0001f)
+            // el empujón del golpe espera a que termine el hit-stop local (si no, se desliza congelado)
+            if (knock.sqrMagnitude > 0.0001f && !anim.Frozen)
             {
                 Vector3 step = knock * Mathf.Min(1f, dt * 10f);
                 knock -= step;
@@ -226,7 +321,12 @@ namespace Nindo
         protected void SetState(EnemyState s)
         {
             // al salir del ataque (fin, stagger, cambio de fase...) el modelo vuelve a su rotación (p. ej. el giro de Gorō)
-            if (State == EnemyState.Attack && s != EnemyState.Attack) { trail?.Stop(); IsTelegraphingUnblockable = false; RestoreModelRotation(); }
+            // y el aviso que quedaba a medias se borra (no puede quedar un anillo de un golpe que ya no va a salir)
+            if (State == EnemyState.Attack && s != EnemyState.Attack)
+            {
+                trail?.Stop(); IsTelegraphingUnblockable = false; armored = false; RestoreModelRotation();
+                EndTell(TellOutcome.Cancelled);
+            }
             // si deja de acercarse para atacar por otra cosa que el ataque, suelta el token
             if (committed && s != EnemyState.Chase)
             {
@@ -343,8 +443,15 @@ namespace Nindo
             Face(target.transform.position, 1.2f, dt);
             if (Time.time > strafeSwitch) { strafeDir = -strafeDir; strafeSwitch = Time.time + Random.Range(1.2f, 2.6f); }
             Vector3 toMe = (transform.position - target.transform.position).Flat().normalized;
-            Vector3 tangent = Vector3.Cross(Vector3.up, toMe) * strafeDir;
-            Vector3 dest = target.transform.position + toMe * config.preferredDistance + tangent * 1.6f;
+            Vector3 dest;
+            if (Game.Combat != null && Game.Combat.TryGetStrafeSlot(this, out float slot))
+            {
+                // va rodeando hacia su lugar (repartidos alrededor de Kaito: no se amontonan) y ahí se balancea
+                float bearing = Mathf.Atan2(toMe.x, toMe.z) * Mathf.Rad2Deg;
+                float turn = Mathf.Clamp(Mathf.DeltaAngle(bearing, slot + strafeDir * 10f), -40f, 40f);
+                dest = target.transform.position + Quaternion.Euler(0f, bearing + turn, 0f) * Vector3.forward * config.preferredDistance;
+            }
+            else dest = target.transform.position + toMe * config.preferredDistance + Vector3.Cross(Vector3.up, toMe) * strafeDir * 1.6f;
             MoveTo(dest, config.walkSpeed);
             if (d > config.preferredDistance + 2.5f) { SetState(EnemyState.Chase); return; }
             if (Time.time >= nextAttackTime && PickPattern(d + 0.6f, out var p) && Game.Combat != null && Game.Combat.RequestAttackToken(this))
@@ -410,10 +517,12 @@ namespace Nindo
         // ---------------------------------------------------------------- ataque
         protected void StartAttack(bool counter)
         {
-            if (pattern == null && !PickPattern(0f, out pattern)) { SetState(EnemyState.Chase); return; }
-            if (counter) Game.Combat?.RequestAttackToken(this);
+            // el contraataque también respeta los turnos: si otro está por pegar, se queda cubierto
+            if (counter && Game.Combat != null && !Game.Combat.RequestAttackToken(this)) { pattern = null; EnterGuard(); return; }
+            if (pattern == null && !PickPattern(0f, out pattern)) { ReleaseToken(); SetState(EnemyState.Chase); return; }
             pattern.lastUsed = Time.time;
             step = 0;
+            counterAttack = counter;
             SetState(EnemyState.Attack);
             BeginStep();
         }
@@ -421,91 +530,295 @@ namespace Nindo
         protected void BeginStep()
         {
             var a = pattern.steps[step];
-            stepLen = anim.Length(a.state, 0.8f) / Mathf.Max(0.05f, a.speed);
+            EndTell(TellOutcome.Struck);   // (el paso anterior ya pegó; por las dudas no queda un anillo colgado)
+            clipLen = anim.Length(a.state, 0.8f);
             stepNorm = 0f;
-            stepHit = false;
-            telegraphed = false;
+            stepClock = 0f;
+            stepHit = specialFired = released = armored = false;
+            tellShown = ticked = swung = glinted = false;
             strikeEta = float.PositiveInfinity;
+            StepKind = a.kind;
             IsTelegraphingUnblockable = a.kind == AttackKind.Unblockable;
             stateTime = 0f;
+            // windup mínimo solo para lo que pega: teletransporte, invocaciones... van a su ritmo natural.
+            // "Encadenado" = viene después de otro golpe (el jugador ya está en ritmo); tras un teletransporte no
+            float windup = a.damage > 0f
+                ? StepTimeline.MinWindup(a, step > 0 && pattern.steps[step - 1].damage > 0f, counterAttack && step == 0, CurrentPhase, config.windupScale)
+                : a.telegraph;
+            tl = StepTimeline.Build(a, clipLen, windup, 0f);
+            tellActive = StepHasTell(a);
+            if (tellActive)
+            {
+                // que no peguen dos enemigos casi juntos: si hace falta, este demora su golpe
+                float travel = a.special == "charge" ? ChargeRoom() / ChargeSpeed(a) : 0f;
+                float delay = Game.Combat != null ? Game.Combat.ReserveStrike(this, Time.time + tl.T + travel) : 0f;
+                if (delay > CombatDirector.MaxStrikeDelay && step == 0)
+                {
+                    // demasiada espera para abrir un combo: vuelve a rondar y reintenta enseguida
+                    tellActive = false;
+                    Game.Combat.ReleaseStrike(this);
+                    pattern = null;
+                    ReleaseToken();
+                    SetState(EnemyState.Chase);
+                    nextAttackTime = Time.time + 0.3f;
+                    return;
+                }
+                // la espera se arma de nuevo como windup (no como pausa extra en el apex): Build deja la pose quieta
+                // en MaxHold y reparte el resto en una anticipación más lenta. Sumada al apex llegaba a ~1 s congelado
+                float dly = Mathf.Min(delay, CombatDirector.MaxStrikeDelay);
+                if (dly > 0f) tl = StepTimeline.Build(a, clipLen, tl.T + dly, 0f);
+                tellStart = Mathf.Max(0f, tl.T + travel - TellStyle.MaxLead(a.kind));
+                TellId++;
+                Game.FX?.BeginTell(this);
+            }
+            // embestida corta del golpe: termina un poco después del impacto; si es larga arranca antes de la
+            // suelta para no superar ~12 m/s (si no, el ninja se teletransporta en la estocada)
+            lungeEndT = tl.T + 0.05f * tl.stepLen;
+            lungeStartT = Mathf.Max(0f, lungeEndT - Mathf.Max(lungeEndT - tl.ReleaseTime, a.lunge / 12f));
+            // ETA real desde este mismo frame: con el infinito del reset, un aviso que arranca ya (tellStart 0) se
+            // dibujaba un frame cerrado del todo, con el destello de "¡ahora!"
+            strikeEta = ComputeStrikeEta(a);
             anim.Play(a.state, 0.08f);
-            if (IsTelegraphingUnblockable) OnUnblockableTelegraph(a);
+            anim.SetSpeed(0f);   // este frame el clip no avanza: el reloj del paso arranca en el próximo
             OnStepStarted(a);
         }
 
         protected virtual void OnStepStarted(AttackDef a) { }
+
+        /// <summary>¿Este paso dibuja el aviso alrededor del atacante? (los que no hacen daño no; los proyectiles
+        /// avisan a los pies de Kaito, ver ProjectileEta)</summary>
+        protected virtual bool StepHasTell(AttackDef a) => a.damage > 0f;
+
+        /// <summary>Arranca el aviso de un imparable: destello rojo, marca sobre la cabeza y el taiko.</summary>
         protected virtual void OnUnblockableTelegraph(AttackDef a)
         {
             Game.FX?.DangerTelegraph(this);
             Game.UI?.ShowDanger(this);
-            Game.Audio?.Play("danger", transform.position, 0.9f);
+            Game.Audio?.Play("tell_danger", transform.position, 1f, 0.03f);
         }
 
         void TickAttack(float dt)
         {
             if (!TargetValid()) return;
             var a = pattern.steps[step];
-            // telegrafía extra: el golpe espera un instante más antes de salir
-            float timing = a.Timing(stepNorm) * a.speed;
-            float holdEnd = a.telegraph + (a.activeStart - 0.12f) * stepLen;
-            bool holding = a.telegraph > 0f && stepNorm >= a.activeStart - 0.12f && stateTime < holdEnd;
-            if (holding) timing *= 0.15f;
-            anim.SetSpeed(timing);
-            if (!anim.Frozen) stepNorm += dt * timing / Mathf.Max(0.05f, stepLen * a.speed);
-            strikeEta = ComputeStrikeEta(a, holdEnd);
-            float lungeLeft = a.lunge > 0f && stepNorm < a.lungeEnd
-                ? a.lunge * Mathf.Clamp01((a.lungeEnd - Mathf.Max(stepNorm, a.lungeStart)) / Mathf.Max(0.01f, a.lungeEnd - a.lungeStart)) : 0f;
+            float prevNorm = stepNorm;
+            if (!anim.Frozen) stepClock += dt;
+            stepNorm = tl.NormAt(stepClock);
+            // el Animator avanza este frame exactamente lo que avanzó el reloj del paso; si se despegó (transición
+            // larga, clip cambiado) se lo empuja de a poco hacia donde tiene que estar
+            float speed = (stepNorm - prevNorm) / dt * clipLen;
+            if (anim.TryNormalizedTime(a.state, out float shown) && Mathf.Abs(prevNorm - shown) > 0.04f)
+                speed += 6f * (prevNorm - shown) * clipLen;
+            anim.SetSpeed(Mathf.Clamp(speed, 0f, 8f));
+
+            strikeEta = ComputeStrikeEta(a);
+            if (tellActive && !float.IsInfinity(strikeEta)) Game.Combat?.UpdateStrike(this, Time.time + strikeEta);
+            // comprometido con el golpe: si a esta altura Kaito le mete un corte liviano, cambian golpes (antes pegar
+            // primero siempre ganaba y el parry era opcional)
+            armored = strikeEta <= CommitArmorLead;
+
+            // puntería hasta la suelta y nunca en los últimos 0.2 s: desde ahí el golpe va recto y correrse sirve
+            if (a.tracking && stepClock < tl.ReleaseTime && strikeEta > TrackingStopLead) Face(target.transform.position, 1.3f, dt);
+            if (!released && stepClock >= tl.ReleaseTime) Release(a);
+            TickTell(a);
+
+            float lungeLeft = 0f;
+            if (a.lunge > 0f && stepClock < lungeEndT)
+            {
+                float span = Mathf.Max(0.01f, lungeEndT - lungeStartT);
+                lungeLeft = a.lunge * Mathf.Clamp01((lungeEndT - Mathf.Max(stepClock, lungeStartT)) / span);
+                if (stepClock >= lungeStartT && !anim.Frozen)
+                {
+                    float room = DistToTarget - Radius - target.Radius - 0.3f;
+                    if (room > 0f) MoveBy(transform.forward * Mathf.Min(a.lunge / span * dt, room));
+                }
+            }
             StrikeReach = a.range * Mathf.Max(1f, config.scale * 0.85f) + lungeLeft;
 
-            if (a.tracking && stepNorm < a.activeStart) Face(target.transform.position, 1.3f, dt);
-
-            // destello de aviso justo antes del golpe (lectura del parry)
-            if (!telegraphed && stepNorm >= a.activeStart - 0.18f)
-            {
-                telegraphed = true;
-                Game.FX?.BladeGlint(katanaTip != null ? katanaTip.position : AimPoint + transform.forward * 0.6f, a.kind == AttackKind.Unblockable);
-                Game.Audio?.Play(a.sfx, transform.position, 0.65f, 0.1f);
-                trail?.Begin();
-            }
-
-            if (stepNorm >= a.lungeStart && stepNorm <= a.lungeEnd && a.lunge > 0f)
-            {
-                float room = DistToTarget - Radius - target.Radius - 0.3f;
-                float spd = a.lunge / Mathf.Max(0.05f, (a.lungeEnd - a.lungeStart) * stepLen);
-                if (room > 0f) MoveBy(transform.forward * Mathf.Min(spd * dt, room));
-            }
-
-            if (!string.IsNullOrEmpty(a.special)) TickSpecial(a, dt);
-            else if (!stepHit && stepNorm >= a.activeStart && stepNorm <= a.activeEnd) TryHitPlayer(a);
+            TickSpecial(a, dt);
+            if (State != EnemyState.Attack) return;   // lo desviaron (Recoil) o cambió de fase
+            // el golpe ya salió (pegó o no): el aviso termina. Una embestida que no lo tocó (Kaito salió del carril
+            // o ya pasó de largo) se deshace como cortada: se corrió a tiempo
+            if (tellActive && float.IsInfinity(ComputeStrikeEta(a))) EndTell(a.special == "charge" && !stepHit ? TellOutcome.Cancelled : TellOutcome.Struck);
 
             if (stepNorm > a.activeEnd + 0.05f) trail?.Stop();
             if (stepNorm >= 1f) NextStep();
         }
 
-        /// <summary>Segundos hasta que el golpe del paso actual pega (infinito si ya pegó o no hace daño). Los jefes lo
-        /// cambian para sus especiales (una embestida pega al alcanzar a Kaito, no en activeStart).</summary>
-        protected virtual float ComputeStrikeEta(AttackDef a, float holdEnd) =>
-            stepHit || stepNorm >= a.activeStart || a.damage <= 0f ? float.PositiveInfinity : EstimateStrikeEta(a, holdEnd);
-
-        /// <summary>Segundos hasta activeStart al ritmo actual, contando la pausa del telegraph (presente o por venir).
-        /// Dentro de la pausa el clip sigue avanzando al 15%, así que el golpe puede salir antes de que termine.</summary>
-        protected float EstimateStrikeEta(AttackDef a, float holdEnd)
+        /// <summary>Empieza la suelta del golpe: estela del arma y, si es una embestida, el carril queda fijo.</summary>
+        void Release(AttackDef a)
         {
-            float rate = a.Timing(stepNorm) / Mathf.Max(0.05f, stepLen);   // tiempo normalizado por segundo
-            float left = a.activeStart - stepNorm;
-            if (a.telegraph <= 0f || stateTime >= holdEnd) return left / rate;
-            float toZone = Mathf.Max(0f, a.activeStart - 0.12f - stepNorm) / rate;
-            float holdLeft = holdEnd - stateTime - toZone;                   // pausa que queda al llegar a la zona
-            if (holdLeft <= 0f) return left / rate;
-            float tail = Mathf.Min(0.12f, left), slow = 0.15f * rate;
-            if (tail <= slow * holdLeft) return toZone + tail / slow;
-            return toZone + holdLeft + (tail - slow * holdLeft) / rate;
+            released = true;
+            if (trail != null && a.damage > 0f)
+            {
+                trail.SetColor(a.kind == AttackKind.Unblockable ? TellStyle.TrailDanger : TellStyle.TrailParry);
+                trail.SetLifetime(0.22f);
+                trail.Begin();
+            }
+            if (a.special == "charge")
+            {
+                // pasa de largo 1.5 m: si Kaito no se corre del carril, lo alcanza
+                float travel = Mathf.Clamp(ChargeRoom() + 1.5f, 2f, ChargeMaxTravel);
+                laneOrigin = transform.position;
+                laneDir = transform.forward.Flat().normalized;
+                laneLength = travel + Radius;
+                // la carrera dura lo que tarda en recorrer el carril (el clip se estira para acompañarla)
+                tl.sustain = travel / ChargeSpeed(a);
+            }
         }
 
-        /// <summary>Movimientos especiales (jefes). Por defecto, golpe normal.</summary>
+        /// <summary>Sonidos y destellos atados al reloj del golpe (cada uno una sola vez por paso).</summary>
+        void TickTell(AttackDef a)
+        {
+            if (!tellActive) return;
+            if (!tellShown && stepClock >= tellStart)
+            {
+                tellShown = true;
+                if (StepKind == AttackKind.Unblockable) OnUnblockableTelegraph(a);
+            }
+            float eta = strikeEta;
+            // los sonidos se adelantan la latencia de salida del audio: cuentan desde que se OYEN
+            if (!ticked && AudioManager.CueDue(eta, TellStyle.TickLead(StepKind)))
+            {
+                ticked = true;
+                // cerca o fijado: en 2D, siempre igual de claro; lejos, posicional para saber de dónde viene
+                bool close = target != null && (target.LockTarget == this || DistToTarget < 8f);
+                Game.Audio?.Play("tell_tick", close ? (Vector3?)null : transform.position, 0.8f, 0.03f);
+                GameEvents.RaiseStrikeCue(this, StepKind == AttackKind.Unblockable);
+            }
+            // el silbido del arma arranca antes para que su pico caiga justo en el golpe
+            if (!swung && AudioManager.CueDue(eta, a.kind == AttackKind.Light ? TellStyle.SwingLight : TellStyle.SwingHeavy))
+            {
+                swung = true;
+                Game.Audio?.Play(a.sfx, transform.position, 0.65f, 0.1f);
+            }
+            // brillo del arma en el instante en que se cierra el anillo (el "¡ahora!")
+            if (!glinted && eta <= a.TellBias)
+            {
+                glinted = true;
+                Game.FX?.BladeGlint(katanaTip != null ? katanaTip.position : AimPoint + transform.forward * 0.6f, StepKind == AttackKind.Unblockable);
+            }
+        }
+
+        /// <summary>
+        /// Segundos exactos hasta que el golpe del paso actual pega (infinito si ya pegó o no hace daño).
+        /// Una embestida pega al alcanzar a Kaito; los jefes cambian sus especiales.
+        /// </summary>
+        protected virtual float ComputeStrikeEta(AttackDef a)
+        {
+            if (stepHit || a.damage <= 0f) return float.PositiveInfinity;
+            switch (a.special)
+            {
+                case "charge": return ChargeEta(a);
+                case "slam": return specialFired ? float.PositiveInfinity : Mathf.Max(0f, tl.T - stepClock);
+                default: return stepClock >= tl.T ? float.PositiveInfinity : tl.T - stepClock;
+            }
+        }
+
+        /// <summary>Termina el aviso del paso (una sola vez) y libera su lugar en la agenda de golpes.</summary>
+        protected void EndTell(TellOutcome outcome)
+        {
+            if (!tellActive) return;
+            tellActive = false;
+            Game.Combat?.ReleaseStrike(this);
+            Game.FX?.EndTell(this, outcome);
+        }
+
+        // ---------------------------------------------------------------- zona del golpe
+        /// <summary>Zona real que golpea el paso actual (solo especiales: pisotón, embestida; los jefes suman los suyos).</summary>
+        public bool TryGetTellArea(out TellArea area)
+        {
+            area = default;
+            var a = CurrentAttack;
+            return a != null && tellActive && HitAreaFor(a, out area);
+        }
+
+        protected virtual bool HitAreaFor(AttackDef a, out TellArea area)
+        {
+            area = default;
+            switch (a.special)
+            {
+                case "slam":
+                    area = new TellArea { origin = SlamCenter(a), size = SlamRadius(a) };
+                    return true;
+                case "charge":
+                    if (released) area = new TellArea { lane = true, origin = laneOrigin, forward = laneDir, size = laneLength, width = 2f * (Radius + 0.6f) };
+                    else area = new TellArea { lane = true, origin = transform.position, forward = transform.forward.Flat().normalized, size = Mathf.Clamp(ChargeRoom() + 1.5f, 2f, ChargeMaxTravel) + Radius, width = 2f * (Radius + 0.6f) };
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>¿El golpe en curso puede alcanzar ese punto? (para no enseñar parry/dash con un golpe que no llega)</summary>
+        public bool StrikeCanReach(Vector3 p, float pad)
+        {
+            var a = CurrentAttack;
+            if (a == null) return false;
+            if (HitAreaFor(a, out var area)) return area.Contains(p, pad);
+            return CombatMath.FlatDistance(p, transform.position) <= StrikeReach + pad;
+        }
+
+        // ---------------------------------------------------------------- especiales comunes
+        Vector3 SlamCenter(AttackDef a) => transform.position + transform.forward * Mathf.Max(0.5f, a.range * 0.4f);
+        static float SlamRadius(AttackDef a) => a.specialParam > 0f ? a.specialParam : 4f;
+        static float ChargeSpeed(AttackDef a) => a.specialParam > 0f ? a.specialParam : 14f;
+        float ChargeContact => Radius + (target != null ? target.Radius : 0.35f) + 0.6f;
+        float ChargeRoom() => Mathf.Max(0f, DistToTarget - ChargeContact);
+
+        /// <summary>Embestida: lo que falta para soltarla más el recorrido hasta Kaito (por el carril una vez fijo).</summary>
+        float ChargeEta(AttackDef a)
+        {
+            if (target == null || stepNorm > a.activeEnd) return float.PositiveInfinity;
+            float pre = Mathf.Max(0f, tl.T - stepClock);
+            if (!released) return pre + ChargeRoom() / ChargeSpeed(a);
+            Vector3 to = (target.transform.position - transform.position).Flat();
+            float along = Vector3.Dot(to, laneDir) - ChargeContact;
+            // ya pasó de largo, o Kaito salió del carril de costado (la respuesta correcta): no lo va a alcanzar y
+            // el anillo no puede seguir pidiendo un dash que gasta Espíritu
+            float lateral = Mathf.Abs(Vector3.Dot(to, Vector3.Cross(Vector3.up, laneDir)));
+            return along < -0.5f || lateral > ChargeContact ? float.PositiveInfinity : pre + Mathf.Max(0f, along) / ChargeSpeed(a);
+        }
+
+        /// <summary>Movimientos especiales: pisotón y embestida (cualquier enemigo); los jefes agregan los suyos.
+        /// Sin especial, golpe normal en la ventana activa.</summary>
         protected virtual void TickSpecial(AttackDef a, float dt)
         {
-            if (!stepHit && stepNorm >= a.activeStart && stepNorm <= a.activeEnd) TryHitPlayer(a);
+            switch (a.special)
+            {
+                case "slam":
+                    if (!specialFired && stepNorm >= a.activeStart)
+                    {
+                        specialFired = true;
+                        Vector3 c = SlamCenter(a);
+                        float radius = SlamRadius(a);
+                        Game.FX?.Shockwave(c, radius, new Color(1f, 0.75f, 0.45f));
+                        Game.FX?.GroundCrack(c, radius);
+                        Game.Camera?.Shake(0.75f);
+                        Game.Audio?.Play("slam", c, 1f);
+                        Game.Input?.Rumble(0.9f, 0.6f, 0.3f);
+                        if (target != null && CombatMath.FlatDistance(target.transform.position, c) <= radius + target.Radius)
+                            HitPlayer(a, c);
+                    }
+                    break;
+
+                case "charge":
+                    // corre por el carril fijo desde el golpe hasta el final de la fase activa (tl.sustain)
+                    if (stepClock >= tl.T && stepNorm <= a.activeEnd && !anim.Frozen)
+                    {
+                        MoveBy(laneDir * ChargeSpeed(a) * dt);
+                        if (!stepHit && target != null && CombatMath.FlatDistance(target.transform.position, transform.position) <= ChargeContact)
+                        {
+                            stepHit = true;
+                            HitPlayer(a, transform.position);
+                        }
+                        Game.FX?.DustTrail(transform.position);
+                    }
+                    break;
+
+                default:
+                    if (!stepHit && stepNorm >= a.activeStart && stepNorm <= a.activeEnd) TryHitPlayer(a);
+                    break;
+            }
         }
 
         protected void TryHitPlayer(AttackDef a, float rangeMul = 1f)
@@ -559,7 +872,7 @@ namespace Nindo
             if (pattern != null && pattern.exhaustAfter) Imbalance = config.maxImbalance;
             pattern = null;
             nextAttackTime = Time.time + Random.Range(config.attackCooldown.x, config.attackCooldown.y);
-            if (Imbalance > 0.01f) BecomeExhausted();
+            if (Imbalance >= ExhaustThreshold - 0.01f) BecomeExhausted();
             else EnterGuard();
         }
 
@@ -568,6 +881,7 @@ namespace Nindo
         // ---------------------------------------------------------------- guardia / agotado
         protected void EnterGuard()
         {
+            guardHits = 0;
             SetState(EnemyState.Guard);
             stateDuration = config.guardTime * Random.Range(0.7f, 1.2f);
             anim.Play(config.animGuard, 0.12f);
@@ -583,6 +897,7 @@ namespace Nindo
         protected virtual void BecomeExhausted()
         {
             ReleaseToken();
+            exhaustedHits = 0;
             SetState(EnemyState.Exhausted);
             stateDuration = config.exhaustedTime;
             anim.Play(config.animExhausted, 0.12f);
@@ -592,11 +907,63 @@ namespace Nindo
 
         void TickExhausted(float dt)
         {
-            if (stateTime >= stateDuration)
-            {
-                Imbalance = 0f;
-                EnterGuard();
-            }
+            if (stateTime >= stateDuration) EndExhaustion();
+        }
+
+        /// <summary>Se recupera: la postura vuelve a cero y se cubre.</summary>
+        void EndExhaustion()
+        {
+            Imbalance = 0f;
+            EnterGuard();
+            OnExhaustionEnded();
+        }
+
+        /// <summary>Terminó de estar agotado (los jefes cambian de fase recién acá si les tocaba).</summary>
+        protected virtual void OnExhaustionEnded() { }
+
+        /// <summary>
+        /// Suma desequilibrio fuera del parry (guardia imperfecta de Kaito, golpes que rebotan en la guardia).
+        /// Si la postura se llena se quiebra, igual que con un parry.
+        /// </summary>
+        public void AddImbalance(float amount)
+        {
+            if (!IsAlive || amount <= 0f || State == EnemyState.Exhausted) return;
+            Imbalance = Mathf.Min(PostureCap, Imbalance + amount);
+            Game.UI?.PulseImbalance(this);
+            if (Imbalance >= config.maxImbalance - 0.01f) BreakPosture();
+        }
+
+        /// <summary>
+        /// Postura quebrada: agotado al instante (corta el golpe que estuviera tirando), estallido dorado y la
+        /// única cámara lenta del combate común junto con el último enemigo: la escena se ilumina, no se apaga.
+        /// </summary>
+        void BreakPosture()
+        {
+            BecomeExhausted();
+            Game.FX?.PostureBreak(AimPoint);
+            Game.Audio?.Play("posture_break", transform.position, 1f);
+            Game.Time?.SlowMotion(0.25f, 0.3f, 0.02f, 0.15f);
+        }
+
+        /// <summary>
+        /// Después de un remate de Kaito los que están cerca salen despedidos y esperan antes de volver a atacar
+        /// (antes el control volvía en medio del golpe de otro). Jefes y enemigos con armadura no se interrumpen.
+        /// </summary>
+        public void GiveRoom(Vector3 from, float meters, float delay)
+        {
+            if (!IsAlive || State == EnemyState.Scripted || State == EnemyState.Exhausted) return;
+            Vector3 d = (transform.position - from).Flat();
+            if (d.sqrMagnitude < 0.01f) d = -transform.forward;
+            knock += d.normalized * meters * (1f - config.knockbackResist);
+            if (committed) CancelCommit();
+            nextAttackTime = Mathf.Max(nextAttackTime, Time.time) + delay;
+            // el que estaba por pegar (o por contraatacar) se corta; el resto solo espera
+            if (State != EnemyState.Attack && State != EnemyState.Counter) { ReleaseToken(); return; }
+            if (config.hyperArmor || this is Boss) return;
+            ReleaseToken();
+            SetState(EnemyState.Stagger);
+            stateDuration = config.staggerTime;
+            anim.Play(config.animHit, 0.03f);
         }
 
         // ---------------------------------------------------------------- recibir golpes
@@ -606,14 +973,11 @@ namespace Nindo
             if (!IsAggro) Alert();
             LastHitTime = Time.time;
 
-            // en guardia: desvía y contraataca (solo golpes normales)
+            // en guardia (solo golpes normales): el primero rebota, el segundo lo desvía y contraataca
             bool guardable = info.kind == AttackKind.Light || info.kind == AttackKind.Heavy;
-            if (State == EnemyState.Guard && guardable)
-            {
-                Counter();
-                return HitResult.Guarded;
-            }
-            // en neutral aguanta pocos golpes seguidos antes de cubrirse
+            if (State == EnemyState.Guard && guardable) return GuardHit();
+            // en neutral aguanta pocos golpes seguidos; el siguiente lo frena con la guardia (rebota: es el aviso)
+            // y recién si Kaito insiste contraataca. Antes el 3er corte del combo se devolvía siempre, sin aviso
             bool neutral = State == EnemyState.Chase || State == EnemyState.Strafe || State == EnemyState.Idle || State == EnemyState.Alert || State == EnemyState.Stagger;
             if (neutral && guardable)
             {
@@ -623,19 +987,22 @@ namespace Nindo
                 if (neutralHits > config.poiseHits)
                 {
                     neutralHits = 0;
-                    Counter();
-                    return HitResult.Guarded;
+                    ReleaseToken();
+                    EnterGuard();
+                    return GuardHit();
                 }
             }
 
             float dmg = info.damage;
             if (State == EnemyState.Exhausted)
             {
+                // ventana de daño: el desequilibrio ya no se gasta por golpe (antes el 2º corte ya chocaba con la guardia)
                 dmg *= config.exhaustedDamageMul;
-                Imbalance = Mathf.Max(0f, Imbalance - Mathf.Max(1f, info.imbalance));
+                exhaustedHits++;
                 stateDuration = Mathf.Max(stateDuration, stateTime + 0.6f);
             }
             Health -= dmg;
+            if (practiceBackup != null) Health = Mathf.Max(Health, config.maxHealth * PracticeMinHealth);
             flash?.Flash();
             if (Health <= 0f)
             {
@@ -648,12 +1015,12 @@ namespace Nindo
 
             if (State == EnemyState.Exhausted)
             {
-                if (Imbalance <= 0.01f) { Imbalance = 0f; EnterGuard(); }
+                if (exhaustedHits >= ExhaustedMaxHits) EndExhaustion();
                 else anim.Play(config.animHit, 0.03f);
             }
-            else if (State == EnemyState.Attack && config.hyperArmor && info.kind != AttackKind.Ability)
+            else if (State == EnemyState.Attack && (config.hyperArmor && info.kind != AttackKind.Ability || armored && info.kind == AttackKind.Light && !info.riposte))
             {
-                // aguanta el golpe sin interrumpirse
+                // aguanta el golpe sin interrumpirse (armadura propia, o ya comprometido con el golpe: cambian golpes)
             }
             else if (State != EnemyState.Counter)
             {
@@ -667,6 +1034,18 @@ namespace Nindo
         }
 
         protected virtual void OnDamaged(in DamageInfo info) { }
+
+        /// <summary>Golpe contra la guardia: el primero rebota (clang, suma postura, sin castigo); el segundo se contraataca.</summary>
+        HitResult GuardHit()
+        {
+            if (++guardHits >= 2) { Counter(); return HitResult.Guarded; }
+            if (target != null) transform.rotation = Quaternion.LookRotation((target.transform.position - transform.position).Flat().normalized + transform.forward * 0.001f);
+            Game.UI?.ShowGuardMark(this);
+            // sigue cubierto un poco más: el que castiga es el segundo golpe, tiene que poder llegar
+            stateDuration = Mathf.Max(stateDuration, stateTime + 0.5f);
+            AddImbalance(GuardHitImbalance);
+            return HitResult.Blocked;
+        }
 
         void Counter()
         {
@@ -685,9 +1064,10 @@ namespace Nindo
         public virtual void OnParried(bool perfect)
         {
             if (!IsAlive) return;
-            Imbalance = Mathf.Min(config.maxImbalance, Imbalance + (perfect ? 1.5f : 1f));
+            Imbalance = Mathf.Min(PostureCap, Imbalance + (perfect ? 1.5f : 1f));
             trail?.Stop();
             Game.UI?.PulseImbalance(this);
+            EndTell(TellOutcome.Parried);   // el anillo se rompe en pedazos (antes de que el Recoil lo cancele)
             if (State == EnemyState.Attack)
             {
                 SetState(EnemyState.Recoil);
@@ -695,7 +1075,7 @@ namespace Nindo
                 anim.Play(config.animParried, 0.03f);
                 knock += -transform.forward * (perfect ? 0.8f : 0.4f);
             }
-            if (Imbalance >= config.maxImbalance) { BecomeExhausted(); Game.FX?.PostureBreak(AimPoint); Game.Audio?.Play("posture_break", transform.position, 1f); }
+            if (Imbalance >= config.maxImbalance - 0.01f) BreakPosture();
         }
 
         // ---------------------------------------------------------------- muerte / ejecución
@@ -720,6 +1100,7 @@ namespace Nindo
             ReleaseToken();
             Stop();
             trail?.Stop();
+            EndTell(TellOutcome.Cancelled);   // muere a mitad de un golpe (acá no pasa por SetState)
             RestoreModelRotation(); // si murió en pleno giro, cae desde la pose normal
             committed = false;
             State = EnemyState.Dead;
