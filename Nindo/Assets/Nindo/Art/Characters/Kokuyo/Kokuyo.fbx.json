@@ -1,0 +1,2019 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "bind_height": 4.511,
+ "bind_height_note": "alto que mide CharacterFactory.NormalizeHeight en la pose por defecto del FBX (el reposo): con este valor en NindoContent la escala es 1",
+ "tris": {
+  "body": 4816,
+  "Sode_R": 304,
+  "Sode_R_Broken": 144,
+  "Crest_R": 56,
+  "Crest_L": 56,
+  "Mask": 296,
+  "Face": 186,
+  "Katana_Nodachi": 330,
+  "Crack_1": 44,
+  "Crack_2": 28,
+  "Crack_3": 28,
+  "Crack_4": 36,
+  "Crack_5": 20
+ },
+ "facing": "frente +Z en Unity (Blender -Y): modelYaw 0",
+ "root_travel": "travel_m[f] = metros que el transform tiene que haber avanzado (hacia su frente; negativo = hacia atrás) en el cuadro f del clip. Los pies apoyados quedan clavados solo si el juego mueve el transform por deltas de travel_m(stepNorm * frames), con el reloj del paso (AttackDef.lunge = 0); la embestida lineal de Enemy.cs no sigue la curva y hace patinar los pies. travel_m está medido con StepTimeline y el release_rate de cada clip (AttackDef.releaseRate): con otro valor la suelta se comprime y el avance se ve como un teletransporte (Tsuki necesita 0.4; con 1.6 salta 3.2 m en 0.1 s)",
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 73,
+   "frames": 72,
+   "seconds": 2.4,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "wakigamae: una mano, la nodachi colgando atrás; una respiración (el pecho sube a los 1.2 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "Kesagiri": {
+   "first": 83,
+   "last": 119,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": false,
+   "timing": {
+    "tell": [
+     0,
+     14
+    ],
+    "apex": 14,
+    "hold": [
+     14,
+     16
+    ],
+    "contact": 18,
+    "active": [
+     18,
+     21
+    ],
+    "recover": [
+     21,
+     36
+    ],
+    "lunge": [
+     14,
+     25,
+     1.2
+    ],
+    "kind": "parry",
+    "chain_from": "READY",
+    "chain_to": "LOW_L"
+   },
+   "normalized": {
+    "apex": 0.3889,
+    "contact": 0.5,
+    "tell": [
+     0.0,
+     0.3889
+    ],
+    "hold": [
+     0.3889,
+     0.4444
+    ],
+    "active": [
+     0.5,
+     0.5833
+    ],
+    "recover": [
+     0.5833,
+     1.0
+    ],
+    "lunge": [
+     0.3889,
+     0.6944,
+     1.2
+    ]
+   },
+   "events": [
+    {
+     "frame": 14,
+     "t": 0.3889,
+     "fn": "Apex"
+    },
+    {
+     "frame": 18,
+     "t": 0.5,
+     "fn": "Strike"
+    },
+    {
+     "frame": 18,
+     "t": 0.5,
+     "fn": "Step"
+    },
+    {
+     "frame": 34,
+     "t": 0.9444,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "apex HIGH_R (hoja alta y afuera, atrás del hombro derecho); el pie izquierdo apoya en el impacto",
+   "reach_m": 3.88,
+   "release_rate": 1.6,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.225,
+    0.45,
+    0.6,
+    0.72,
+    0.8233,
+    0.9267,
+    1.03,
+    1.1044,
+    1.1575,
+    1.1894,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ],
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 3.8,
+     "legs": 0.0
+    },
+    "root_peak_mps_60hz": 10.9,
+    "release_rate": 1.6,
+    "reach_m": 3.88,
+    "tip_peak_mps": 266.6,
+    "tip_outside_ratio": 0.11,
+    "apex_tip_mps": [
+     8.4,
+     6.4
+    ],
+    "max_height_m": 5.2,
+    "min_z_m": -0.009,
+    "tell_silhouette_change": 0.2
+   }
+  },
+  "RecoverL": {
+   "first": 129,
+   "last": 144,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "recover": [
+     0,
+     15
+    ],
+    "chain_from": "LOW_L",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "recover": [
+     0.0,
+     1.0
+    ]
+   },
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "LOW_L -> guardia (cierra un patrón)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "RecoverHR": {
+   "first": 154,
+   "last": 166,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {
+    "recover": [
+     0,
+     12
+    ],
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "recover": [
+     0.0,
+     1.0
+    ]
+   },
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "chiburi: sacude la sangre de la hoja",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "Gyakugiri": {
+   "first": 176,
+   "last": 206,
+   "frames": 30,
+   "seconds": 1.0,
+   "loop": false,
+   "timing": {
+    "tell": [
+     0,
+     10
+    ],
+    "apex": 10,
+    "hold": [
+     10,
+     11
+    ],
+    "contact": 14,
+    "active": [
+     14,
+     17
+    ],
+    "recover": [
+     17,
+     30
+    ],
+    "lunge": [
+     10,
+     15,
+     0.8
+    ],
+    "kind": "parry",
+    "chain_from": "LOW_L",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "apex": 0.3333,
+    "contact": 0.4667,
+    "tell": [
+     0.0,
+     0.3333
+    ],
+    "hold": [
+     0.3333,
+     0.3667
+    ],
+    "active": [
+     0.4667,
+     0.5667
+    ],
+    "recover": [
+     0.5667,
+     1.0
+    ],
+    "lunge": [
+     0.3333,
+     0.5,
+     0.8
+    ]
+   },
+   "events": [
+    {
+     "frame": 10,
+     "t": 0.3333,
+     "fn": "Apex"
+    },
+    {
+     "frame": 14,
+     "t": 0.4667,
+     "fn": "Strike"
+    },
+    {
+     "frame": 14,
+     "t": 0.4667,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "apex enroscado bajo a su izquierda (cadera 15 cm más baja); corta subiendo hasta arriba a su derecha",
+   "reach_m": 3.21,
+   "release_rate": 1.6,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3,
+    0.45,
+    0.6,
+    0.7803,
+    0.7982,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8
+   ],
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "root_peak_mps_60hz": 15.1,
+    "release_rate": 1.6,
+    "reach_m": 3.21,
+    "tip_peak_mps": 279.0,
+    "tip_outside_ratio": 0.14,
+    "apex_tip_mps": [
+     0.7,
+     1.2
+    ],
+    "max_height_m": 5.62,
+    "min_z_m": -0.013,
+    "tell_silhouette_change": 0.164
+   }
+  },
+  "Tsuki": {
+   "first": 216,
+   "last": 262,
+   "frames": 46,
+   "seconds": 1.5333,
+   "loop": false,
+   "timing": {
+    "tell": [
+     0,
+     22
+    ],
+    "apex": 22,
+    "hold": [
+     22,
+     23
+    ],
+    "contact": 27,
+    "active": [
+     27,
+     30
+    ],
+    "recover": [
+     30,
+     46
+    ],
+    "lunge": [
+     23,
+     30,
+     3.5
+    ],
+    "release_rate": 0.4,
+    "kind": "parry",
+    "chain_from": "READY",
+    "chain_to": "THRUST_END"
+   },
+   "normalized": {
+    "apex": 0.4783,
+    "contact": 0.587,
+    "tell": [
+     0.0,
+     0.4783
+    ],
+    "hold": [
+     0.4783,
+     0.5
+    ],
+    "active": [
+     0.587,
+     0.6522
+    ],
+    "recover": [
+     0.6522,
+     1.0
+    ],
+    "lunge": [
+     0.5,
+     0.6522,
+     3.5
+    ]
+   },
+   "events": [
+    {
+     "frame": 22,
+     "t": 0.4783,
+     "fn": "Apex"
+    },
+    {
+     "frame": 24,
+     "t": 0.5217,
+     "fn": "Step"
+    },
+    {
+     "frame": 27,
+     "t": 0.587,
+     "fn": "Strike"
+    },
+    {
+     "frame": 27,
+     "t": 0.587,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "estocada desde hanmi: la nodachi recogida atrás de la cadera derecha y el brazo izquierdo apunta a Kaito; empuja f23-24, vuela f24-27 (3.2 m) con la hoja recogida y la estira al caer sobre el pie de adelante en el impacto; la punta llega a ~1.1 m de alto. AttackDef.releaseRate = release_rate (0.4): el salto dura 0.27 s a ~14 m/s; con 1.6 dura 0.1 s",
+   "reach_m": 4.37,
+   "release_rate": 0.4,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.03,
+    0.72,
+    1.71,
+    2.5,
+    3.2,
+    3.4111,
+    3.4889,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5
+   ],
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "root_peak_mps_60hz": 15.3,
+    "release_rate": 0.4,
+    "reach_m": 4.37,
+    "tip_peak_mps": 42.1,
+    "tip_outside_ratio": 0.26,
+    "apex_tip_mps": [
+     3.0,
+     0.7
+    ],
+    "max_height_m": 4.32,
+    "min_z_m": -0.0,
+    "tell_silhouette_change": 0.161
+   }
+  },
+  "TsukiRecover": {
+   "first": 272,
+   "last": 290,
+   "frames": 18,
+   "seconds": 0.6,
+   "loop": false,
+   "timing": {
+    "recover": [
+     0,
+     18
+    ],
+    "chain_from": "THRUST_END",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "recover": [
+     0.0,
+     1.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 12,
+     "t": 0.6667,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "castigo: retrae la estocada; el pie de atrás se adelanta",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.007
+   }
+  },
+  "Ichimonji": {
+   "first": 300,
+   "last": 348,
+   "frames": 48,
+   "seconds": 1.6,
+   "loop": false,
+   "timing": {
+    "tell": [
+     0,
+     21
+    ],
+    "apex": 21,
+    "hold": [
+     21,
+     24
+    ],
+    "contact": 28,
+    "active": [
+     28,
+     32
+    ],
+    "recover": [
+     32,
+     48
+    ],
+    "lunge": [
+     24,
+     29,
+     0.0
+    ],
+    "kind": "dodge",
+    "safe_core_m": 1.4,
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "apex": 0.4375,
+    "contact": 0.5833,
+    "tell": [
+     0.0,
+     0.4375
+    ],
+    "hold": [
+     0.4375,
+     0.5
+    ],
+    "active": [
+     0.5833,
+     0.6667
+    ],
+    "recover": [
+     0.6667,
+     1.0
+    ],
+    "lunge": [
+     0.5,
+     0.6042,
+     0.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 21,
+     "t": 0.4375,
+     "fn": "Apex"
+    },
+    {
+     "frame": 28,
+     "t": 0.5833,
+     "fn": "Strike"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "barrido de 240° a la cintura; se pasa 0.33 s (castigo). Sin embestida: la hoja ya llega a 4.4 m",
+   "reach_m": 3.64,
+   "release_rate": 1.6,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 3.4,
+     "legs": 0.0
+    },
+    "reach_m": 3.64,
+    "tip_peak_mps": 181.6,
+    "tip_outside_ratio": 0.14,
+    "apex_tip_mps": [
+     1.7,
+     2.4
+    ],
+    "max_height_m": 4.32,
+    "min_z_m": -0.008,
+    "tell_silhouette_change": 0.17
+   }
+  },
+  "KabutoWari": {
+   "first": 358,
+   "last": 418,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": false,
+   "timing": {
+    "tell": [
+     0,
+     20
+    ],
+    "apex": 20,
+    "hold": [
+     20,
+     24
+    ],
+    "contact": 27,
+    "active": [
+     27,
+     29
+    ],
+    "recover": [
+     29,
+     60
+    ],
+    "stuck": [
+     28,
+     44
+    ],
+    "rift_start": 27,
+    "ground": [
+     [
+      27,
+      46
+     ]
+    ],
+    "bite": [
+     27
+    ],
+    "kind": "dodge",
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "apex": 0.3333,
+    "contact": 0.45,
+    "tell": [
+     0.0,
+     0.3333
+    ],
+    "hold": [
+     0.3333,
+     0.4
+    ],
+    "active": [
+     0.45,
+     0.4833
+    ],
+    "recover": [
+     0.4833,
+     1.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 20,
+     "t": 0.3333,
+     "fn": "Apex"
+    },
+    {
+     "frame": 27,
+     "t": 0.45,
+     "fn": "Strike"
+    },
+    {
+     "frame": 27,
+     "t": 0.45,
+     "fn": "RiftStart"
+    },
+    {
+     "frame": 33,
+     "t": 0.55,
+     "fn": "Tug"
+    },
+    {
+     "frame": 39,
+     "t": 0.65,
+     "fn": "Tug"
+    },
+    {
+     "frame": 47,
+     "t": 0.7833,
+     "fn": "BladeFree"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "la hoja queda clavada f28-44 (0.55 s de golpes libres); la grieta de obsidiana arranca en f27",
+   "reach_m": 3.98,
+   "release_rate": 1.6,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 2.1,
+    "reach_m": 3.98,
+    "tip_peak_mps": 346.0,
+    "tip_outside_ratio": 0.18,
+    "apex_tip_mps": [
+     1.6,
+     1.7
+    ],
+    "max_height_m": 5.68,
+    "min_z_m": -0.02,
+    "tell_silhouette_change": 0.264
+   }
+  },
+  "ShadowSink": {
+   "first": 428,
+   "last": 449,
+   "frames": 21,
+   "seconds": 0.7,
+   "loop": false,
+   "timing": {
+    "kind": "none",
+    "chain_from": "READY",
+    "ground": [
+     [
+      8,
+      21
+     ]
+    ],
+    "sink": [
+     [
+      7,
+      21
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 8,
+     "t": 0.381,
+     "fn": "ShadowPuddle"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "se agacha y se hunde 4 m en su propia sombra (el charco violeta lo pone el juego)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.31,
+    "min_z_m": -0.0
+   }
+  },
+  "ShadowEmerge": {
+   "first": 459,
+   "last": 492,
+   "frames": 33,
+   "seconds": 1.1,
+   "loop": false,
+   "timing": {
+    "tell": [
+     5,
+     9
+    ],
+    "apex": 9,
+    "hold": [
+     9,
+     11
+    ],
+    "contact": 14,
+    "active": [
+     14,
+     17
+    ],
+    "recover": [
+     17,
+     33
+    ],
+    "lunge": [
+     10,
+     15,
+     0.8
+    ],
+    "kind": "parry",
+    "chain_to": "READY",
+    "ground": [
+     [
+      0,
+      4
+     ]
+    ],
+    "sink": [
+     [
+      0,
+      4
+     ]
+    ]
+   },
+   "normalized": {
+    "apex": 0.2727,
+    "contact": 0.4242,
+    "tell": [
+     0.1515,
+     0.2727
+    ],
+    "hold": [
+     0.2727,
+     0.3333
+    ],
+    "active": [
+     0.4242,
+     0.5152
+    ],
+    "recover": [
+     0.5152,
+     1.0
+    ],
+    "lunge": [
+     0.303,
+     0.4545,
+     0.8
+    ]
+   },
+   "events": [
+    {
+     "frame": 4,
+     "t": 0.1212,
+     "fn": "ShadowErupt"
+    },
+    {
+     "frame": 9,
+     "t": 0.2727,
+     "fn": "Apex"
+    },
+    {
+     "frame": 14,
+     "t": 0.4242,
+     "fn": "Strike"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "sale del charco enroscado y corta subiendo (como el gyakugiri)",
+   "reach_m": 3.21,
+   "release_rate": 1.6,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3,
+    0.45,
+    0.6,
+    0.7803,
+    0.7982,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8
+   ],
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.3,
+     "legs": 0.0
+    },
+    "root_peak_mps_60hz": 17.6,
+    "release_rate": 1.6,
+    "reach_m": 3.21,
+    "tip_peak_mps": 294.3,
+    "tip_outside_ratio": 0.12,
+    "apex_tip_mps": [
+     0.0,
+     1.9
+    ],
+    "max_height_m": 5.62,
+    "min_z_m": -0.013,
+    "tell_silhouette_change": 0.159
+   }
+  },
+  "Parried": {
+   "first": 502,
+   "last": 532,
+   "frames": 30,
+   "seconds": 1.0,
+   "loop": false,
+   "timing": {
+    "recover": [
+     0,
+     30
+    ],
+    "resume": 15,
+    "chain_to": "READY",
+    "knock_m": 0.6,
+    "knock_curve": "1 - exp(-10 t)"
+   },
+   "normalized": {
+    "recover": [
+     0.0,
+     1.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 0,
+     "t": 0.0,
+     "fn": "Parried"
+    },
+    {
+     "frame": 5,
+     "t": 0.1667,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "el clip de 'feel' más importante: cada parry tiene que sacudir al gigante. Retrocede knock_m (0.6 m) con la curva de Enemy.knock: el juego lo tiene que empujar exactamente eso, en parry y en parry perfecto (Enemy.OnParried empuja 0.4 / 0.8; con eso los pies patinan +-20 cm). f15 = LOW_L (sigue el combo)",
+   "travel_m": [
+    0.0,
+    -0.146,
+    -0.2919,
+    -0.3569,
+    -0.4218,
+    -0.4867,
+    -0.5075,
+    -0.5284,
+    -0.5493,
+    -0.5701,
+    -0.5723,
+    -0.5779,
+    -0.5851,
+    -0.5923,
+    -0.5978,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6
+   ],
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "root_peak_mps_60hz": 4.4,
+    "max_height_m": 5.52,
+    "min_z_m": -0.011
+   }
+  },
+  "Flinch": {
+   "first": 542,
+   "last": 557,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "recover": [
+     0,
+     15
+    ],
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "recover": [
+     0.0,
+     1.0
+    ]
+   },
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "lo usa la interrupción por habilidad (antes del aviso)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "Guard": {
+   "first": 567,
+   "last": 603,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": false,
+   "timing": {
+    "chain_from": "READY",
+    "hold_last": true
+   },
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "seigan a dos manos (el juego deja el último cuadro: es una pose quieta y limpia)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "Counter": {
+   "first": 613,
+   "last": 628,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "contact": 7,
+    "active": [
+     7,
+     9
+    ],
+    "apex": 2,
+    "recover": [
+     9,
+     15
+    ],
+    "kind": "push",
+    "chain_from": "GUARD",
+    "chain_to": "LOW_L"
+   },
+   "normalized": {
+    "apex": 0.1333,
+    "contact": 0.4667,
+    "active": [
+     0.4667,
+     0.6
+    ],
+    "recover": [
+     0.6,
+     1.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 3,
+     "t": 0.2,
+     "fn": "Deflect"
+    },
+    {
+     "frame": 7,
+     "t": 0.4667,
+     "fn": "Strike"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "desvía la katana de Kaito y lo empuja con el hombro; termina en LOW_L para seguir con un gyakugiri",
+   "reach_m": 2.43,
+   "release_rate": 1.6,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "reach_m": 2.43,
+    "max_height_m": 4.27,
+    "min_z_m": -0.0
+   }
+  },
+  "Roar": {
+   "first": 638,
+   "last": 677,
+   "frames": 39,
+   "seconds": 1.3,
+   "loop": false,
+   "timing": {
+    "kind": "none",
+    "chain_to": "READY"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 14,
+     "t": 0.359,
+     "fn": "Roar"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "se encoge y explota abriendo los brazos; tiembla hasta f30",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
+   }
+  },
+  "Kneel": {
+   "first": 687,
+   "last": 795,
+   "frames": 108,
+   "seconds": 3.6,
+   "loop": false,
+   "timing": {
+    "kneel": [
+     10,
+     90
+    ],
+    "ground": [
+     [
+      6,
+      91
+     ]
+    ],
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 10,
+     "t": 0.0926,
+     "fn": "Armor"
+    },
+    {
+     "frame": 23,
+     "t": 0.213,
+     "fn": "Breath"
+    },
+    {
+     "frame": 49,
+     "t": 0.4537,
+     "fn": "Breath"
+    },
+    {
+     "frame": 75,
+     "t": 0.6944,
+     "fn": "Breath"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "agotado: clava la nodachi al caer, 3 respiraciones (las grietas del pecho laten); la arranca por su eje en f88-93 y se levanta hasta f108",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "max_height_m": 4.32,
+    "min_z_m": -0.026
+   }
+  },
+  "KneelRise": {
+   "first": 805,
+   "last": 820,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "chain_from": "KNEEL",
+    "chain_to": "READY",
+    "ground": [
+     [
+      0,
+      3
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "cuando el agotamiento termina antes (que Guard no salte): arranca la hoja por su eje y se para",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "max_height_m": 4.32,
+    "min_z_m": -0.025
+   }
+  },
+  "ShadowTear": {
+   "first": 830,
+   "last": 884,
+   "frames": 54,
+   "seconds": 1.8,
+   "loop": false,
+   "timing": {
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 16,
+     "t": 0.2963,
+     "fn": "ShadowGrab"
+    },
+    {
+     "frame": 24,
+     "t": 0.4444,
+     "fn": "CrestSnap"
+    },
+    {
+     "frame": 24,
+     "t": 0.4444,
+     "fn": "ShadowTear"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "la mano izquierda agarra la sombra del piso y la arranca hacia arriba (la media luna izquierda salta en f24)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.6,
+    "min_z_m": -0.007
+   }
+  },
+  "Eclipse": {
+   "first": 894,
+   "last": 966,
+   "frames": 72,
+   "seconds": 2.4,
+   "loop": false,
+   "timing": {
+    "chain_from": "READY",
+    "chain_to": "READY",
+    "ground": [
+     [
+      20,
+      48
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 20,
+     "t": 0.2778,
+     "fn": "SwordPlant"
+    },
+    {
+     "frame": 30,
+     "t": 0.4167,
+     "fn": "MoonFade"
+    },
+    {
+     "frame": 34,
+     "t": 0.4722,
+     "fn": "FistClose"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "clava la nodachi y cierra el puño sobre la luna (las luces empiezan a bajar en f30)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "max_height_m": 4.59,
+    "min_z_m": -0.0
+   }
+  },
+  "LastStand": {
+   "first": 976,
+   "last": 1021,
+   "frames": 45,
+   "seconds": 1.5,
+   "loop": false,
+   "timing": {
+    "chain_to": "READY",
+    "ground": [
+     [
+      0,
+      18
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 23,
+     "t": 0.5111,
+     "fn": "Roar"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "al 10 %: se apoya en la espada para pararse, la arranca de la piedra, ruge y arranca el último desfile",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "max_height_m": 4.32,
+    "min_z_m": -0.012
+   }
+  },
+  "Defeat": {
+   "first": 1031,
+   "last": 1121,
+   "frames": 90,
+   "seconds": 3.0,
+   "loop": false,
+   "timing": {
+    "release": 20,
+    "mask_snap": 40,
+    "ground": [
+     [
+      0,
+      90
+     ]
+    ],
+    "chain_from": "KNEEL",
+    "chain_to": "SEIZA_D"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 20,
+     "t": 0.2222,
+     "fn": "SwordRelease"
+    },
+    {
+     "frame": 40,
+     "t": 0.4444,
+     "fn": "MaskSnap"
+    },
+    {
+     "frame": 50,
+     "t": 0.5556,
+     "fn": "MaskHit"
+    },
+    {
+     "frame": 56,
+     "t": 0.6222,
+     "fn": "MaskHit"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "suelta la espada (queda clavada), se cortan los cordones de la máscara (cae y rueda) y se sienta en seiza",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.49,
+    "min_z_m": -0.011
+   }
+  },
+  "DefeatLoop": {
+   "first": 1131,
+   "last": 1191,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": true,
+   "timing": {
+    "chain_from": "SEIZA_D",
+    "ground": [
+     [
+      0,
+      60
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "seiza respirando, sin máscara",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "blade_floor_slide_cm": 0.0,
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.47,
+    "min_z_m": 0.002
+   }
+  },
+  "SeizaBow": {
+   "first": 1201,
+   "last": 1261,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": false,
+   "timing": {
+    "chain_from": "SEIZA_D",
+    "chain_to": "SEIZA_D",
+    "ground": [
+     [
+      0,
+      60
+     ]
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "la reverencia del final (Kaito le devuelve su media cinta)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.44,
+    "min_z_m": 0.002
+   }
+  },
+  "SeizaIdle": {
+   "first": 1271,
+   "last": 1361,
+   "frames": 90,
+   "seconds": 3.0,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "events": [],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "espera arrodillado al pie de la escalera, la espada sobre los muslos",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "max_height_m": 3.56,
+    "min_z_m": 0.002
+   }
+  },
+  "Intro": {
+   "first": 1371,
+   "last": 1467,
+   "frames": 96,
+   "seconds": 3.2,
+   "loop": false,
+   "timing": {
+    "chain_from": "SEIZA",
+    "chain_to": "READY"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 24,
+     "t": 0.25,
+     "fn": "HeadRise"
+    },
+    {
+     "frame": 49,
+     "t": 0.5104,
+     "fn": "Step"
+    },
+    {
+     "frame": 69,
+     "t": 0.7188,
+     "fn": "Step"
+    },
+    {
+     "frame": 79,
+     "t": 0.8229,
+     "fn": "Chiburi"
+    },
+    {
+     "frame": 81,
+     "t": 0.8438,
+     "fn": "EyesIgnite"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "seiza -> levanta la cabeza -> mete los dedos -> adelanta el pie izquierdo -> se empuja en la rodilla y da el paso -> alza la nodachi -> chiburi -> guardia",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "max_height_m": 4.53,
+    "min_z_m": -0.01
+   }
+  },
+  "Tsukuyomi": {
+   "first": 1477,
+   "last": 1552,
+   "frames": 75,
+   "seconds": 2.5,
+   "loop": false,
+   "timing": {
+    "rings": [
+     30,
+     45,
+     60
+    ],
+    "ground": [
+     [
+      12,
+      66
+     ]
+    ],
+    "chain_from": "READY",
+    "chain_to": "READY"
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 14,
+     "t": 0.1867,
+     "fn": "SwordPlant"
+    },
+    {
+     "frame": 30,
+     "t": 0.4,
+     "fn": "RingSlam"
+    },
+    {
+     "frame": 45,
+     "t": 0.6,
+     "fn": "RingSlam"
+    },
+    {
+     "frame": 60,
+     "t": 0.8,
+     "fn": "RingSlam"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "clava la espada al frente (f14) y la hunde tres veces: un anillo por golpe; la arranca en f63-67",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "blade_floor_slide_cm": 0.0,
+    "max_height_m": 4.33,
+    "min_z_m": -0.0
+   }
+  },
+  "Walk": {
+   "first": 1562,
+   "last": 1598,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 1.8,
+    "stance": 0.62,
+    "contacts": [
+     0,
+     18
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 0,
+     "t": 0.0,
+     "fn": "Step"
+    },
+    {
+     "frame": 18,
+     "t": 0.5,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "camina a 1.8 m/s (walkSpeed): pasos de 1.08 m, cadera +-5 cm",
+   "root_velocity_mps": 1.8,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
+   }
+  },
+  "Stalk": {
+   "first": 1608,
+   "last": 1638,
+   "frames": 30,
+   "seconds": 1.0,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 3.0,
+    "stance": 0.46,
+    "contacts": [
+     0,
+     15
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 0,
+     "t": 0.0,
+     "fn": "Step"
+    },
+    {
+     "frame": 15,
+     "t": 0.5,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "acecha a 3.0 m/s (runSpeed): pasos de 1.5 m, la punta casi raspa el piso",
+   "root_velocity_mps": 3.0,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.04,
+    "max_height_m": 4.27,
+    "min_z_m": -0.0
+   }
+  },
+  "StrafeL": {
+   "first": 1648,
+   "last": 1684,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 1.8,
+    "stance": 0.6,
+    "contacts": [
+     0,
+     18
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 0,
+     "t": 0.0,
+     "fn": "Step"
+    },
+    {
+     "frame": 18,
+     "t": 0.5,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "rodea hacia su izquierda a 1.8 m/s sin cruzar los pies (suriashi de costado)",
+   "root_velocity_mps": 1.8,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
+   }
+  },
+  "StrafeR": {
+   "first": 1694,
+   "last": 1730,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 1.8,
+    "stance": 0.6,
+    "contacts": [
+     0,
+     18
+    ]
+   },
+   "normalized": {},
+   "events": [
+    {
+     "frame": 0,
+     "t": 0.0,
+     "fn": "Step"
+    },
+    {
+     "frame": 18,
+     "t": 0.5,
+     "fn": "Step"
+    }
+   ],
+   "strike_bone": "Katana",
+   "tip_local_blender": [
+    0.0,
+    2.75,
+    0.14000000059604645
+   ],
+   "notes": "rodea hacia su derecha a 1.8 m/s",
+   "root_velocity_mps": 1.8,
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "loop_seam_deg": 0.0,
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
+   }
+  }
+ },
+ "springs_baked": {
+  "mane": [
+   "Mane_C_1..3",
+   "Mane_R_1..3",
+   "Mane_L_1..3"
+  ],
+  "obi_tails": [
+   "Sash_R_1..2",
+   "Sash_L_1..2"
+  ],
+  "ribbon_shoulder": [
+   "Ribbon_1",
+   "Ribbon_2"
+  ],
+  "ribbon_pommel": [
+   "Tassel_1",
+   "Tassel_2"
+  ],
+  "sode": [
+   "Sode_R",
+   "Sode_L"
+  ],
+  "kusazuri": [
+   "Skirt_022",
+   "Skirt_068",
+   "Skirt_112",
+   "Skirt_158",
+   "Skirt_202",
+   "Skirt_248",
+   "Skirt_292",
+   "Skirt_338"
+  ]
+ },
+ "parts": {
+  "skinned": "Kokuyo_Body",
+  "rigid": {
+   "Sode_R": "Sode_R",
+   "Sode_R_Broken": "Sode_R",
+   "Crest_R": "Crest_R",
+   "Crest_L": "Crest_L",
+   "Mask": "Mask",
+   "Face": "Head",
+   "Katana_Nodachi": "Katana",
+   "Crack_1": "Chest",
+   "Crack_2": "Chest",
+   "Crack_3": "Chest",
+   "Crack_4": "Chest",
+   "Crack_5": "Chest"
+  },
+  "materials": [
+   "Nindo_Palette",
+   "Kokuyo_Edge",
+   "Kokuyo_Seams",
+   "Kokuyo_Ribbon",
+   "Kokuyo_MaskCrack",
+   "Kokuyo_Cracks"
+  ],
+  "hidden_at_spawn": [
+   "Sode_R_Broken"
+  ],
+  "notes": "Sode_R_Broken queda adentro de Sode_R (se ve al apagar Sode_R). Kokuyo_MaskCrack es del mismo rojo que la máscara: se ve solo al subirle la emisión. Crack_1..5 (Kokuyo_Cracks) nacen como vetas tenues: se encienden de a una por punto de desequilibrio con MaterialPropertyBlock (_EmissionColor de Kokuyo_Seams = encendida)."
+ }
+}

@@ -406,8 +406,9 @@ def fbx_clip_lengths(path):
     return out
 
 
-def controller(path, name, states, locomotion):
-    """states: {stateName: motionRef(str) | (motionRef, duración)}; locomotion: (idle, run) or None.
+def controller(path, name, states, locomotion, loco_thresholds=None):
+    """states: {stateName: motionRef(str) | (motionRef, duración)}; locomotion: (idle, run) or None
+    (o más clips con sus umbrales de Speed en loco_thresholds, p. ej. Kokuyō: quieto, camina, acecha).
     Devuelve (guid, {stateName: duración del clip}) para la tabla de NindoContent."""
     sm_id = stable_id(name, "sm")
     objs = []
@@ -423,6 +424,16 @@ def controller(path, name, states, locomotion):
     if locomotion:
         locomotion = [m[0] if isinstance(m, tuple) else m for m in locomotion]
         bt_id = stable_id(name, "bt")
+        ths = loco_thresholds or (0, 1)
+        childs = "".join(f"""  - serializedVersion: 2
+    m_Motion: {mot}
+    m_Threshold: {th}
+    m_Position: {{x: 0, y: 0}}
+    m_TimeScale: 1
+    m_CycleOffset: 0
+    m_DirectBlendParameter: Speed
+    m_Mirror: 0
+""" for mot, th in zip(locomotion, ths))
         objs.append(f"""--- !u!206 &{bt_id}
 BlendTree:
   m_ObjectHideFlags: 1
@@ -431,23 +442,7 @@ BlendTree:
   m_PrefabAsset: {{fileID: 0}}
   m_Name: Locomotion
   m_Childs:
-  - serializedVersion: 2
-    m_Motion: {locomotion[0]}
-    m_Threshold: 0
-    m_Position: {{x: 0, y: 0}}
-    m_TimeScale: 1
-    m_CycleOffset: 0
-    m_DirectBlendParameter: Speed
-    m_Mirror: 0
-  - serializedVersion: 2
-    m_Motion: {locomotion[1]}
-    m_Threshold: 1
-    m_Position: {{x: 0, y: 0}}
-    m_TimeScale: 1
-    m_CycleOffset: 0
-    m_DirectBlendParameter: Speed
-    m_Mirror: 0
-  m_BlendParameter: Speed
+{childs}  m_BlendParameter: Speed
   m_BlendParameterY: Speed
   m_MinThreshold: 0
   m_MaxThreshold: 1
@@ -654,6 +649,13 @@ def controllers():
         cl = {k["name"]: (ref(g, stable_id("mizuchi_koi", k["name"]), 3), k["length"]) for k in minfo["clips"]}
         c["mizuchi_koi"] = controller(os.path.join(P_ANIM, "MizuchiKoi.controller"), "MizuchiKoi", {"Idle": cl["Hover"], **cl},
                                       (cl["Hover"], cl["Swim"]))
+    info = kokuyo_info()
+    if info:
+        # un estado por clip; la locomoción mezcla quieto / camina (walkSpeed 1.8 = 0.6 de runSpeed) / acecha
+        g = ensure_guid(KOKUYO_FBX)
+        st = {n: (ref(g, stable_id("kokuyo", n), 3), round(r["seconds"], 4)) for n, r in info["clips"].items()}
+        c["kokuyo"] = controller(os.path.join(P_ANIM, "Kokuyo.controller"), "Kokuyo", st, [st[n] for n in KOKUYO_LOCO],
+                                 KOKUYO_LOCO_THRESHOLDS)
     return c
 
 
@@ -720,6 +722,51 @@ def kit_metas(mats):
 def kit_guids():
     """id del kit (Kit_<id>.fbx) -> guid, para NindoContent.kits."""
     return {os.path.splitext(os.path.basename(p))[0][4:]: ensure_guid(p) for p in sorted(glob.glob(os.path.join(P_KITS, "Kit_*.fbx")))}
+
+
+# ============================================================================ Kokuyō (jefe final)
+P_KOKUYO = os.path.join(ART, "Characters", "Kokuyo")
+KOKUYO_FBX = os.path.join(P_KOKUYO, "Kokuyo.fbx")
+KOKUYO_LOCO = ("Idle", "Walk", "Stalk")
+KOKUYO_LOCO_THRESHOLDS = (0, 0.6, 1)
+
+
+def kokuyo_info():
+    """Kokuyo.fbx.json: clips (cuadros, loops, tiempos) que escribe Tools/Blender/bosses/kokuyo/build_kokuyo.py."""
+    j = KOKUYO_FBX + ".json"
+    return json.load(open(j, encoding="utf-8")) if os.path.exists(KOKUYO_FBX) and os.path.exists(j) else None
+
+
+def kokuyo_assets(mats):
+    """Materiales propios de Kokuyō y el .meta de su FBX (clips cortados de la toma única 'Scene').
+    Filo y ojos tienen emisión violeta de base: el jefe los maneja con MaterialPropertyBlock (dorado en el
+    aviso de parry, rojo en los imparables). Las grietas del pecho nacen como vetas tenues y se encienden de
+    a una por punto de desequilibrio (con la emisión de Kokuyo_Seams). La grieta de la máscara es del mismo
+    rojo que la máscara con la emisión en ~0 (la keyword queda activa para poder encenderla en el eclipse).
+    Sin compresión de animación: los golpes de 2 cuadros y los pies clavados no aguantan el error de la
+    reducción de claves (0.5° por hueso, acumulado en cadera-muslo-tibia-pie)."""
+    info = kokuyo_info()
+    if info is None:
+        return
+    km = {
+        "Kokuyo_Edge": lit(os.path.join(P_KOKUYO, "Kokuyo_Edge.mat"), "Kokuyo_Edge", None, base_color=(0.62, 0.64, 0.7, 1),
+                           smooth=0.45, emission=(0.9, 0.65, 1.2, 1)),
+        "Kokuyo_Seams": lit(os.path.join(P_KOKUYO, "Kokuyo_Seams.mat"), "Kokuyo_Seams", None, base_color=(0.35, 0.25, 0.5, 1),
+                            smooth=0.2, emission=(1.1, 0.8, 1.5, 1)),
+        # la misma tela que la bandana de Kaito (valor de 'AmarilloBandana' en kaitooo.fbx; el proyecto es Gamma)
+        "Kokuyo_Ribbon": lit(os.path.join(P_KOKUYO, "Kokuyo_Ribbon.mat"), "Kokuyo_Ribbon", None,
+                             base_color=(0.9387, 0.4614, 0.0, 1), smooth=0.08),
+        "Kokuyo_MaskCrack": lit(os.path.join(P_KOKUYO, "Kokuyo_MaskCrack.mat"), "Kokuyo_MaskCrack", None,
+                                base_color=(0.659, 0.196, 0.165, 1), smooth=0.12, emission=(0.001, 0.001, 0.001, 1)),
+        "Kokuyo_Cracks": lit(os.path.join(P_KOKUYO, "Kokuyo_Cracks.mat"), "Kokuyo_Cracks", None, base_color=(0.2, 0.12, 0.3, 1),
+                             smooth=0.2, emission=(0.17, 0.12, 0.22, 1)),
+    }
+    remap = {"Nindo_Palette": mats["palette"], "Nindo_Emissive": mats["emissive"], **km}
+    clips = [dict(name=n, take=info.get("take", "Scene"), id=stable_id("kokuyo", n), first=r["first"], last=r["last"], loop=r["loop"])
+             for n, r in info["clips"].items()]
+    meta = model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False)
+    write_meta(KOKUYO_FBX, meta.replace("animationCompression: 1", "animationCompression: 0"), force=True)
+    write_meta(KOKUYO_FBX + ".json", TEXT_META)
 
 
 # ============================================================================ props y mundo
@@ -878,6 +925,10 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
             # escala 1 y el koi flota a la altura diseñada sin código
             mp, minfo = mizuchi_koi()
             defs.append(("mizuchi_koi", ensure_guid(mp), ctrls["mizuchi_koi"], minfo["height"], minfo["modelYaw"]))
+        if "kokuyo" in ctrls:
+            # Kokuyō mira a -Y en Blender = +Z en Unity (modelYaw 0); la altura es la que mide NormalizeHeight en
+            # la pose por defecto del FBX (el reposo, ver build_kokuyo.py): escala 1, los golpes en metros reales
+            defs.append(("kokuyo", ensure_guid(KOKUYO_FBX), ctrls["kokuyo"], round(kokuyo_info()["bind_height"], 2), 0))
         for cid, mg, (cg, lens), h, yaw in defs:
             # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
             names = "".join(f"\n    - {n}" for n in lens) or " []"
@@ -1199,6 +1250,7 @@ def main():
     fonts_g = fonts()
     mats = materials(None)
     character_fbx_metas()
+    kokuyo_assets(mats)
     ctrls = controllers()
     props, zones = model_metas(mats)
     kit_metas(mats)

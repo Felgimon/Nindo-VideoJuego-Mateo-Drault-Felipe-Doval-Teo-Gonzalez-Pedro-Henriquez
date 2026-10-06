@@ -309,6 +309,76 @@ MonoBehaviour:
     - 2.4
     - 4.0
     - 1.2
+  - id: kokuyo
+    model: {fileID: 919132149155446097, guid: 577c0e6da078b9e3b8fb5df01ccabaa3, type: 3}
+    controller: {fileID: 9100000, guid: f5f5e6722d7a37dedb98a94f73adff6f, type: 2}
+    height: 4.51
+    modelYaw: 0
+    materialSwaps: []
+    stateNames:
+    - Idle
+    - Kesagiri
+    - RecoverL
+    - RecoverHR
+    - Gyakugiri
+    - Tsuki
+    - TsukiRecover
+    - Ichimonji
+    - KabutoWari
+    - ShadowSink
+    - ShadowEmerge
+    - Parried
+    - Flinch
+    - Guard
+    - Counter
+    - Roar
+    - Kneel
+    - KneelRise
+    - ShadowTear
+    - Eclipse
+    - LastStand
+    - Defeat
+    - DefeatLoop
+    - SeizaBow
+    - SeizaIdle
+    - Intro
+    - Tsukuyomi
+    - Walk
+    - Stalk
+    - StrafeL
+    - StrafeR
+    stateLengths:
+    - 2.4
+    - 1.2
+    - 0.5
+    - 0.4
+    - 1.0
+    - 1.5333
+    - 0.6
+    - 1.6
+    - 2.0
+    - 0.7
+    - 1.1
+    - 1.0
+    - 0.5
+    - 1.2
+    - 0.5
+    - 1.3
+    - 3.6
+    - 0.5
+    - 1.8
+    - 2.4
+    - 1.5
+    - 3.0
+    - 2.0
+    - 2.0
+    - 3.0
+    - 3.2
+    - 2.5
+    - 1.2
+    - 1.0
+    - 1.2
+    - 1.2
   kits:
   - id: kaito_bandana
     model: {fileID: 919132149155446097, guid: ca9a3f83c9c07ac24716e40606d17627, type: 3}
