@@ -100,6 +100,7 @@ namespace Nindo
         Transform owner;
         bool reset = true;
         float lastStep = Step;
+        Vector3 pendingKick;
 
         /// <summary>El personaje (raíz que se mueve por el mundo): para el piso y las direcciones de Kick.</summary>
         public Transform Owner
@@ -178,12 +179,11 @@ namespace Nindo
             return name.Substring(0, i);
         }
 
-        /// <summary>Suma una velocidad (m/s, mundo) a todas las puntas: un latigazo (la bandana que se ata sola).</summary>
-        public void Kick(Vector3 velocity)
-        {
-            foreach (var c in chains)
-                for (int i = 1; i < c.pos.Length; i++) c.prev[i] -= velocity * lastStep;
-        }
+        /// <summary>
+        /// Suma una velocidad (m/s, mundo) a todas las puntas: un latigazo (la bandana que se ata sola). Se aplica
+        /// en el próximo paso simulado, después del reinicio que hace la cadena al volver a verse.
+        /// </summary>
+        public void Kick(Vector3 velocity) => pendingKick += velocity;
 
         void LateUpdate()
         {
@@ -225,6 +225,12 @@ namespace Nindo
             int steps = Mathf.Clamp(Mathf.CeilToInt(dt / Step - 0.001f), 1, MaxSteps);
             float h = Mathf.Min(dt / steps, Step);
             Vector3 wind = Wind(Time.time);
+            if (pendingKick != Vector3.zero)
+            {
+                foreach (var c in chains)
+                    for (int i = 1; i < c.pos.Length; i++) c.prev[i] -= pendingKick * h;
+                pendingKick = Vector3.zero;
+            }
             for (int s = 1; s <= steps; s++)
             {
                 float u = (float)s / steps;
