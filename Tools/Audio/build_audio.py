@@ -478,10 +478,101 @@ SFX["step_wood"] = (_steps("footstep_wood"), 5)
 SFX["step_stone"] = (_steps("footstep_concrete"), 5)
 
 
+# ---------------------------------------------------------------- patio de Kokuyō (FX/Braziers, PlanarShadow, ShadowRopes)
+def _crackles(dur, seed, density, lo=1500, hi=7000):
+    """chasquidos sueltos de leña: impulsos al azar, cada uno con su fuerza, filtrados a la banda del chispazo."""
+    r = rng(seed)
+    n = secs(dur)
+    x = (r.random(n) < density / SR) * r.standard_normal(n) * r.uniform(0.3, 1.0, n)
+    # cada chasquido con un poco de cuerpo (no un clic digital)
+    x = np.convolve(x, np.exp(-np.arange(secs(0.004)) / secs(0.0012)), "same")
+    return filt(x, lo, hi)
+
+
+@sfx("brazier_crackle")
+def _brazier_crackle(i):
+    """loop de 6 s de un brasero encendido (Braziers: uno por brasero, sube y baja con la llama)."""
+    d = 6.0 + 0.6
+    r = rng(400)
+    s = filt(r.standard_normal(secs(d)), None, 0.8, 1)
+    slow = 0.75 + 0.25 * s / (np.std(s) + 1e-9)
+    roar = filt(noise(d, 401), 70, 700) * np.clip(slow, 0.4, 1.2)
+    hiss = filt(noise(d, 402), 2500, 9000) * 0.12
+    x = mix((roar, 0, 0.5), (hiss, 0, 1.0), (_crackles(d, 403, 9), 0, 2.2), (_crackles(d, 404, 2, 700, 3000), 0, 3.0))
+    return loop_crossfade(x, 6.0, 0.6)
+
+
+@sfx("brazier_ignite", 2)
+def _brazier_ignite(i):
+    """"fuump": el aire que se enciende de golpe, un golpe sordo y la leña que empieza a chasquear."""
+    d = 1.1
+    whomp = sweep(noise(d, 410 + i), 180, 1600, q=1.2, mode="low") * env_points(d, [(0, 0), (0.06, 1), (0.35, 0.45), (d, 0)])
+    body = thump(95 - 10 * i, 50, 0.45, 0.14, seed=412 + i)
+    crk = _crackles(d, 414 + i, 28) * env_points(d, [(0, 0), (0.12, 1), (d, 0.2)])
+    return reverb(mix((whomp, 0, 0.9), (body, 0, 0.7), (crk, 0.05, 1.6)), 0.25, 1.2, 0.35)
+
+
+@sfx("brazier_out", 3)
+def _brazier_out(i):
+    """"pff" grave y siseo de brasas que se apagan (el eclipse los apaga de a uno: tres variantes)."""
+    d = 1.2
+    pff = filt(noise(0.3, 420 + i), 90, 900) * env_exp(0.3, 0.07, 0.01)
+    hiss = sweep(noise(d, 423 + i), 7000, 2600, q=1.3) * env_points(d, [(0, 0), (0.04, 1), (0.4, 0.5), (d, 0)])
+    dying = _crackles(d, 426 + i, 6) * env_points(d, [(0, 1), (d, 0)])
+    return reverb(mix((pff, 0, 1.0), (hiss, 0.02, 0.45), (dying, 0.1, 0.9)), 0.3, 1.4, 0.45)
+
+
+@sfx("kokuyo_whisper", 2)
+def _kokuyo_whisper(i):
+    """el golpe de la sombra viva: un soplo con voz (formantes de "jaa"), sin graves (filtro 400 Hz) para no tapar el aviso."""
+    d = 0.55
+    w = whoosh(d, 900, 2800 + 400 * i, 0.55, 1.1, seed=430 + i, rough=0.25)
+    w = peak(peak(w, 1100, 180, 2.5), 2500 + 200 * i, 260, 1.8)
+    breath = filt(noise(d, 432 + i), 400, 6000) * env_points(d, [(0, 0), (0.3, 0.6), (d, 0)]) * 0.35
+    # cola corta: va 0.36 s antes del golpe y no puede tapar el choque
+    return filt(reverb(mix((w, 0, 1.0), (breath, 0, 1.0)), 0.3, 0.8, 0.25), 400, None)
+
+
+@sfx("shadow_tear")
+def _shadow_tear(i):
+    """la sombra se arranca del piso (Acto 2): tela que se rasga, un grito al revés hecho de viento y un golpe sordo."""
+    d = 1.6
+    r = rng(450)
+    # rasgado: ráfagas de ruido con dientes (la tela cediendo de a tirones)
+    teeth = np.repeat(r.uniform(0.2, 1.0, int(d * 60)), secs(1 / 60))[:secs(d)]
+    rip = filt(noise(d, 451), 900, 6000) * pad(teeth, secs(d)) * env_points(d, [(0, 0), (0.05, 1), (0.55, 0.8), (0.75, 0)])
+    # grito al revés: soplo con formantes que sube y corta en seco (se escribe al derecho y se da vuelta)
+    s = whoosh(1.0, 500, 2200, 0.25, 1.6, seed=452, rough=0.4)
+    s = peak(peak(s, 800, 150, 3.0), 1900, 300, 2.0)[::-1]
+    hit = thump(80, 38, 0.8, 0.3, seed=453)
+    return reverb(mix((s, 0, 0.8), (rip, 0.55, 0.9), (hit, 0.95, 0.9)), 0.35, 2.0, 0.6)
+
+
+@sfx("eclipse")
+def _eclipse(i):
+    """Kokuyō cierra el puño sobre la luna: un boom de subgraves y el aire que se va (caída de presión, se tapan los oídos)."""
+    d = 3.2
+    boom = thump(55, 28, d, 1.1, seed=460)
+    air = sweep(noise(d, 461), 6000, 180, q=0.9, mode="low") * env_points(d, [(0, 0), (0.08, 1), (1.6, 0.5), (d, 0)])
+    rumble = filt(noise(d, 462), 25, 120) * env_points(d, [(0, 0), (0.2, 1), (d, 0)])
+    return reverb(mix((boom, 0, 1.0), (air, 0, 0.5), (rumble, 0, 0.6)), 0.3, 2.6, 0.9)
+
+
+@sfx("shadow_rope_free")
+def _shadow_rope_free(i):
+    """las cuerdas de sombra se deshacen: un brillo que sube, tres notas de cristal y un suspiro grave ("está libre")."""
+    d = 2.2
+    rise = sweep(noise(d, 440), 900, 9000, q=2.5) * env_points(d, [(0, 0), (0.7, 1), (d, 0)])
+    notes = [partials(f, [1, 2.0, 3.01], [1, 0.35, 0.15], [1.1, 0.5, 0.3], 1.6, seed=441 + k) for k, f in enumerate((1318.5, 1760, 2637))]
+    sigh = thump(130, 70, 1.0, 0.45, seed=445)
+    x = mix((rise, 0, 0.45), (notes[0], 0.35, 0.4), (notes[1], 0.5, 0.35), (notes[2], 0.65, 0.3), (sigh, 0.3, 0.5))
+    return reverb(x, 0.45, 2.4, 0.8)
+
+
 # pico de normalización por clave (los clips cortos de interfaz no deben sonar como un golpe)
 PEAK = {"ui_move": -10, "ui_open": -7, "ui_close": -7, "dialogue": -12, "denied": -8, "lock": -8,
         "step": -4, "step_snow": -4, "step_wood": -4, "step_stone": -4, "parry_ready": -6, "area_title": -4,
-        "parry_whiff": -6}
+        "parry_whiff": -6, "brazier_crackle": -8, "brazier_out": -3}
 
 
 # ============================================================================ CASCADA KOHAN

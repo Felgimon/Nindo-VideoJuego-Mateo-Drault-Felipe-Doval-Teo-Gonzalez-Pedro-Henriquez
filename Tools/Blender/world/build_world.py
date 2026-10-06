@@ -445,7 +445,9 @@ def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True, ground
         if g is None:
             return                      # fuera de la malla (borde norte): no colgar props en el vacío
         y += g - H(x, z)                # misma altura relativa a H, pero sobre lo que pisa Unity
-    (DECOR_PLACED if base in DECOR else PLACED).append((base, x, z, yaw, scale, y))
+    # el patio de losas del dojo no lleva pasto ni piedras encima (igual ocupa su lugar: el sorteo no cambia)
+    if not (base in DECOR and W.on_courtyard(x, z, 0.3)):
+        (DECOR_PLACED if base in DECOR else PLACED).append((base, x, z, yaw, scale, y))
     if block:
         occ_add(x, z, (radius if radius is not None else prop_radius(base)) * scale)
 
@@ -455,7 +457,8 @@ def place_landmarks():
         y = None
         if pid == "lily_pads":
             y = W.WATER_STREAM + 0.02
-        place(pid, x, z, yaw, sc, y=y, ground=(y is None))
+        # el piso del patio es transitable: no le quita lugar a nada (ocuparía 19 m de radio)
+        place(pid, x, z, yaw, sc, y=y, ground=(y is None), block=not pid.startswith("dojo_courtyard_floor"))
     # muralla
     x = W.WALL_X_RANGE[0]
     while x <= W.WALL_X_RANGE[1]:
@@ -744,7 +747,7 @@ def marker(name, x, z, yaw=0.0, y=None):
             on_arena = any(lm[0] == "lake_arena_platform" and math.hypot(x - lm[1], z - lm[2]) < 9.5 for lm in W.LANDMARKS)
             y = W.WATER_LAKE + (1.0 if on_arena else 0.8)
         else:
-            y = H(x, z)
+            y = H(x, z) + (W.COURTYARD_TOP if W.on_courtyard(x, z) else 0.0)   # sobre las losas del patio
     MARKERS.append((name, x, z, y, yaw))
 
 
