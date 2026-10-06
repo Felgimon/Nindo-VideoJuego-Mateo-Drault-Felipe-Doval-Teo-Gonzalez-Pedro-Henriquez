@@ -175,7 +175,7 @@ MonoBehaviour:
   - id: mizuchi_koi
     model: {fileID: 919132149155446097, guid: 6139008ced08c9004d9add9a1249ff10, type: 3}
     controller: {fileID: 9100000, guid: 9df10ea5ced26eedabce2179ffaf66a1, type: 2}
-    height: 3.951
+    height: 3.472
     modelYaw: 0
     materialOverrides: []
     stateNames:

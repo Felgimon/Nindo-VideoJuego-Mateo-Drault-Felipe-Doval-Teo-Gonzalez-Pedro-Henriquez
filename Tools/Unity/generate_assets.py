@@ -606,6 +606,19 @@ def mizuchi_koi():
     return p, json.load(open(p + ".json", encoding="utf-8"))
 
 
+# brillo del Gran Koi por fase (multiplica el mapa de emisión de la paleta, que solo tiene las muestras glow_*).
+# Nindo_Emissive (x3.2) con el ACES del juego quemaba el violeta de la maldición a lavanda casi blanca
+# (saturación 0.13): a 0.9 queda en ~0.38 y sigue pasando el umbral del bloom. KoiBody puede pulsarlo.
+MIZUCHI_GLOW = {"Mizuchi_Glow": 1.1, "Mizuchi_Curse": 0.9}
+
+
+def mizuchi_glow_materials():
+    palg = ensure_guid(os.path.join(P_TEX, "NindoPalette.png"))
+    emg = ensure_guid(os.path.join(P_TEX, "NindoPalette_Emission.png"))
+    return {name: lit(os.path.join(P_MIZUCHI, name + ".mat"), name, palg, smooth=0.2, emission_tex=emg, emission=(e, e, e, 1))
+            for name, e in MIZUCHI_GLOW.items()}
+
+
 def character_fbx_metas():
     gp = os.path.join(P_CHARS, "Grandpa.fbx")
     if os.path.exists(gp):
@@ -624,8 +637,8 @@ def character_fbx_metas():
         # de Unity suaviza los latigazos de 2-3 cuadros y corre el contacto del cuadro diseñado
         clips = [dict(name=k["name"], take=k["take"], id=stable_id("mizuchi_koi", k["name"]), first=k["first"], last=k["last"],
                       loop=k["loop"]) for k in minfo["clips"]]
-        remap = {"Nindo_Palette": read_guid(os.path.join(P_MAT, "Nindo_Palette.mat")),
-                 "Nindo_Emissive": read_guid(os.path.join(P_MAT, "Nindo_Emissive.mat"))}
+        remap = {"Nindo_Palette": read_guid(os.path.join(P_MAT, "Nindo_Palette.mat"))}
+        remap.update(mizuchi_glow_materials())
         body = model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False)
         write_meta(mp, body.replace("animationCompression: 1", "animationCompression: 0"), force=True)
         write_meta(mp + ".json", TEXT_META)

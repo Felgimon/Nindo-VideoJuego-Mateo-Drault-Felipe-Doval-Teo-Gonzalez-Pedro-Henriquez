@@ -10,8 +10,14 @@ hueso que fallan). Mide sobre la malla deformada de verdad (skinning lineal con 
   g) ningún vértice bajo la cubierta (salvo los clips que la atraviesan a propósito)
   h) picos de velocidad angular (saltos de un cuadro)
   i) costura de los loops < 1°
+  j) ningún triángulo de piel (cuerpo, cabeza, boca, cuerda) se da vuelta al deformarse (con Cull Back
+     sería un agujero; las aletas son de doble cara y no cuentan)
+  k) el golpe es lo más rápido del clip: la punta del hueso del golpe tiene su pico de velocidad en
+     [contacto - 1, activeEnd], y en los desviables la vuelta no pasa del 45 % de la velocidad del golpe
+     (una vuelta rápida se lee como un segundo golpe justo cuando el jugador acaba de hacer parry)
 """
 import math
+from collections import Counter
 import numpy as np
 from mathutils import Vector
 
@@ -26,10 +32,18 @@ SPIN_OK = {"TailWhip": 115.0, "Freed": 90.0, "FinL": 92.0, "FinR": 92.0}
 # el abanico que se estrella contra el agua frena en seco a propósito: se tolera ese corte
 POP_OK = {"GreatWave": 25.0}
 MAIN = ["body", "spine_f", "head", "pec_L1", "pec_R1"]   # lo que lee el jugador en la pausa (la cola sigue asentándose)
+# el chorro no es un golpe de un cuadro: la cabeza apunta (lo más rápido) y después dispara 14 cuadros
+STRIKE_PEAK_EXEMPT = {"Jet"}
+RECOVERY_MAX = 0.45
+# huesos de piel de una cara (lo demás son aletas, papeles y bigotes de doble cara o tubos finos)
+SKIN_BONES = {"root", "body", "spine_f", "head", "jaw", "spine_b1", "spine_b2", "spine_b3", "spine_b4", "tail",
+              "gill_L", "gill_R", "seal"}
+FLIP_TOL = 3     # triángulos por cuadro: la soga del lado cóncavo de la C cerrada se arruga en 1-2 tris
 
 
 class Skin:
-    """Vértices (submuestreados) y pesos de las mallas para medir la malla deformada."""
+    """Vértices (submuestreados) y pesos de las mallas para medir la malla deformada, y la piel completa
+    para los volteos."""
 
     def __init__(self, rig, objs, step=3):
         cos, rows = [], []
@@ -52,11 +66,49 @@ class Skin:
         self.dom = [names[int(i)] for i in self.W.argmax(axis=1)]     # hueso dominante (para el reporte)
         self.inv = np.array([np.array(rig.rest[n].inverted()) for n in names], dtype=np.float32)
         self.names = names
+        # piel completa (sin submuestrear) para los volteos: triángulos de una sola cara (sin gemelo en las
+        # mismas posiciones, como los papeles) cuyo hueso dominante es de la piel
+        self.shells = []
+        for ob in objs:
+            gname = {g.index: g.name for g in ob.vertex_groups}
+            me = ob.data
+            V = np.array([(*v.co, 1.0) for v in me.vertices], dtype=np.float32)
+            W = np.zeros((len(me.vertices), len(names)), dtype=np.float32)
+            for v in me.vertices:
+                for g in v.groups:
+                    W[v.index, bi[gname[g.group]]] += g.weight
+            W /= np.maximum(W.sum(1, keepdims=True), 1e-9)
+            T = np.array([tuple(p.vertices) for p in me.polygons])
+            dom = W[T[:, 0]].argmax(1)
+            keys = [tuple(sorted(tuple(np.round(V[i, :3], 4)) for i in t)) for t in T]
+            seen = Counter(keys)
+            keep = np.array([names[d] in SKIN_BONES and seen[k] == 1 for d, k in zip(dom, keys)])
+            T, dom = T[keep], dom[keep]
+            n0 = self._normals(V[:, :3], T)
+            self.shells.append((ob.name, V, W, T, dom, n0))
+
+    @staticmethod
+    def _normals(X, T):
+        n = np.cross(X[T[:, 1]] - X[T[:, 0]], X[T[:, 2]] - X[T[:, 0]])
+        return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+
+    def _mats(self, M):
+        return np.array([np.array(M[n]) for n in self.names], dtype=np.float32) @ self.inv     # (B,4,4)
 
     def deform(self, M):
-        Ms = np.array([np.array(M[n]) for n in self.names], dtype=np.float32) @ self.inv     # (B,4,4)
-        P = np.einsum("bij,vj->bvi", Ms, self.V)                                             # (B,V,4)
+        P = np.einsum("bij,vj->bvi", self._mats(M), self.V)                                  # (B,V,4)
         return np.einsum("vb,bvi->vi", self.W, P)[:, :3]
+
+    def flips(self, M):
+        """Triángulos de piel cuya normal deformada mira al revés de la de reposo girada por su hueso."""
+        Ms = self._mats(M)
+        out = 0
+        for name, V, W, T, dom, n0 in self.shells:
+            X = np.einsum("vb,bvi->vi", W, np.einsum("bij,vj->bvi", Ms, V))[:, :3]
+            nf = self._normals(X, T)
+            nr = np.einsum("tij,tj->ti", Ms[dom][:, :3, :3], n0)
+            out += int((np.einsum("ti,ti->t", nf, nr) < -0.2).sum())
+        return out
 
 
 def _ang(q1, q2):
@@ -154,6 +206,27 @@ def lint(rig, clip, base, skin):
         info["pop"] = [round(pop[0], 1), pop[1], pop[2]]
         if pop[0] > POP_OK.get(clip.name, 0.0):
             errs.append(f"{clip.name}: salto aislado de {pop[0]:.0f}° en {pop[1]} f{pop[2]}")
+    # j) volteos de la piel
+    worst_flip = max(((skin.flips(M), f) for f, M in enumerate(Ms)), default=(0, 0))
+    info["flips"] = list(worst_flip)
+    if worst_flip[0] > FLIP_TOL:
+        errs.append(f"{clip.name}: {worst_flip[0]} triángulos de piel dados vuelta en f{worst_flip[1]}")
+    # k) el golpe es el pico del clip y la vuelta es más lenta
+    sb, ae = tm.get("strikeBone"), tm.get("activeEnd")
+    if sb and c is not None and ae is not None and tm.get("kind") in ("parry", "danger") and clip.name not in STRIKE_PEAK_EXEMPT:
+        tips = [M[sb] @ Vector((0, rig.length[sb], 0)) for M in Ms]
+        v = [0.0] + [(tips[f] - tips[f - 1]).length * 30.0 for f in range(1, len(tips))]
+        pk = max(range(len(v)), key=lambda f: v[f])
+        info["strikePeak"] = [pk, round(v[pk], 1)]
+        if not c - 1 <= pk <= ae:
+            errs.append(f"{clip.name}: la punta de {sb} es más rápida en f{pk} ({v[pk]:.0f} m/s), fuera del golpe f{c}-{ae}")
+        if tm.get("kind") == "parry":
+            a0 = tm.get("apex") or 0
+            strike = max(sp[b][f] for b in MAIN for f in range(a0, ae + 1))
+            rec, rb, rf = max(((sp[b][f], b, f) for b in MAIN for f in range(ae + 1, len(Ms))), default=(0.0, "", 0))
+            info["recovery"] = round(rec / max(strike, 1e-6), 2)
+            if rec > RECOVERY_MAX * strike:
+                errs.append(f"{clip.name}: la vuelta de {rb} en f{rf} va al {100 * rec / strike:.0f} % del golpe (máx {100 * RECOVERY_MAX:.0f} %)")
     # i) costura
     if clip.loop:
         seam = max(_ang(_rq(Ms[0][b]), _rq(Ms[n][b])) for b in rig.names)

@@ -28,10 +28,13 @@ def _back_out(u, s=1.2):
 
 EASE = {
     "lin": lambda u: u,
-    "settle": _back_out,                                                  # se pasa un poco y vuelve
+    # se pasa ~5 % y vuelve. Arranca y termina con velocidad cero: el BACK puro arrancaba a 4x la velocidad
+    # media justo después de un 'out' que terminaba quieto, y la vuelta se leía como un segundo golpe
+    "settle": lambda u: _back_out(0.5 - 0.5 * math.cos(math.pi * u)),
     "hold": lambda u: 0.5 - 0.5 * math.cos(math.pi * u),                  # seno: pausa viva
     "ease": lambda u: 2 * u * u if u < 0.5 else 1 - 2 * (1 - u) ** 2,
     "in": lambda u: u * u * u,
+    "acc": lambda u: u * u,           # acelera y termina a 2x la velocidad media: empalma con un 'out' de igual largo
     "strike": lambda u: u ** 1.6,     # suelta de un golpe: acelera hasta el contacto sin saltos de un cuadro
     "out": lambda u: 1 - (1 - u) ** 2,
 }
@@ -86,8 +89,10 @@ for s in ("L", "R"):
         f"pec_{s}2": (60, 8, 18, 0.6), f"pec_{s}3": (60, 8, 20, 0.6), f"pel_{s}": (65, 8, 18, 0.6),
         f"fluke_{s}1": (55, 7, 16, 0.5), f"fluke_{s}2": (55, 7, 20, 0.6),
         f"barbel_{s}1": (70, 8, 14, 0.5), f"barbel_{s}2": (42, 5.5, 20, 0.6),
-        f"whisker_{s}1": (60, 7, 12, 0.5), f"whisker_{s}2": (36, 5.0, 16, 0.5), f"whisker_{s}3": (30, 4.4, 20, 0.5),
-        f"gill_{s}": (140, 16, 5, 0.3), f"shide_{s}": (40, 4.5, 32, 0.8),
+        # la raíz del bigote (whisker_1) va rígida con la cabeza: con resorte se quedaba quieta un cuadro y
+        # saltaba al siguiente en los cabezazos; el flameo lo hacen los dos tramos de afuera
+        f"whisker_{s}2": (36, 5.0, 16, 0.5), f"whisker_{s}3": (30, 4.4, 20, 0.5),
+        f"gill_{s}": (140, 16, 5, 0.3), f"shide_{s}": (40, 4.5, 24, 0.8),
     })
 SPRINGS.update({"dorsal_1": (70, 9, 14, 0.6), "dorsal_2": (70, 9, 15, 0.6), "dorsal_3": (65, 8.5, 16, 0.6),
                 "dorsal_4": (60, 8, 18, 0.6), "anal": (65, 8, 16, 0.6)})
@@ -256,9 +261,15 @@ class Baker:
                         continue
                     aw = (hp[i1] - 2 * hp[i] + hp[i0]) / (dt * dt)
                     acc.append(Rp[i].to_matrix().inverted() @ aw)
+                # empuje suavizado en 3 cuadros (1/4, 1/2, 1/4): el corte de velocidad de un golpe (la suelta
+                # termina rápida y la vuelta arranca quieta) es un impulso de un solo cuadro que pateaba el
+                # resorte contra su tope y se veía como un salto aislado del papel o del bigote
+                alpha = _smooth3(alpha)
+                acc = _smooth3(acc)
                 th = Vector()
                 thd = Vector()
                 mxr = math.radians(mx)
+                vmax = mxr * FPS / 1.5
                 for i in range(L):
                     # el cuadro i muestra el estado ANTES de integrar su empuje: el primer cuadro de un clip
                     # no lineal sale sin desvío (no hay pop al entrar desde otro clip)
@@ -278,6 +289,10 @@ class Baker:
                         h = dt / sub
                         thdd = -k * th - c * thd + drive
                         thd = thd + thdd * h
+                        # arrastre del agua/aire: la aleta o el papel no cruzan de un tope al otro en un cuadro
+                        # (eso se veía como un salto aislado); como mucho 2/3 del tope por cuadro
+                        if thd.length > vmax:
+                            thd = thd * (vmax / thd.length)
                         th = th + thd * h
                     # el estado tampoco se va lejos del tope: si no, después de un tirón quedaría 'pegado'
                     if th.length > 1.4 * mxr:
@@ -291,6 +306,11 @@ class Baker:
         if loop:
             return out[n * (reps - 1): n * reps + 1]
         return out
+
+
+def _smooth3(xs):
+    n = len(xs)
+    return [xs[max(i - 1, 0)] * 0.25 + xs[i] * 0.5 + xs[min(i + 1, n - 1)] * 0.25 for i in range(n)]
 
 
 # ------------------------------------------------------------------ escritura a una acción de Blender

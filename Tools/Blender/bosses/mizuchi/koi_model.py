@@ -13,7 +13,7 @@ de una textura, y se agranda junto con el cuerpo (más chicas en la cola, como e
 """
 import math, random
 from mathutils import Vector, Matrix, Quaternion
-from koi_common import KoiBuilder, Dir, smoothstep, lerp, catmull, spow, clamp, frame_from
+from koi_common import KoiBuilder, Dir, smoothstep, lerp, catmull, spow, clamp, frame_from, GLOW_P1, GLOW_P2
 
 Z0 = 1.62            # eje del cuerpo flotando (altura de la cabeza de Kaito)
 SIDES = 16           # lados del loft
@@ -240,12 +240,14 @@ def bones():
     add("jaw", (0, -2.3, 1.34), (0, -2.86, 1.33), "head")
     # colmillos de marfil (fase 1) y bigotes de dragón (fase 2): cadenas separadas que salen de las
     # comisuras. Los bigotes flotan por encima de las pectorales, así que al rolar no tocan la cubierta.
+    # Los colmillos cuelgan hacia adelante y van con la mandíbula; los bigotes van con la CABEZA: corren 3 m
+    # hacia atrás, por detrás del pivote de la mandíbula, y al abrir la boca 45° (Roar) se paraban derechos
     for s, sx in (("L", 1), ("R", -1)):
         pts = barbel_path(sx)
         add(f"barbel_{s}1", pts[0], pts[2], "jaw")
         add(f"barbel_{s}2", pts[2], pts[4], f"barbel_{s}1")
         wp = whisker_path(sx)
-        add(f"whisker_{s}1", wp[0], wp[3], "jaw")
+        add(f"whisker_{s}1", wp[0], wp[3], "head")
         add(f"whisker_{s}2", wp[3], wp[6], f"whisker_{s}1")
         add(f"whisker_{s}3", wp[6], wp[12], f"whisker_{s}2")
     for s, sx in (("L", 1), ("R", -1)):
@@ -267,8 +269,11 @@ def bones():
     st = top_pt(0, Y_STAKE)
     add("seal", (0, Y_STAKE, st.z - 0.08), (0, Y_STAKE, st.z + 0.45), "body", FWD)
     for s, sx in (("L", 1), ("R", -1)):
-        sh = shide_anchor(sx)
-        add(f"shide_{s}", sh, sh + Vector((0, 0, -0.45)), "body", Vector((sx, 0, 0)))
+        h, t = shide_bone(sx)
+        y, th = sash_pt(0.5)
+        n = surf_n(y, th)
+        n.x *= sx
+        add(f"shide_{s}", h, t, "body", n)
     # cadena de atrás
     add("spine_b1", (0, 0.25, Z0), (0, 1.0, 1.63), "body")
     add("spine_b2", (0, 1.0, 1.63), (0, 1.7, 1.65), "spine_b1")
@@ -308,13 +313,17 @@ def barbel_path(sx):
 
 
 def whisker_path(sx):
-    """Bigote de dragón (fase 2, 3.2 m): se abre hacia adelante y afuera desde la comisura y vuelve
-    flotando por encima de la pectoral hasta el costado de la cabeza. Desde arriba dibuja un gancho."""
+    """Bigote de dragón (fase 2, ~3.3 m): sale de la comisura hacia afuera (apenas hacia adelante), da la
+    vuelta y corre hacia atrás flotando por encima de la pectoral, y termina suelto sobre la raíz de la
+    aleta con un rulo hacia arriba. Antes volvía hacia la cara y desde arriba dibujaba un paréntesis que
+    contorneaba la cabeza como un neón; así se lee como bigote que flamea."""
+    steps = ((0.22, -0.1, -0.04), (0.26, 0.0, -0.02), (0.24, 0.14, 0.02), (0.2, 0.22, 0.04), (0.16, 0.27, 0.05),
+             (0.13, 0.3, 0.05), (0.1, 0.31, 0.05), (0.07, 0.32, 0.04), (0.05, 0.32, 0.05), (0.03, 0.31, 0.07),
+             (0.02, 0.29, 0.1), (0.02, 0.24, 0.14))
+    k = 3.3 / sum(Vector(d).length for d in steps)
     p = [Vector((0.2 * sx, -2.80, 1.44))]
-    for d in ((0.25, -0.2, -0.12), (0.3, -0.05, -0.1), (0.3, 0.15, 0.0), (0.25, 0.32, 0.1), (0.15, 0.42, 0.14),
-              (0.06, 0.45, 0.1), (-0.02, 0.42, 0.04), (-0.06, 0.38, 0.0), (-0.05, 0.36, -0.03), (0.0, 0.34, -0.04),
-              (0.06, 0.3, -0.02), (0.1, 0.26, 0.02)):
-        p.append(p[-1] + Vector((d[0] * sx, d[1], d[2])))
+    for d in steps:
+        p.append(p[-1] + Vector((d[0] * sx, d[1], d[2])) * k)
     return p
 
 
@@ -328,10 +337,44 @@ def horn_path(sx):
     return [p0, p0 + Vector((0.07 * sx, 0.16, 0.30)), p0 + Vector((0.14 * sx, 0.42, 0.50)), p0 + Vector((0.16 * sx, 0.74, 0.58))]
 
 
-def shide_anchor(sx):
-    p = surf(Y_ROPE + 0.05, math.radians(-8))
-    p.x *= sx
-    return p + Vector((0.09 * sx, 0, 0))
+def drape(y, th0, sx, L, n, c0, c1):
+    """n+1 puntos que bajan por la piel desde el ángulo th0 (estación y) a pasos iguales de arco hasta el
+    largo L, despegados de c0 a c1: papeles y cabos que se apoyan sobre el flanco en vez de atravesarlo."""
+    th, acc, prev = th0, 0.0, surf(y, th0)
+    samples = [(0.0, th0)]
+    while acc < L and th > th0 - 2.5:
+        th -= 0.01
+        p = surf(y, th)
+        acc += (p - prev).length
+        prev = p
+        samples.append((acc, th))
+    out = []
+    for i in range(n + 1):
+        want = L * i / n
+        a = next((t for d, t in samples if d >= want), samples[-1][1])
+        p = surf(y, a) + surf_n(y, a) * lerp(c0, c1, i / n)
+        p.x *= sx
+        out.append(p)
+    return out
+
+
+SASH = (math.radians(55), math.radians(8), 1.05)   # th de arranque y final, largo en Y de la faja
+
+
+def sash_pt(u):
+    """Punto (y, th) de la faja que baja en diagonal por el flanco desde la cuerda hacia la cola (como en el
+    concept): de ella cuelgan los shide y las borlas, en fila, en la parte del flanco que ve la cámara."""
+    th_a, th_b, ln = SASH
+    y0 = Y_ROPE - 0.08 * math.sin(th_a)
+    return y0 + ln * u, lerp(th_a, th_b, u) - math.radians(9) * math.sin(math.pi * u)
+
+
+def shide_bone(sx):
+    """Pivote del hueso shide del lado: a mitad de la faja, apuntando flanco abajo (el canal 'out' despega
+    los papeles del cuerpo)."""
+    y, th = sash_pt(0.5)
+    pts = drape(y, th, sx, 0.45, 1, 0.12, 0.2)
+    return pts[0], pts[1]
 
 
 # ------------------------------------------------------------------ construcción
@@ -339,14 +382,19 @@ class Koi:
     def __init__(self, phase, seed=11):
         self.phase = phase
         self.rng = random.Random(seed + phase)
-        self.mb = KoiBuilder(f"Body_P{phase}", bone_names())
+        self.mb = KoiBuilder(f"Body_P{phase}", bone_names(), slots=["Nindo_Palette", GLOW_P1 if phase == 1 else GLOW_P2])
 
     # --- tubo afinado a lo largo de una polilínea (bigotes, cuernos, cuerda)
-    def tube(self, pts, r0, r1, sides, color_fn, weight_fn, cap=True, closed=False, up=(0, 0, 1)):
+    def tube(self, pts, r0, r1, sides, color_fn, weight_fn, cap=True, closed=False, up=(0, 0, 1), squash=1.0, twist=0.0):
         """'up' orienta las secciones; para caminos que pasan por la vertical (la cuerda que rodea el cuerpo)
-        hay que darle un eje que nunca sea paralelo al camino, si no la sección se da vuelta a mitad."""
+        hay que darle un eje que nunca sea paralelo al camino, si no la sección se da vuelta a mitad.
+        'squash' achica la sección en el eje x del marco (perpendicular a 'up'): la cuerda se aplana contra
+        el cuerpo y sigue viéndose gruesa desde arriba. 'twist' gira cada sección esa cantidad de lados
+        respecto de la anterior: las facetas y los colores por lado se enroscan como los cabos de una soga
+        (en un tubo cerrado el giro total tiene que ser un múltiplo de 'sides' para que la costura cierre)."""
         mb = self.mb
         n = len(pts)
+        assert not closed or abs((twist * n) % sides) < 1e-6, "la torsión no cierra la vuelta"
         rings = []
         for i, p in enumerate(pts):
             if closed:
@@ -356,7 +404,8 @@ class Koi:
             x, _, z = frame_from(d, Vector(up))
             t = i / (n - 1) if n > 1 else 0
             r = lerp(r0, r1, t)
-            ring = [mb.v(p + (x * math.cos(2 * math.pi * k / sides) + z * math.sin(2 * math.pi * k / sides)) * r,
+            a0 = 2 * math.pi * twist * i / sides
+            ring = [mb.v(p + (x * (squash * math.cos(2 * math.pi * k / sides + a0)) + z * math.sin(2 * math.pi * k / sides + a0)) * r,
                          weight_fn(i, t)) for k in range(sides)]
             rings.append(ring)
         segs = n if closed else n - 1
@@ -457,16 +506,47 @@ class Koi:
             return {"tail": "plaster", "face": "white", "lip": "sakura", "lip_in": "sakura_dark", "throat": "black"}[where]
         return {"tail": "ink", "face": "ink", "lip": "cloth_purple", "lip_in": "ink", "throat": "glow_purple"}[where]
 
+    # manchas de tinta (sumi) de la fase 1: (estación y, ángulo th, radio, fase del borde). Pocas, chicas y
+    # separadas como en el concept, con un par de gotas satélite
+    INK_BLOTS = [(-0.95, 62, 0.22, 0.4), (0.62, 114, 0.22, 2.1), (1.3, 58, 0.19, 4.0), (1.58, 82, 0.09, 1.0),
+                 (2.08, 118, 0.15, 1.2), (1.0, 12, 0.2, 5.3), (1.1, 166, 0.2, 3.1)]
+
+    def ink(self):
+        """Manchas de tinta como calcos de borde orgánico apoyados 6 mm sobre la piel (pesos del cuerpo: se
+        deforman con él). Pintadas sobre la grilla de rombos, cualquier mancha salía con el borde en escalera
+        y se leía como una cruz, una X o un zigzag; la grilla de escamas queda limpia y la mancha la tapa."""
+        if self.phase != 1:
+            return
+        mb = self.mb
+        nseg = 13
+        for yc, thc, R, ph in self.INK_BLOTS:
+            thc = math.radians(thc)
+            w = prof(yc)[0]
+            rot = 0.45 * math.sin(2.3 * ph)      # cada mancha estirada en otra dirección (pincelada)
+
+            def at(r, a):
+                # borde irregular con tres armónicos y estirada 1.35 a lo largo de su eje
+                rr = r * (1.0 + 0.22 * math.sin(2 * a + ph) + 0.16 * math.sin(3 * a + 1.7 * ph) + 0.1 * math.sin(5 * a + 2 * ph))
+                u, v = rr * 1.35 * math.cos(a), rr * math.sin(a)
+                y = yc + u * math.cos(rot) - v * math.sin(rot)
+                th = thc + (u * math.sin(rot) + v * math.cos(rot)) / w
+                return mb.v(surf(y, th) + surf_n(y, th) * 0.006, spine_w(y))
+            c = at(0.0, 0.0)
+            mid = [at(R * 0.55, 2 * math.pi * k / nseg) for k in range(nseg)]
+            rim = [at(R, 2 * math.pi * k / nseg) for k in range(nseg)]
+            nrm = Dir(surf_n(yc, thc))
+            for k in range(nseg):
+                k1 = (k + 1) % nseg
+                mb.face([c, mid[k], mid[k1]], "ink", outward=nrm)
+                mb.face([mid[k], rim[k], rim[k1], mid[k1]], "ink", outward=nrm)
+
     def scale_colors(self, ys):
         """Color de cada rombo (clave = arista del anillo). Fase 1: blanco nácar con hileras diagonales
-        apenas cálidas, panza crema, el disco rojo es pieza aparte, pocas manchas de tinta (sumi) y ~3.5 %
-        de escamas gin-rin que brillan con la luna. Fase 2: laca negra, panza piedra, reflejos violeta y
+        apenas cálidas, panza crema y ~6 % de escamas gin-rin que brillan con la luna (el disco rojo y las
+        manchas de tinta son piezas aparte). Fase 2: laca negra, panza piedra, reflejos violeta y
         venas que brillan desde la estaca."""
         rng = self.rng
         cache = {}
-        # manchas de tinta (sumi): pocas y grandes, de borde irregular (el ruido por rombo las deshilacha)
-        ink_seeds = [(-0.02, math.radians(60), 0.44), (1.0, math.radians(120), 0.38), (1.9, math.radians(72), 0.3),
-                     (0.42, math.radians(14), 0.28)]
         veins = self.crack_paths() if self.phase == 2 else []
 
         def vein_d(y, th):
@@ -495,12 +575,7 @@ class Koi:
                     c = "plaster_shade"
                 else:
                     c = "white" if (r + k) % 2 else "plaster"
-                    wob = rng.uniform(0.7, 1.25)
-                    for sy, st, sr in ink_seeds:
-                        rr = prof(sy)[0]
-                        if math.hypot(y - sy, (th - st) * rr) < sr * wob:
-                            c = "ink"
-                    if c != "ink" and up > 0.3 and -1.1 < y < 2.5 and rng.random() < 0.06:
+                    if up > 0.3 and -1.1 < y < 2.5 and rng.random() < 0.06:
                         c = "glow_moon"
             else:
                 if up < -0.62:
@@ -530,8 +605,10 @@ class Koi:
                 th += math.sin(math.radians(ang)) * 0.24 / max(0.25, r)
                 pts.append((y, th, w0 * (1 - (s_ + 1) / (steps + 1.5))))
             return pts
+        # cinta fina: a 0.075 m las grietas ocupaban tanto lomo que el brillo se lavaba a lavanda en el hombro
+        # del ACES; más finas se leen como venas violetas sobre la laca negra
         for ang in (-160, -30, 28, 150, 95, -95):
-            main = walk(Y_STAKE, math.pi / 2, ang, 9, 0.075)
+            main = walk(Y_STAKE, math.pi / 2, ang, 9, 0.055)
             paths.append(main)
             for j in (3, 6):
                 y, th, w = main[j]
@@ -565,18 +642,31 @@ class Koi:
         def ellipse(cy, rx, rz, dz=0.0, off=0.0):
             return [Vector((rx * math.cos(2 * math.pi * (k + off) / n), cy, c0.z + dz + rz * math.sin(2 * math.pi * (k + off) / n))) for k in range(n)]
 
-        def lw(p):
+        def lw(p, k=1.0):
             # labio de abajo con la mandíbula; el de arriba mitad y mitad: al adelantar la mandíbula
             # (boca protráctil de carpa) el tubo entero sale, al abrirla baja sobre todo el de abajo
             low = smoothstep(c0.z + 0.06, c0.z - 0.06, p.z)
-            return {"jaw": lerp(0.45, 1.0, low), "head": lerp(0.55, 0.0, low)}
-        lb = [mb.v(p, lw(p)) for p in ellipse(-2.745, 0.21, 0.165, 0.0, 0.5)]
+            j = lerp(0.45, 1.0, low) * k
+            return {"jaw": j, "head": 1.0 - j}
+        # base del labio METIDA 12 cm en la cabeza (una manga): al sacar la boca 0.28 m el tubo se estira
+        # hacia adelante en vez de doblar una banda de 5 mm
+        lb = [mb.v(p, lw(p, 0.6)) for p in ellipse(-2.62, 0.21, 0.165, 0.0, 0.5)]
+        # el mentón es parte de la mandíbula (como en una carpa): la mitad de abajo de los primeros anillos
+        # de la cabeza baja y sale con ella. Si el mentón quedaba quieto, al abrir la boca el labio de abajo
+        # pasaba por debajo de él y la banda de la cara se daba vuelta (caras hacia adentro = agujeros con
+        # Cull Back) en Bite, Spit, Roar, Jet y el jadeo de Exhausted
+        for ring, k in ((ring0, 0.55), (self.rings[1], 0.3), (self.rings[2], 0.12)):
+            for v in ring:
+                j = k * smoothstep(c0.z + 0.02, c0.z - 0.2, v.co.z)
+                if j > 0:
+                    mb.set_w(v, mix(mb.get_w(v), {"jaw": 1.0}, j))
         # cara (anillo 0 del loft -> base del labio): mismo zig-zag que el cuerpo
         for k in range(n):
             k1 = (k + 1) % n
             for verts in ([ring0[k], ring0[k1], lb[k]], [lb[k], ring0[k1], lb[k1]]):
                 cc = sum((v.co for v in verts), Vector()) / 3
-                mb.face(verts, self.skin("face"), outward=Dir((cc.x * 0.5, -1, (cc.z - 1.5) * 0.6)))
+                # el embudo mira hacia afuera de la cabeza: adelante y hacia el eje de la boca
+                mb.face(verts, self.skin("face"), outward=Dir((-cc.x * 0.8, -1, -(cc.z - c0.z) * 0.8)))
         l1 = [mb.v(p, lw(p)) for p in ellipse(-2.84, 0.27, 0.215, 0.0, 0.5)]
         l2 = [mb.v(p, lw(p)) for p in ellipse(-2.93, 0.225, 0.18, 0.0, 0.5)]
         l3 = [mb.v(p, lw(p)) for p in ellipse(-2.9, 0.13, 0.1, 0.0, 0.5)]
@@ -705,11 +795,11 @@ class Koi:
 
     # --- bigotes
     def barbels(self):
-        def chain_w(names, joints, last):
+        def chain_w(names, joints, last, parent):
             # punto del camino donde arranca cada hueso (ver bones()): en la unión se reparte mitad y mitad
             def wf(i, t):
                 if i == 0:
-                    return {names[0]: 0.6, "jaw": 0.4}
+                    return {names[0]: 0.6, parent: 0.4}
                 b = max(j for j, start in enumerate(joints) if start <= i)
                 if i == joints[b] and b > 0 and i != last:
                     return {names[b - 1]: 0.5, names[b]: 0.5}
@@ -719,13 +809,15 @@ class Koi:
             if self.phase == 1:
                 pts = barbel_path(sx)
                 self.tube(pts, 0.072, 0.026, 5, lambda i, k: "cloth_white" if k % 2 else "paper",
-                          chain_w([f"barbel_{s}1", f"barbel_{s}2"], [0, 2], len(pts) - 1))
+                          chain_w([f"barbel_{s}1", f"barbel_{s}2"], [0, 2], len(pts) - 1, "jaw"))
                 sp = short_barbel_path(sx)
                 self.tube(sp, 0.04, 0.016, 4, lambda i, k: "cloth_white", lambda i, t: {"head": 0.7, "jaw": 0.3})
             else:
                 pts = whisker_path(sx)
-                self.tube(pts, 0.062, 0.016, 5, lambda i, k: "glow_purple" if (k + i) % 3 else "cloth_purple",
-                          chain_w([f"whisker_{s}1", f"whisker_{s}2", f"whisker_{s}3"], [0, 3, 6], len(pts) - 1))
+                # raíz oscura rayada y punta encendida: el brillo dibuja la punta que flamea sin hacer de la
+                # cabeza entera un contorno de neón
+                self.tube(pts, 0.062, 0.016, 5, lambda i, k: "glow_purple" if i >= 7 or (k + i) % 3 == 0 else "cloth_purple",
+                          chain_w([f"whisker_{s}1", f"whisker_{s}2", f"whisker_{s}3"], [0, 3, 6], len(pts) - 1, "head"))
 
     def horns(self):
         if self.phase != 2:
@@ -749,15 +841,21 @@ class Koi:
                 k1 = (k + 1) % sides
                 mb.face([bot[k], bot[k1], top[k1], top[k]], colfn(k), outward=(0, Y_STAKE, (zb + zt) / 2))
             return bot, top
-        prism(z0, z1, 0.115, 0.085, 6, lambda k: rust[k])
+        # el medallón corona la estaca BOCA ARRIBA (apenas inclinado hacia la cabeza): de canto solo se leía
+        # con el koi de costado a la cámara; así se ve desde cualquier rumbo con la cámara a 43-52°. 'arriba'
+        # de la ola = hacia la cola: con el koi mirando a la cámara (de frente a Kaito) se lee derecha
+        tilt = math.radians(18)
+        N = Vector((0, -math.sin(tilt), math.cos(tilt)))
+        U, V = Vector((1, 0, 0)), Vector((0, math.cos(tilt), math.sin(tilt)))
+        c = Vector((0, Y_STAKE, z1 + 0.1))
+        # la estaca entra en la cara de abajo del disco (no queda flotando)
+        prism(z0, c.z - 0.03, 0.115, 0.085, 6, lambda k: rust[k])
         for zc in (st.z + 0.06, st.z + 0.36):
             b, t = prism(zc - 0.035, zc + 0.035, 0.14, 0.14, 6, lambda k: "iron_light", rot=math.pi / 6)
             mb.face(t, "iron_light", outward=(0, Y_STAKE, zc + 1))
             mb.face(b, "iron", outward=(0, Y_STAKE, zc - 1))
-        # el medallón va clavado en la punta de la estaca, como una tablilla en su poste
-        cz = z1 + 0.36
-        self.medallion(Vector((0, Y_STAKE, cz)), 0.4)
-        # herida de la maldición alrededor de la estaca (se ve desde arriba aunque el medallón esté de canto)
+        self.medallion(c, 0.4, U, V, N)
+        # herida de la maldición alrededor de la estaca (anillo violeta bajo el medallón)
         nseg = 10
         inner = [top_pt(0.13 * math.cos(2 * math.pi * k / nseg), Y_STAKE + 0.13 * math.sin(2 * math.pi * k / nseg), 0.012) for k in range(nseg)]
         outer = [top_pt(0.33 * math.cos(2 * math.pi * (k + 0.5) / nseg), Y_STAKE + 0.3 * math.sin(2 * math.pi * (k + 0.5) / nseg), 0.006) for k in range(nseg)]
@@ -768,30 +866,31 @@ class Koi:
             mb.face([vi[k], vo[k], vi[k1]], "glow_purple", outward=Dir((0, 0, 1)))
             mb.face([vi[k1], vo[k], vo[k1]], "cloth_purple" if self.phase == 1 else "glow_purple", outward=Dir((0, 0, 1)))
 
-    def medallion(self, c, R):
-        """Disco de canto (normal ±X) con aro dorado, un hilo violeta (la maldición) y en la cara azul una
-        ola que rompe, en las dos caras. Es el emblema del Sello del Agua: el mismo motivo de ola que el
-        key_seal_lake que Kaito levanta al final, simplificado para leerse a 50 px."""
+    def medallion(self, c, R, U, V, N):
+        """Disco (cara N, ejes de la ola U = izquierda->derecha y V = arriba) con aro dorado, un hilo violeta
+        (la maldición) y en la cara azul una ola que rompe, en las dos caras. Es el emblema del Sello del
+        Agua: el mismo motivo de ola que el key_seal_lake que Kaito levanta al final, simplificado para
+        leerse a 50 px."""
         mb = self.mb
         W = {"seal": 1.0}
         nseg = 14
         th = 0.045
-        def pt(r, a, x):
-            return Vector((x, c.y + r * math.cos(a), c.z + r * math.sin(a)))
+        def pt(r, a, d):
+            return c + (U * math.cos(a) + V * math.sin(a)) * r + N * d
         rings = {}
-        for name, r, x in (("ro", R, th), ("ri", R * 0.84, th + 0.012), ("rp", R * 0.78, th - 0.004)):
-            for sx in (1, -1):
-                rings[(name, sx)] = [mb.v(pt(r, 2 * math.pi * k / nseg, x * sx), W) for k in range(nseg)]
+        for name, r, d in (("ro", R, th), ("ri", R * 0.84, th + 0.012), ("rp", R * 0.78, th - 0.004)):
+            for sd in (1, -1):
+                rings[(name, sd)] = [mb.v(pt(r, 2 * math.pi * k / nseg, d * sd), W) for k in range(nseg)]
         curse = "glow_purple"
-        for sx in (1, -1):
-            ro, ri, rp = rings[("ro", sx)], rings[("ri", sx)], rings[("rp", sx)]
+        for sd in (1, -1):
+            ro, ri, rp = rings[("ro", sd)], rings[("ri", sd)], rings[("rp", sd)]
             for k in range(nseg):
                 k1 = (k + 1) % nseg
-                mb.face([ro[k], ro[k1], ri[k1], ri[k]], "gold", outward=Dir((sx, 0, 0)))
-                mb.face([ri[k], ri[k1], rp[k1], rp[k]], curse, outward=Dir((sx, 0, 0)))
-            ctr = mb.v(Vector((th * sx - 0.006 * sx, c.y, c.z)), W)
+                mb.face([ro[k], ro[k1], ri[k1], ri[k]], "gold", outward=Dir(N * sd))
+                mb.face([ri[k], ri[k1], rp[k1], rp[k]], curse, outward=Dir(N * sd))
+            ctr = mb.v(c + N * (sd * (th - 0.006)), W)
             for k in range(nseg):
-                mb.face([rp[k], rp[(k + 1) % nseg], ctr], "cloth_blue", outward=Dir((sx, 0, 0)))
+                mb.face([rp[k], rp[(k + 1) % nseg], ctr], "cloth_blue", outward=Dir(N * sd))
         ro_a, ro_b = rings[("ro", 1)], rings[("ro", -1)]
         for k in range(nseg):
             k1 = (k + 1) % nseg
@@ -803,108 +902,146 @@ class Koi:
         deep = [(-0.62, -0.5), (0.62, -0.5), (0.45, -0.74), (-0.45, -0.74)]
         spray = [[(x + 0.07 * math.cos(2 * math.pi * k / 4), y + 0.07 * math.sin(2 * math.pi * k / 4)) for k in range(4)]
                  for x, y in ((0.36, 0.36), (0.5, 0.18), (0.22, 0.52))]
-        for sx in (1, -1):
-            base = th * sx
-            self.slab([(u * s, v * s) for u, v in crest], c, base - sx * 0.008, sx, 0.024, "water_foam")
-            self.slab([(u * s, v * s) for u, v in deep], c, base - sx * 0.008, sx, 0.02, "water_shallow")
-            for sp in spray:
-                self.slab([(u * s, v * s) for u, v in sp], c, base - sx * 0.008, sx, 0.02, "glow_water")
+        for sd in (1, -1):
+            for poly, depth, col in [(crest, 0.024, "water_foam"), (deep, 0.02, "water_shallow")] + [(sp, 0.02, "glow_water") for sp in spray]:
+                self.slab([(u * s, v * s) for u, v in poly], c, U, V, N, sd * (th - 0.008), sd, depth, col)
 
-    def slab(self, pts, c, x0, sx, depth, color):
-        """Polígono (u = -Y local, v = Z) en relieve sobre la cara del medallón que mira a sx·X."""
+    def slab(self, pts, c, U, V, N, d0, sd, depth, color):
+        """Polígono (u, v) en relieve sobre la cara del medallón que mira a sd·N. En la cara de atrás u se
+        espeja: la ola se lee derecha desde los dos lados."""
         mb = self.mb
         W = {"seal": 1.0}
-        # en la cara +X, u crece hacia -Y (el frente del koi) para que la ola se lea igual de los dos lados
-        def p3(u, v, x):
-            return Vector((x, c.y - u * sx, c.z + v))
-        bot = [mb.v(p3(u, v, x0), W) for u, v in pts]
-        top = [mb.v(p3(u, v, x0 + sx * depth), W) for u, v in pts]
-        mb.face(top, color, outward=Dir((sx, 0, 0)))
+        def p3(u, v, d):
+            return c + U * (u * sd) + V * v + N * d
+        bot = [mb.v(p3(u, v, d0), W) for u, v in pts]
+        top = [mb.v(p3(u, v, d0 + sd * depth), W) for u, v in pts]
+        mb.face(top, color, outward=Dir(N * sd))
         n = len(pts)
         cc = sum((p.co for p in top), Vector()) / n
         for k in range(n):
             k1 = (k + 1) % n
             mid = (top[k].co + top[k1].co) / 2
-            mb.face([bot[k], bot[k1], top[k1], top[k]], color, outward=Dir(Vector((0, mid.y - cc.y, mid.z - cc.z))))
+            out = mid - cc
+            mb.face([bot[k], bot[k1], top[k1], top[k]], color, outward=Dir(out - N * out.dot(N)))
 
     # --- shimenawa: cuerda de paja trenzada con nudo, borlas y shide
     def rope(self):
         mb = self.mb
-        nseg = 26
+        nseg = 32
         pts = []
         for k in range(nseg):
             th = 2 * math.pi * k / nseg
             y = Y_ROPE - 0.08 * math.sin(th)      # inclinada: más adelante arriba, como atada al pasar
-            p = surf(y, th) + surf_n(y, th) * 0.09
+            p = surf(y, th) + surf_n(y, th) * 0.08
             pts.append(p)
         def wf(i, t):
             return spine_w(pts[i % nseg].y)
         def cf(i, k):
-            # dos cabos trenzados: rayas diagonales
-            return "thatch_dark" if (i + k) % 3 == 0 else ("wheat_dark" if (i + k) % 3 == 1 else "straw")
-        # las rayas diagonales de cf dibujan los cabos torcidos
-        self.tube(pts, 0.15, 0.15, 6, cf, wf, closed=True, up=(0, 1, 0))
-        # nudo arriba a la izquierda de la estaca: dos lazos y la vuelta del medio
-        kc = surf(Y_ROPE - 0.06, math.radians(68)) + surf_n(Y_ROPE - 0.06, math.radians(68)) * 0.1
-        nrm = surf_n(Y_ROPE - 0.06, math.radians(68))
+            # dos cabos de dos tonos que se enroscan con la torsión del tubo (el damero de tres tonos de antes,
+            # sin torsión, se leía como una correa con escalera)
+            return "straw" if k % 4 < 2 else "gold"
+        # gruesa (0.18 m) y apenas aplastada contra el cuerpo: no se despega más de 0.24 m de la piel (varado
+        # sobre el flanco casi no se mete en la cubierta). Dos lados de torsión por tramo: un cabo por vuelta
+        # cada ~0.7 m, se lee como soga y no como correa
+        self.tube(pts, 0.18, 0.18, 8, cf, wf, closed=True, up=(0, 1, 0), squash=0.88, twist=2)
+        # nudo arriba a la izquierda de la estaca: dos lazos y la vuelta del medio (por fuera de la cuerda gruesa)
+        kth = math.radians(66)
+        nrm = surf_n(Y_ROPE - 0.06, kth)
+        kc = surf(Y_ROPE - 0.06, kth) + nrm * 0.2
         w = spine_w(kc.y)
         ax = Vector((0, 1, 0)).cross(nrm).normalized()
         for side in (-1, 1):
-            ctr = kc + Vector((0, side * 0.24, 0.0)) + nrm * 0.07
-            loop = [ctr + Vector((0, side * 0.17 * math.cos(a), 0)) + nrm * (0.13 * math.sin(a))
+            ctr = kc + Vector((0, side * 0.26, 0.0)) + nrm * 0.05
+            loop = [ctr + Vector((0, side * 0.18 * math.cos(a), 0)) + nrm * (0.13 * math.sin(a))
                     for a in [2 * math.pi * j / 8 for j in range(8)]]
-            self.tube(loop, 0.075, 0.075, 5, cf, lambda i, t, w=w: w, closed=True, up=ax)
-        self.tube([kc - Vector((0, 0.12, 0)), kc + Vector((0, 0.12, 0))], 0.135, 0.135, 6, lambda i, k: "wheat_dark" if k % 2 else "straw",
+            self.tube(loop, 0.085, 0.085, 5, cf, lambda i, t, w=w: w, closed=True, up=ax)
+        self.tube([kc - Vector((0, 0.14, 0)), kc + Vector((0, 0.14, 0))], 0.16, 0.16, 6, lambda i, k: "gold" if k % 2 else "straw",
                   lambda i, t, w=w: w, cap=True)
-        # los dos cabos del nudo cuelgan por el flanco izquierdo y terminan en borlas grandes
+        # los dos cabos del nudo bajan pegados al lomo izquierdo, por DELANTE de la cuerda (la faja sale hacia
+        # atrás), y terminan en borlas grandes
         WL = {"shide_L": 1.0}
-        for j, dy in enumerate((-0.16, 0.16)):
-            a = kc + Vector((0.05, dy, -0.05))
-            b = a + Vector((0.16, dy * 0.3, -0.34))
-            c = b + Vector((0.06, 0.0, -0.3))
-            self.tube([a, b, c], 0.06, 0.055, 5, lambda i, k: "straw" if k % 2 else "wheat_dark",
-                      lambda i, t, w=w: mix(w, WL, t), cap=False)
-            self.tassel(c, WL, big=True)
-        # borlas y shide colgando en los dos flancos (huesos shide_L/R: flamean con resorte)
+        for dy in (-0.2, -0.4):
+            pts = drape(Y_ROPE - 0.06 + dy, kth - 0.1, 1, 0.42, 3, 0.18, 0.22)
+            self.tube(pts, 0.065, 0.055, 5, lambda i, k: "straw" if k % 2 else "gold",
+                      lambda i, t, w=w: mix(w, WL, 0.5 * t), cap=False, twist=1)
+            self.tassel(pts[-1], mix(w, WL, 0.5), big=True)
+        # faja diagonal en cada flanco (de la cuerda hacia la cola) con shide y borlas en fila: quedan en la
+        # parte del flanco que se ve desde la cámara alta (bajo el ecuador los tapaba la panza). Los papeles
+        # y las borlas los mueve el hueso shide del lado (resorte)
         for s, sx in (("L", 1), ("R", -1)):
-            a = shide_anchor(sx)
             W = {f"shide_{s}": 1.0}
-            for j, dy in enumerate((-0.5, -0.25, 0.0, 0.25, 0.5)):
-                top = a + Vector((0.0, dy, 0.02 - 0.05 * abs(dy)))
+            path = []
+            for i in range(9):
+                y, th = sash_pt(i / 8)
+                p = surf(y, th) + surf_n(y, th) * 0.1
+                p.x *= sx
+                path.append(p)
+            self.tube(path, 0.1, 0.085, 6, lambda i, k: "straw" if k % 3 < 2 else "gold",
+                      lambda i, t, path=path: spine_w(path[i].y), cap=True, twist=1)
+            for j, u in enumerate((0.14, 0.32, 0.5, 0.68, 0.86, 1.0)):
+                y, th = sash_pt(u)
                 if j % 2 == 0:
-                    self.shide(top, sx, W, 4 if self.phase == 1 else 3)
+                    self.shide(y, th - math.radians(4), sx, s, 4 if self.phase == 1 else 3)
                 else:
-                    self.tassel(top, W)
+                    top = surf(y, th) + surf_n(y, th) * 0.14
+                    top.x *= sx
+                    # cuelga a plomo: corrida hacia afuera lo justo para no atravesar el flanco de abajo
+                    top.x = sx * max(abs(top.x), prof(y)[0] + 0.1)
+                    self.tassel(top, mix(spine_w(y), W, 0.7))
 
-    def shide(self, top, sx, W, nseg):
-        """Tira de papel en zigzag (el rayo de los santuarios), de doble cara."""
+    def shide(self, y, th0, sx, s, nseg):
+        """Tira de papel en zigzag (el rayo de los santuarios), de doble cara. Sale de la faja hacia afuera y
+        abajo (papel duro que se curva con su peso), no pegada a la piel: apoyada se iluminaba igual que el
+        cuerpo blanco y desaparecía; así asoma por fuera del contorno del flanco y desde arriba se lee como
+        un fleco blanco en cualquier rumbo. Arriba sigue al cuerpo y abajo al hueso shide del lado."""
         mb = self.mb
         h, wd = 0.15, 0.16
-        x = top.x
         col = "paper" if self.phase == 1 else "plaster_dirty"
+        n0 = surf_n(y, th0)
+        down = (surf(y, th0 - 0.05) - surf(y, th0)).normalized()
+        n0.x *= sx
+        down.x *= sx
+        p = surf(y, th0) + n0 * 0.12
+        p.x = sx * abs(p.x)
+        pts = [p]
+        for i in range(nseg):
+            d = (down * 0.55 + n0 * 0.8 + Vector((0, 0, -0.45 * (i + 1) / nseg))).normalized()
+            pts.append(pts[-1] + d * h)
         for i in range(nseg):
             dy = 0.055 * (1 if i % 2 else -1)
-            z0, z1 = top.z - i * h, top.z - (i + 1) * h
-            q = [Vector((x, top.y + dy - wd / 2, z0)), Vector((x, top.y + dy + wd / 2, z0)),
-                 Vector((x, top.y + dy + wd / 2, z1 + 0.01)), Vector((x, top.y + dy - wd / 2, z1 + 0.01))]
-            mb.double([mb.v(p, W) for p in q], col, (sx, 0, 0))
+            p0, p1 = pts[i], pts[i + 1] + (pts[i] - pts[i + 1]).normalized() * 0.01
+            fn = (p1 - p0).cross(Vector((0, 1, 0))).normalized()
+            if fn.dot(n0) < 0:
+                fn = -fn
+            q = [p0 + Vector((0, dy - wd / 2, 0)), p0 + Vector((0, dy + wd / 2, 0)),
+                 p1 + Vector((0, dy + wd / 2, 0)), p1 + Vector((0, dy - wd / 2, 0))]
+            vs = [mb.v(pp, mix(spine_w(y), {f"shide_{s}": 1.0}, smoothstep(0.0, 0.5, (i + (1 if k > 1 else 0)) / nseg)))
+                  for k, pp in enumerate(q)]
+            mb.double(vs, col, fn)
 
     def tassel(self, top, W, big=False):
-        """Borla (fusa) de paja: anillo dorado y un mechón que se abre abajo."""
+        """Borla (fusa) de paja: anillo dorado y un mechón que se abre abajo y cierra en punta."""
         mb = self.mb
         sides = 6
-        k = 1.35 if big else 1.0
-        prof_ = [(dz * k, r * k) for dz, r in ((0.0, 0.04), (0.07, 0.09), (0.12, 0.095), (0.14, 0.07), (0.44, 0.12), (0.47, 0.0))]
+        sc = 1.35 if big else 1.0
+        prof_ = [(dz * sc, r * sc) for dz, r in ((0.0, 0.04), (0.07, 0.09), (0.12, 0.095), (0.14, 0.07), (0.44, 0.12))]
         rings = []
         for dz, r in prof_:
             rings.append([mb.v(top + Vector((r * math.cos(2 * math.pi * k / sides), r * math.sin(2 * math.pi * k / sides), -dz)), W) for k in range(sides)])
-        cols = ["gold", "gold", "gold_dark", "straw", "wheat"]
+        cols = ["gold", "gold", "gold_dark", "straw"]
+
+        def out(k):
+            return Dir((math.cos(2 * math.pi * (k + 0.5) / sides), math.sin(2 * math.pi * (k + 0.5) / sides), 0))
         for j in range(len(rings) - 1):
             for k in range(sides):
                 k1 = (k + 1) % sides
                 c = cols[j] if j < 3 else ("straw" if k % 2 else "wheat")
-                mb.face([rings[j][k], rings[j][k1], rings[j + 1][k1], rings[j + 1][k]], c,
-                        outward=Dir((math.cos(2 * math.pi * (k + 0.5) / sides), math.sin(2 * math.pi * (k + 0.5) / sides), 0)))
+                mb.face([rings[j][k], rings[j][k1], rings[j + 1][k1], rings[j + 1][k]], c, outward=out(k))
+        # fondo en punta (un vértice, no un anillo de radio 0: eso dejaba triángulos de área nula)
+        tip = mb.v(top + Vector((0, 0, -0.47 * sc)), W)
+        for k in range(sides):
+            mb.face([rings[-1][k], rings[-1][(k + 1) % sides], tip], "wheat" if k % 2 else "straw",
+                    outward=Dir(Vector(out(k)) + Vector((0, 0, -1.5))))
 
     # --- aletas
     def fin_colors(self):
@@ -975,6 +1112,7 @@ class Koi:
         self.eyes()
         self.gills()
         self.tancho()
+        self.ink()
         self.barbels()
         self.horns()
         self.seal()
@@ -984,16 +1122,25 @@ class Koi:
         return self.mb.finish()
 
 
+RIPPLE_LIFT = 0.04   # sobre la cubierta: las tablas de la plataforma alternan 9 cm y a 0 el anillo titilaba
+
+
 def build_ripple(names):
-    """'Espejo de agua' bajo el koi: anillo plano en la cubierta (32 tris), 100 % al root. Marca la altura
-    a la que flota vista desde arriba y define el piso para NormalizeHeight (el punto más bajo del modelo).
-    Sale como espuma clara sin emisión; KoiBody le pone en runtime el agua transparente que brilla."""
-    mb = KoiBuilder("Ripple", names)
+    """'Espejo de agua' bajo el koi: anillo plano apenas sobre la cubierta (32 tris), 100 % al root. Marca
+    la altura a la que flota vista desde arriba. Radio 2.9-3.1 m: por fuera de las puntas de las pectorales
+    (~2.4 m), si no el anillo claro se fundía con ellas. Un triángulo de 2 cm en z = 0, bajo el centro del
+    cuerpo (tapado desde cualquier cámara), es el piso para NormalizeHeight: el punto más bajo del modelo
+    sigue en la cubierta y el alto no cambia. Sale como espuma clara sin emisión; KoiBody le pone en
+    runtime el agua transparente que brilla (con depth offset)."""
+    mb = KoiBuilder("Ripple", names, slots=["Nindo_Palette"])
     n = 16
-    inner = [mb.v((2.28 * math.cos(2 * math.pi * k / n), 2.28 * math.sin(2 * math.pi * k / n), 0.0), {"root": 1.0}) for k in range(n)]
-    outer = [mb.v((2.5 * math.cos(2 * math.pi * (k + 0.5) / n), 2.5 * math.sin(2 * math.pi * (k + 0.5) / n), 0.0), {"root": 1.0}) for k in range(n)]
+    z = RIPPLE_LIFT
+    inner = [mb.v((2.9 * math.cos(2 * math.pi * k / n), 2.9 * math.sin(2 * math.pi * k / n), z), {"root": 1.0}) for k in range(n)]
+    outer = [mb.v((3.12 * math.cos(2 * math.pi * (k + 0.5) / n), 3.12 * math.sin(2 * math.pi * (k + 0.5) / n), z), {"root": 1.0}) for k in range(n)]
     for k in range(n):
         k1 = (k + 1) % n
         mb.face([inner[k], outer[k], inner[k1]], "water_foam", outward=Dir((0, 0, 1)))
         mb.face([inner[k1], outer[k], outer[k1]], "water_foam", outward=Dir((0, 0, 1)))
+    anchor = [mb.v((0.012 * math.cos(2 * math.pi * k / 3), 0.012 * math.sin(2 * math.pi * k / 3), 0.0), {"root": 1.0}) for k in range(3)]
+    mb.face(anchor, "water_foam", outward=Dir((0, 0, 1)))
     return mb.finish()

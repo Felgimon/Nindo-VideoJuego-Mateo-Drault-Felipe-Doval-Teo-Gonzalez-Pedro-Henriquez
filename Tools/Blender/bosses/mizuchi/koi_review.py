@@ -8,7 +8,7 @@ dorado = pausa en el apex (cuando el jugador tiene que leer el aviso), rojo = go
 import bpy, math, os
 from mathutils import Vector
 import numpy as np
-from koi_common import REPO, P, materials as KC_materials
+from koi_common import REPO, P, SLOTS, GLOW_P2, materials as KC_materials
 
 DECK = 0.0
 _kaito = None
@@ -36,13 +36,10 @@ def flat_mat(name, hexname, emit=0.0):
 
 def setup(res=(320, 180), platform=True, kaito=True, samples=12):
     scn = bpy.context.scene
-    # como en Unity: caras traseras descartadas (las aletas de doble cara no pelean entre sí) y una
-    # emisión que deja ver el color en vez de quemarlo a blanco (Unity no tiene el mismo tonemapping)
-    for m in KC_materials():
+    # como en Unity: caras traseras descartadas (las aletas de doble cara no pelean entre sí); la fuerza
+    # de los brillos ya viene de koi_common.GLOW_STRENGTH
+    for m in KC_materials(SLOTS + [GLOW_P2]):
         m.use_backface_culling = True
-        b = m.node_tree.nodes.get("Principled BSDF")
-        if m.name == "Nindo_Emissive" and b:
-            b.inputs["Emission Strength"].default_value = 1.6
     scn.render.engine = 'BLENDER_EEVEE_NEXT'
     scn.eevee.taa_render_samples = samples
     scn.render.resolution_x, scn.render.resolution_y = res

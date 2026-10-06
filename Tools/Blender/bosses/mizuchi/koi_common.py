@@ -23,7 +23,13 @@ import nindo_palette as P   # noqa: E402
 import nindo_lib as L       # noqa: E402
 
 SLOT_PALETTE, SLOT_EMISSIVE = 0, 1
-SLOTS = ["Nindo_Palette", "Nindo_Emissive"]
+# el brillo del koi no usa Nindo_Emissive (x3.2): con el ACES del juego el violeta de la fase 2 salía
+# casi blanco (saturación 0.15). Cada fase lleva su material de brillo (Unity los remapea por nombre a
+# Art/Characters/Mizuchi/Mizuchi_Glow.mat y Mizuchi_Curse.mat, ver generate_assets.character_fbx_metas)
+GLOW_P1, GLOW_P2 = "Mizuchi_Glow", "Mizuchi_Curse"
+SLOTS = ["Nindo_Palette", GLOW_P1]
+# fuerza de emisión de las vistas de Blender (sin ACES): solo para que los renders de revisión se parezcan
+GLOW_STRENGTH = {GLOW_P1: 1.4, GLOW_P2: 1.3}
 
 
 # ------------------------------------------------------------------ matemática chica
@@ -79,9 +85,25 @@ def frame_from(d, up_hint=Vector((0, 0, 1))):
 
 
 # ------------------------------------------------------------------ materiales (los mismos del resto del juego)
-def materials():
-    """Slots Nindo_Palette / Nindo_Emissive con el atlas de paleta (Unity los remapea a los suyos)."""
-    return [L.get_material(n) for n in SLOTS]
+def material(name):
+    """Nindo_Palette (el del juego) o uno de los brillos del koi: el mismo atlas de paleta con la emisión
+    enchufada al color (en Unity el mapa de emisión solo tiene las muestras glow_*)."""
+    if name not in GLOW_STRENGTH:
+        return L.get_material(name)
+    m = bpy.data.materials.get(name)
+    if m:
+        return m
+    m = L.get_material(name)
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tex = next(n for n in nt.nodes if n.type == 'TEX_IMAGE')
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
+    bsdf.inputs["Emission Strength"].default_value = GLOW_STRENGTH[name]
+    return m
+
+
+def materials(slots=None):
+    return [material(n) for n in (slots or SLOTS)]
 
 
 # ------------------------------------------------------------------ constructor de mallas con pesos
@@ -92,8 +114,9 @@ class KoiBuilder:
     calculada apunta al revés se invierte el orden. Así las piezas se pueden escribir sin pensar en el
     sentido de giro y las caras de las aletas (doble cara) quedan bien de los dos lados."""
 
-    def __init__(self, name, bone_names):
+    def __init__(self, name, bone_names, slots=None):
         self.name = name
+        self.slots = list(slots or SLOTS)
         self.bm = bmesh.new()
         self.uv = self.bm.loops.layers.uv.new("UVMap")
         self.dl = self.bm.verts.layers.deform.verify()
@@ -102,12 +125,19 @@ class KoiBuilder:
 
     def v(self, co, w):
         vv = self.bm.verts.new(Vector(co))
+        self.set_w(vv, w)
+        return vv
+
+    def set_w(self, vv, w):
         # como mucho 4 huesos por vértice (Unity: maxBonesPerVertex 4) y pesos normalizados
         items = sorted(((b, x) for b, x in w.items() if x > 1e-4), key=lambda t: -t[1])[:4]
         tot = sum(x for _, x in items) or 1.0
+        vv[self.dl].clear()
         for b, x in items:
             vv[self.dl][self.gi[b]] = x / tot
-        return vv
+
+    def get_w(self, vv):
+        return {self.bone_names[i]: x for i, x in vv[self.dl].items()}
 
     def face(self, verts, color, outward=None, slot=None):
         if outward is not None:
@@ -122,7 +152,7 @@ class KoiBuilder:
             return None
         u, vv = P.uv_of(color)
         if slot is None:
-            slot = SLOT_EMISSIVE if color.startswith("glow_") else SLOT_PALETTE
+            slot = SLOT_EMISSIVE if color.startswith("glow_") and len(self.slots) > 1 else SLOT_PALETTE
         f.material_index = slot
         f.smooth = False
         for lp in f.loops:
@@ -151,7 +181,7 @@ class KoiBuilder:
         me = bpy.data.meshes.new(self.name)
         bm.to_mesh(me)
         bm.free()
-        for m in materials():
+        for m in materials(self.slots):
             me.materials.append(m)
         ob = bpy.data.objects.new(self.name, me)
         (collection or bpy.context.scene.collection).objects.link(ob)

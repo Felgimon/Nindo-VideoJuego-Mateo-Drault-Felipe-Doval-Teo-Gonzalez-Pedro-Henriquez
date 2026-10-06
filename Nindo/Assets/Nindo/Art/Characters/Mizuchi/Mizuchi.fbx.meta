@@ -12,8 +12,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: Nindo_Emissive
-    second: {fileID: 2100000, guid: 7af4a392de74164fc8fe8b24fdc8a732, type: 2}
+      name: Mizuchi_Glow
+    second: {fileID: 2100000, guid: b87ac498698ce2c31966601807c690a3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mizuchi_Curse
+    second: {fileID: 2100000, guid: 3aae82f4af6a778a497c275d5a4ad122, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

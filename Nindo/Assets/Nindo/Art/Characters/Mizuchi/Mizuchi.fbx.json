@@ -1,18 +1,23 @@
 {
  "character": "mizuchi_koi",
  "fps": 30,
- "height": 3.951,
+ "height": 3.472,
  "modelYaw": 0,
  "bones": 46,
  "tris": {
-  "Body_P1": 3824,
-  "Body_P2": 4056,
-  "Ripple": 32
+  "Body_P1": 4593,
+  "Body_P2": 4552,
+  "Ripple": 33
  },
  "meshes": {
   "Body_P1": "fase 1 (Tancho)",
   "Body_P2": "fase 2 (corrompido) y forma del dragón liberado",
-  "Ripple": "espejo de agua en la cubierta (100 % root)"
+  "Ripple": "espejo de agua 4 cm sobre la cubierta (100 % root)"
+ },
+ "materials": {
+  "Nindo_Palette": "paleta del juego",
+  "Mizuchi_Glow": "brillo de la fase 1 (filos de agua, escamas gin-rin)",
+  "Mizuchi_Curse": "brillo de la maldición (fase 2: grietas, bigotes, filos violetas)"
  },
  "clips": [
   {
@@ -23,15 +28,20 @@
    "frames": 60,
    "length": 2.0,
    "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.1,
@@ -45,9 +55,13 @@
      "fluke_R2",
      3
     ],
+    "flips": [
+     0,
+     60
+    ],
     "seam": 0.04,
     "seamStep": [
-     3.07,
+     3.06,
      3.06
     ]
    }
@@ -60,20 +74,25 @@
    "frames": 30,
    "length": 1.0,
    "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.05,
     "minZ": [
-     0.432,
+     0.433,
      "pec_L3",
      12
     ],
@@ -82,10 +101,14 @@
      "fluke_L2",
      6
     ],
+    "flips": [
+     0,
+     30
+    ],
     "seam": 0.04,
     "seamStep": [
-     8.04,
-     8.04
+     8.02,
+     8.03
     ]
    }
   },
@@ -110,6 +133,11 @@
    "apex": 0.4545,
    "activeStart": 0.5758,
    "activeEnd": 0.697,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.02,
@@ -118,7 +146,7 @@
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.5758,
@@ -135,15 +163,24 @@
     ],
     "bodyTravel": 0.6,
     "minZ": [
-     0.267,
+     0.258,
      "barbel_R2",
      19
     ],
     "maxDegPerFrame": [
-     67.6,
-     "fluke_L2",
-     23
-    ]
+     54.4,
+     "pec_R3",
+     19
+    ],
+    "flips": [
+     0,
+     33
+    ],
+    "strikePeak": [
+     19,
+     33.6
+    ],
+    "recovery": 0.19
    }
   },
   {
@@ -167,6 +204,11 @@
    "apex": 0.4074,
    "activeStart": 0.5556,
    "activeEnd": 0.6667,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.15,
@@ -175,7 +217,7 @@
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.5556,
@@ -192,15 +234,24 @@
     ],
     "bodyTravel": 0.31,
     "minZ": [
-     -0.003,
-     "whisker_L3",
-     21
+     -0.006,
+     "pec_L3",
+     23
     ],
     "maxDegPerFrame": [
-     89.0,
+     83.1,
      "pec_L3",
      15
-    ]
+    ],
+    "flips": [
+     0,
+     27
+    ],
+    "strikePeak": [
+     15,
+     64.0
+    ],
+    "recovery": 0.41
    }
   },
   {
@@ -220,6 +271,11 @@
    "apex": 0.25,
    "activeStart": 0.4167,
    "activeEnd": 0.5417,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.15,
@@ -228,7 +284,7 @@
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.4167,
@@ -240,15 +296,24 @@
     ],
     "bodyTravel": 0.31,
     "minZ": [
-     0.109,
-     "pec_L3",
-     6
+     0.088,
+     "pec_R3",
+     19
     ],
     "maxDegPerFrame": [
-     82.3,
+     83.0,
      "pec_R3",
      10
-    ]
+    ],
+    "flips": [
+     0,
+     24
+    ],
+    "strikePeak": [
+     10,
+     68.7
+    ],
+    "recovery": 0.33
    }
   },
   {
@@ -272,15 +337,20 @@
    "apex": 0.4524,
    "activeStart": 0.5476,
    "activeEnd": 0.7143,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.47,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.5476,
@@ -297,15 +367,24 @@
     ],
     "bodyTravel": 0.52,
     "minZ": [
-     0.383,
+     0.417,
      "pel_L",
-     42
+     0
     ],
     "maxDegPerFrame": [
-     105.0,
-     "pec_L3",
-     24
-    ]
+     90.5,
+     "fluke_L2",
+     26
+    ],
+    "flips": [
+     3,
+     22
+    ],
+    "strikePeak": [
+     27,
+     100.7
+    ],
+    "recovery": 0.12
    }
   },
   {
@@ -330,15 +409,20 @@
    "apex": 0.4444,
    "activeStart": 0.5556,
    "activeEnd": 0.5833,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.12,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.5556,
@@ -355,15 +439,24 @@
     ],
     "bodyTravel": 0.36,
     "minZ": [
-     0.053,
+     0.051,
      "fluke_L2",
      26
     ],
     "maxDegPerFrame": [
-     39.7,
-     "whisker_L2",
+     35.5,
+     "barbel_R1",
      20
-    ]
+    ],
+    "flips": [
+     0,
+     36
+    ],
+    "strikePeak": [
+     20,
+     32.1
+    ],
+    "recovery": 0.2
    }
   },
   {
@@ -375,15 +468,20 @@
    "length": 0.4,
    "loop": false,
    "tellFrame": 0,
-   "apexFrame": 2,
+   "apexFrame": 3,
    "contactFrame": 5,
    "activeEndFrame": 6,
    "strikeBone": "jaw",
    "kind": "parry",
    "eventFrame": 5,
-   "apex": 0.1667,
+   "apex": 0.25,
    "activeStart": 0.4167,
    "activeEnd": 0.5,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
@@ -392,27 +490,36 @@
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "activeStart": 0.4167,
-    "snapFrames": 3,
+    "snapFrames": 2,
     "ratio": [
-     17,
      25,
+     17,
      58
     ],
     "bodyTravel": 0.4,
     "minZ": [
-     0.413,
+     0.411,
      "pel_L",
      12
     ],
     "maxDegPerFrame": [
-     35.0,
-     "barbel_L2",
-     6
-    ]
+     27.5,
+     "whisker_L2",
+     5
+    ],
+    "flips": [
+     0,
+     12
+    ],
+    "strikePeak": [
+     5,
+     25.4
+    ],
+    "recovery": 0.4
    }
   },
   {
@@ -436,6 +543,11 @@
    "apex": 0.4848,
    "activeStart": 0.5455,
    "activeEnd": 0.7576,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.7,
@@ -444,7 +556,7 @@
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "holdDrift": 1.07,
@@ -454,14 +566,18 @@
     ],
     "bodyTravel": 1.4,
     "minZ": [
-     0.098,
+     0.102,
      "fluke_R2",
      15
     ],
     "maxDegPerFrame": [
-     41.0,
-     "fluke_L2",
-     37
+     27.5,
+     "jaw",
+     34
+    ],
+    "flips": [
+     0,
+     66
     ]
    }
   },
@@ -478,27 +594,36 @@
    "kind": "danger",
    "hideFrame": 22,
    "apex": 0.3333,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     -1.6,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 1.6,
     "minZ": [
-     -2.799,
-     "barbel_R2",
+     -2.791,
+     "barbel_R1",
      24
     ],
     "maxDegPerFrame": [
-     39.1,
+     36.6,
      "fluke_L2",
-     13
+     12
+    ],
+    "flips": [
+     0,
+     24
     ]
    }
   },
@@ -514,27 +639,36 @@
    "apexFrame": 14,
    "kind": "danger",
    "apex": 0.4242,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.0,
     "minZ": [
-     -2.953,
+     -2.952,
      "fluke_R2",
      7
     ],
     "maxDegPerFrame": [
-     34.0,
+     24.0,
      "fluke_L2",
      14
+    ],
+    "flips": [
+     0,
+     33
     ]
    }
   },
@@ -553,27 +687,36 @@
     40
    ],
    "activeStart": 0.0,
+   "bodyAtStart": [
+    -0.0,
+    -0.35,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
-    0.0,
-    -0.0
+    -0.35,
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
-    0.35,
-    -0.0
+    0.0,
+    0.0
    ],
    "lint": {
-    "bodyTravel": 0.64,
+    "bodyTravel": 0.6,
     "minZ": [
-     -0.535,
-     "shide_R",
-     10
+     -0.308,
+     "pec_R3",
+     43
     ],
     "maxDegPerFrame": [
-     30.7,
-     "fluke_L2",
-     22
+     31.8,
+     "shide_R",
+     43
+    ],
+    "flips": [
+     0,
+     54
     ]
    }
   },
@@ -586,22 +729,27 @@
    "length": 1.6,
    "loop": false,
    "tellFrame": 2,
-   "apexFrame": 15,
+   "apexFrame": 12,
    "contactFrame": 17,
    "activeEndFrame": 19,
-   "strikeBone": "tail",
+   "strikeBone": "fluke_L2",
    "kind": "danger",
    "hold": [
-    13,
-    15
+    10,
+    12
    ],
-   "apex": 0.3125,
+   "apex": 0.25,
    "activeStart": 0.3542,
    "activeEnd": 0.3958,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
-    0.349,
-    -0.0
+    -0.296,
+    0.156
    ],
    "bodyAtEnd": [
     -0.0,
@@ -616,19 +764,27 @@
     ],
     "bodyTravel": 1.02,
     "minZ": [
-     -1.104,
+     -1.144,
      "fluke_R2",
-     20
+     17
     ],
     "maxDegPerFrame": [
      56.6,
      "tail",
-     19
+     16
     ],
     "pop": [
-     18.5,
-     "spine_b2",
-     19
+     18.8,
+     "anal",
+     16
+    ],
+    "flips": [
+     0,
+     48
+    ],
+    "strikePeak": [
+     16,
+     65.1
     ]
    }
   },
@@ -645,27 +801,36 @@
     14,
     30
    ],
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.36,
     "minZ": [
      0.111,
      "fluke_R2",
-     15
+     14
     ],
     "maxDegPerFrame": [
-     25.1,
-     "barbel_R2",
+     24.1,
+     "barbel_L2",
      11
+    ],
+    "flips": [
+     0,
+     48
     ]
    }
   },
@@ -679,15 +844,20 @@
    "loop": false,
    "roarFrame": 76,
    "landFrame": 58,
+   "bodyAtStart": [
+    -0.0,
+    -2.6,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
-    0.0,
-    -0.0
+    -2.6,
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
-    2.6,
-    -0.0
+    0.0,
+    0.0
    ],
    "lint": {
     "bodyTravel": 2.6,
@@ -697,9 +867,13 @@
      0
     ],
     "maxDegPerFrame": [
-     34.7,
+     27.5,
      "fluke_R2",
-     59
+     2
+    ],
+    "flips": [
+     0,
+     90
     ]
    }
   },
@@ -711,15 +885,20 @@
    "frames": 14,
    "length": 0.4667,
    "loop": false,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.12,
@@ -729,9 +908,13 @@
      2
     ],
     "maxDegPerFrame": [
-     33.9,
-     "fluke_R2",
-     2
+     36.6,
+     "pec_L3",
+     1
+    ],
+    "flips": [
+     0,
+     14
     ]
    }
   },
@@ -743,27 +926,36 @@
    "frames": 21,
    "length": 0.7,
    "loop": false,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.61,
     "minZ": [
-     0.062,
+     0.069,
      "fluke_L2",
      4
     ],
     "maxDegPerFrame": [
-     29.1,
+     29.0,
      "barbel_L2",
-     2
+     1
+    ],
+    "flips": [
+     0,
+     21
     ]
    }
   },
@@ -776,15 +968,20 @@
    "length": 1.2,
    "loop": false,
    "holdsLast": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     0.05,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.05,
@@ -794,9 +991,13 @@
      26
     ],
     "maxDegPerFrame": [
-     24.2,
+     23.3,
      "barbel_R2",
-     3
+     2
+    ],
+    "flips": [
+     0,
+     36
     ]
    }
   },
@@ -809,32 +1010,41 @@
    "length": 2.4,
    "loop": true,
    "punish": true,
+   "bodyAtStart": [
+    -0.0,
+    -0.586,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
-    0.0,
-    -0.0
+    -0.586,
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
-    0.0,
-    -0.0
+    -0.586,
+    0.0
    ],
    "lint": {
-    "bodyTravel": 0.67,
+    "bodyTravel": 0.63,
     "minZ": [
-     -0.209,
+     -0.238,
      "shide_R",
-     15
+     17
     ],
     "maxDegPerFrame": [
-     24.1,
+     22.8,
      "fluke_L2",
      19
     ],
-    "seam": 0.04,
+    "flips": [
+     0,
+     72
+    ],
+    "seam": 0.056,
     "seamStep": [
-     6.08,
-     13.91
+     6.48,
+     14.18
     ]
    }
   },
@@ -851,15 +1061,20 @@
     20,
     40
    ],
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
     0.0,
-    -0.0
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
     4.7,
-    -0.0
+    0.0
    ],
    "lint": {
     "bodyTravel": 4.7,
@@ -869,9 +1084,13 @@
      0
     ],
     "maxDegPerFrame": [
-     70.3,
+     75.4,
      "seal",
      21
+    ],
+    "flips": [
+     0,
+     120
     ]
    }
   },
@@ -883,15 +1102,20 @@
    "frames": 36,
    "length": 1.2,
    "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.3,
+    0.0
+   ],
    "bodyAtContact": [
     -0.0,
-    0.0,
-    -0.0
+    0.3,
+    0.0
    ],
    "bodyAtEnd": [
     -0.0,
-    0.0,
-    -0.0
+    0.3,
+    0.0
    ],
    "lint": {
     "bodyTravel": 0.3,
@@ -901,14 +1125,18 @@
      8
     ],
     "maxDegPerFrame": [
-     29.3,
-     "fluke_L2",
-     13
+     29.0,
+     "fluke_R2",
+     4
+    ],
+    "flips": [
+     0,
+     36
     ],
     "seam": 0.04,
     "seamStep": [
-     13.5,
-     13.5
+     13.49,
+     13.49
     ]
    }
   }

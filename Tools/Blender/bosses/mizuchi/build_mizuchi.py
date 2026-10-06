@@ -6,11 +6,13 @@ Un solo comando, determinista (sin auto-weights ni azar sin semilla):
   --out DIR        carpeta de los renders de revisión (por defecto Tools/Blender/out/previews/mizuchi, ignorada por git)
   --sheets         hoja del modelo (vistas, cámara del juego, fase 1 y 2) + una hoja por clip
   --model-only     solo la hoja del modelo (iterar el modelado sin animar)
-  --clips a,b      limita las hojas de clips a esos nombres
+  --clips a,b      solo las hojas de esos clips (implica --sheets)
   --p2             las hojas de clips también con la malla de la fase 2 (corrompida)
   --export         escribe Nindo/Assets/Nindo/Art/Characters/Mizuchi/Mizuchi.fbx + Mizuchi.fbx.json
-Sin opciones hace todo (hojas + export). Después: python Tools/Unity/generate_assets.py (o solo las
-entradas de mizuchi_koi, ver el final de este archivo) para el .meta, el controller y NindoContent.
+Sin ninguna opción hace todo (hojas + export). La exportación nunca se dispara sola si se pasó alguna
+opción: '--out DIR' para revisar en otra carpeta no pisa el FBX del proyecto. Después: python
+Tools/Unity/generate_assets.py (o solo las entradas de mizuchi_koi, ver character_fbx_metas/controllers)
+para el .meta, los materiales de brillo, el controller y NindoContent.
 """
 import bpy, sys, os, math, json
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,11 +34,10 @@ def opt(name, default=None):
 
 OUT = opt("--out", os.path.join(KC.TOOLS_BLENDER, "out", "previews", "mizuchi"))
 FBX = os.path.join(KC.REPO, "Nindo", "Assets", "Nindo", "Art", "Characters", "Mizuchi", "Mizuchi.fbx")
-ALL = not any(a.startswith("--") and a not in ("--out", "--p2") for a in argv)
-DO_SHEETS = ALL or "--sheets" in argv or "--model-only" in argv
-DO_EXPORT = ALL or "--export" in argv
-MODEL_ONLY = "--model-only" in argv
 ONLY = set(opt("--clips", "").split(",")) - {""}
+MODEL_ONLY = "--model-only" in argv
+DO_EXPORT = not argv or "--export" in argv
+DO_SHEETS = not argv or "--sheets" in argv or MODEL_ONLY or bool(ONLY) or "--export" not in argv
 
 
 def build():
@@ -165,18 +166,23 @@ def sidecar(rig, results, report, st):
             e["activeStart"] = round(tm["contact"] / n, 4)
         if tm.get("activeEnd") is not None:
             e["activeEnd"] = round(tm["activeEnd"] / n, 4)
-        # desplazamiento del body (no hay root motion: el código del jefe decide el avance real)
-        M0, Mc, Mn = rig.fk(base[0]), rig.fk(base[tm.get("contact") or 0]), rig.fk(base[n])
+        # desplazamiento del body respecto de la pose de REPOSO (no del cuadro 0: BreachLand e Intro no
+        # arrancan en reposo). No hay root motion: el código del jefe decide el avance real
+        R0 = rig.head_rest["body"]
 
-        def uvec(v):
+        def uvec(f):
+            v = rig.fk(base[f])["body"].to_translation() - R0
             return [round(-v.x, 3), round(v.z, 3), round(-v.y, 3)]   # Blender -> Unity
-        e["bodyAtContact"] = uvec(Mc["body"].to_translation() - M0["body"].to_translation())
-        e["bodyAtEnd"] = uvec(Mn["body"].to_translation() - M0["body"].to_translation())
+        e["bodyAtStart"] = uvec(0)
+        e["bodyAtContact"] = uvec(tm.get("contact") or 0)
+        e["bodyAtEnd"] = uvec(n)
         e["lint"] = report.get(clip.name, {})
         clips.append(e)
     return {"character": "mizuchi_koi", "fps": 30, "height": st["height"], "modelYaw": 0, "bones": st["bones"],
             "tris": st["tris"], "meshes": {"Body_P1": "fase 1 (Tancho)", "Body_P2": "fase 2 (corrompido) y forma del dragón liberado",
-                                           "Ripple": "espejo de agua en la cubierta (100 % root)"},
+                                           "Ripple": "espejo de agua 4 cm sobre la cubierta (100 % root)"},
+            "materials": {"Nindo_Palette": "paleta del juego", KC.GLOW_P1: "brillo de la fase 1 (filos de agua, escamas gin-rin)",
+                          KC.GLOW_P2: "brillo de la maldición (fase 2: grietas, bigotes, filos violetas)"},
             "clips": clips}
 
 
