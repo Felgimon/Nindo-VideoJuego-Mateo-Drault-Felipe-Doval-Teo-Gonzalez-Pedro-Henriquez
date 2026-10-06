@@ -8,12 +8,16 @@ namespace Nindo
     /// <summary>
     /// Cámara de Nindo. Base: cámara alta en ángulo estilo Tunic (perspectiva, FOV bajo = look de
     /// diorama). Encima se suman capas de game-feel:
-    ///  * encuadre de combate (se acomoda y aleja según dónde estén los enemigos),
-    ///  * fijado (centra a Kaito y al objetivo, leve giro para dar profundidad),
+    ///  * encuadre de combate: se baja a 45° y se acomoda a los enemigos; fijado nunca más cerca de 19 m, con Kaito casi
+    ///    centrado (~5 m de suelo a la vista detrás de él) y sin girar (el giro rotaba los controles),
+    ///  * jefes: perfil propio (ICameraProfile) o distancia extra por altura, y auto-encuadre si se salen por arriba,
+    ///  * lo que avisa fuera de pantalla no mueve la cámara (la movía en plena ventana del parry): lo marca
+    ///    UI/ThreatIndicators,
     ///  * "planos" cinemáticos que se mezclan suavemente: habilidad por encima del hombro,
     ///    órbita baja del torbellino, órbita del finisher, presentación y muerte de jefes,
-    ///  * temblor por trauma (Perlin), impulsos direccionales y "punch" de FOV,
-    ///  * objetos que tapan a Kaito (árboles, techos) pasan a modo "solo sombra".
+    ///  * temblor por trauma (Perlin), impulsos direccionales y golpe de FOV amortiguado (tope ±3°),
+    ///  * lo que tapa a Kaito, al fijado o a un atacante se disuelve (CameraOcclusion),
+    ///  * el oído (AudioListener) va sobre Kaito, girado como la cámara.
     /// </summary>
     [DefaultExecutionOrder(500)]
     public class CameraDirector : MonoBehaviour
@@ -26,10 +30,15 @@ namespace Nindo
         public float fov = 30f;
         public float lookAhead = 0.35f;
         [Header("Combate")]
-        public float combatDistanceMin = 18f;
-        public float combatDistanceMax = 28f;
-        public float combatPitch = 47f;
-        public float bossExtraDistance = 3f;
+        public float combatDistanceMin = 19f;
+        public float combatDistanceMax = 26f;
+        public float combatPitch = 45f;
+        [Tooltip("Fijado: distancia = 18 + 0.5 x separación, entre estos dos")]
+        public float lockDistanceMin = 19f, lockDistanceMax = 25f;
+        [Tooltip("Jefe sin perfil propio: 0.9 m por cada metro de altura sobre 1.7, hasta esto")]
+        public float bossExtraMax = 2.5f;
+        [Tooltip("Auto-encuadre del jefe: metros que puede alejarse si la cabeza o el arma pasan el 94 % de la pantalla")]
+        public float autoFitMax = 3f;
         [Header("Suavizado")]
         public float followDamping = 7f;
         public float paramDamping = 3.5f;
@@ -47,6 +56,7 @@ namespace Nindo
         Vector3 impulse, impulseVel;
         float fovPunch, fovPunchVel;
         bool initialized;
+        Transform listener;
 
         class Shot
         {
@@ -69,7 +79,13 @@ namespace Nindo
             Cam.nearClipPlane = 0.3f;
             Cam.farClipPlane = 400f;
             gameObject.tag = "MainCamera";
-            if (GetComponent<AudioListener>() == null) gameObject.AddComponent<AudioListener>();
+            // el oído no va en la cámara (a 24-31 m de la pelea todo sonaba lejos y saltaba de volumen con cada plano
+            // cercano): va sobre Kaito. El de la escena se apaga en el acto (Destroy espera al final del frame y
+            // Unity avisaba de dos AudioListener)
+            var camEar = GetComponent<AudioListener>();
+            if (camEar != null) { camEar.enabled = false; Destroy(camEar); }
+            listener = new GameObject("[Oído]").transform;
+            listener.gameObject.AddComponent<AudioListener>();
             var data = Cam.GetUniversalAdditionalCameraData();
             if (data != null)
             {
@@ -77,12 +93,23 @@ namespace Nindo
                 data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
                 data.antialiasingQuality = AntialiasingQuality.Medium;
             }
+            if (GetComponent<CameraOcclusion>() == null) gameObject.AddComponent<CameraOcclusion>();
+            // las marcas de amenaza proyectan con la pose de la cámara de este frame: viven acá y corren después
+            if (GetComponent<ThreatIndicators>() == null) gameObject.AddComponent<ThreatIndicators>();
             distance = exploreDistance; pitch = explorePitch;
         }
 
-        void OnDestroy() { if (Game.Camera == this) Game.Camera = null; }
+        void OnDestroy()
+        {
+            if (Game.Camera == this) Game.Camera = null;
+            if (listener != null) Destroy(listener.gameObject);
+        }
 
         // ================================================================== API
+        /// <summary>
+        /// Base del movimiento: solo el giro de la zona (amortiguado al cambiar de zona). El fijado ya no gira la cámara:
+        /// rodeando a un objetivo, "arriba" cambiaba de dirección en medio de la pelea.
+        /// </summary>
         public void MovementBasis(out Vector3 forward, out Vector3 right)
         {
             Quaternion q = Quaternion.Euler(0f, yaw, 0f);
@@ -98,6 +125,13 @@ namespace Nindo
             zoneYaw = yawDeg; zonePitchOffset = pitchOffset; zoneDistanceOffset = distanceOffset;
         }
 
+        /// <summary>
+        /// Corrimiento del punto de mira en metros de mundo (amortiguado), para arenas que necesitan mostrar algo más
+        /// de un lado (p. ej. la cascada detrás de Mizuchi). Vector3.zero lo quita.
+        /// </summary>
+        public void SetFocusBias(Vector3 bias) => focusBiasTarget = bias;
+        Vector3 focusBias, focusBiasTarget;
+
         public void Shake(float amount) => trauma = Mathf.Clamp01(trauma + amount * Settings.ScreenShake);
 
         public void Impulse(Vector3 dir, float strength)
@@ -107,13 +141,22 @@ namespace Nindo
         }
 
         /// <summary>
-        /// Golpe de FOV (negativo = zoom in): un impulso al resorte que llega a 'fovDelta' en ~0.1 s. Antes el FOV
-        /// saltaba entero en un frame (el parry perfecto achicaba un 20 % de golpe todo lo que había en pantalla).
+        /// Golpe de FOV (negativo = acercar): un impulso a un resorte casi crítico (ζ 0.7) que llega a 'fovDelta' en
+        /// ~0.08 s y vuelve en ~0.3 s sin rebotar. Tope ±3° (un 10 % de zoom a FOV 30): con -7 en el remate todo lo
+        /// que había en pantalla, anillos de aviso incluidos, cambiaba de tamaño justo cuando arrancaba el siguiente.
+        /// Lo pedido se comprime (tanh) para conservar el orden entre golpes chicos y grandes, y los que alejan (dash,
+        /// Corte del Viento) van a la mitad: alejar en cada dash hacía "respirar" el encuadre. 'duration' ya no se usa:
+        /// la duración la da el resorte.
         /// </summary>
         public void Punch(float fovDelta, float duration)
         {
-            fovPunchVel += fovDelta * 24f;
+            float d = MaxPunch * (float)Math.Tanh(fovDelta / MaxPunch);
+            if (d > 0f) d *= ZoomOutPunchScale;
+            fovPunchVel += d * PunchImpulse;
         }
+        const float MaxPunch = 3f, ZoomOutPunchScale = 0.5f;
+        // resorte: ω 14 rad/s, ζ 0.7. Un impulso v0 llega a un pico de 0.0328·v0 => v0 = Δ / 0.0328
+        const float PunchStiffness = 196f, PunchDamping = 19.6f, PunchImpulse = 30.5f;
 
         public void Snap()
         {
@@ -142,6 +185,9 @@ namespace Nindo
             shots.Add(s);
             return s.id;
         }
+
+        /// <summary>¿Hay un plano cinemático mezclándose? (el encuadre de juego no es lo que se ve)</summary>
+        public bool InShot => shots.Count > 0;
 
         /// <summary>Plano fijo mirando a un punto (cinemáticas).</summary>
         public int PlayStaticShot(Vector3 pos, Vector3 lookAt, float shotFov, float duration, float blendIn = 0.8f, float blendOut = 0.8f)
@@ -204,7 +250,8 @@ namespace Nindo
             }, () => 36f, 0.12f, 6f, 0.35f);
         }
 
-        public int PlayBossIntroShot(Transform boss, float height, float duration)
+        /// <summary>Presentación de jefe: se acerca de frente y sube. La re-presentación de un reintento usa fundidos cortos.</summary>
+        public int PlayBossIntroShot(Transform boss, float height, float duration, float blendIn = 1.0f, float blendOut = 0.9f)
         {
             return PlayShot(t =>
             {
@@ -214,7 +261,7 @@ namespace Nindo
                 Vector3 pos = boss.position + fwd * Mathf.Lerp(9f, 6f, k) + right * Mathf.Lerp(2.5f, -1f, k) + Vector3.up * Mathf.Lerp(1.2f, height * 0.9f, k);
                 Vector3 look = boss.position + Vector3.up * height * 0.6f;
                 return new Pose(pos, Quaternion.LookRotation(look - pos));
-            }, () => 34f, 1.0f, duration, 0.9f);
+            }, () => 34f, blendIn, duration, blendOut);
         }
 
         public int PlayBossDeathShot(Transform boss)
@@ -236,10 +283,10 @@ namespace Nindo
             if (p == null) return;
             if (!initialized) Snap();
             float dt = Time.unscaledDeltaTime;
-            float gdt = Time.deltaTime;
 
             UpdateBaseParams(p, dt);
             ComputeBase(out var pos, out var rot);
+            UpdateAutoFit(pos, rot, dt);
             float camFov = fov;
 
             // planos cinemáticos mezclados encima
@@ -278,17 +325,29 @@ namespace Nindo
                 pos += new Vector3(Mathf.PerlinNoise(tt, 4.1f) - 0.5f, Mathf.PerlinNoise(tt, 5.3f) - 0.5f, Mathf.PerlinNoise(tt, 6.7f) - 0.5f) * 2f * maxShakeOffset * shake;
             }
 
-            // punch de FOV (resorte subamortiguado: se siente como un golpe)
-            fovPunchVel += -fovPunch * 160f * dt;
-            fovPunchVel *= Mathf.Exp(-12f * dt);
-            // dos golpes seguidos (remate y muerte) suman velocidad: tope en el más grande que se pide
-            fovPunch = Mathf.Clamp(fovPunch + fovPunchVel * dt, -7f, 7f);
-            if (Mathf.Abs(fovPunch) < 0.01f && Mathf.Abs(fovPunchVel) < 0.01f) fovPunch = 0f;
+            UpdatePunch(dt);
 
             transform.SetPositionAndRotation(pos, rot);
             Cam.fieldOfView = Mathf.Clamp(camFov + fovPunch, 10f, 80f);
             Game.FX?.Screen?.SetFocusDistance(distance);
-            UpdateOccluders(p);
+            // el oído sobre Kaito (a la altura de la cabeza) y girado como la cámara: lo que se ve a la derecha suena a
+            // la derecha
+            if (listener != null) listener.SetPositionAndRotation(p.transform.position + Vector3.up * 1.2f, rot);
+        }
+
+        void UpdatePunch(float dt)
+        {
+            // solución exacta del oscilador amortiguado en cada frame: el golpe mide lo mismo a 30, 60 o 144 fps
+            // (integrando con Euler el pico salía 15-30 % más chico y dependía del frame rate)
+            float h = Mathf.Min(dt, 0.1f);
+            float w0 = Mathf.Sqrt(PunchStiffness), a = PunchDamping * 0.5f, wd = Mathf.Sqrt(w0 * w0 - a * a);
+            float e = Mathf.Exp(-a * h), c = Mathf.Cos(wd * h), s = Mathf.Sin(wd * h);
+            float x = fovPunch, v = fovPunchVel;
+            fovPunch = e * (x * c + (v + a * x) / wd * s);
+            fovPunchVel = e * (v * c - (a * v + w0 * w0 * x) / wd * s);
+            // dos golpes seguidos (remate y muerte) suman velocidad: tope ±3° en total
+            fovPunch = Mathf.Clamp(fovPunch, -MaxPunch, MaxPunch);
+            if (Mathf.Abs(fovPunch) < 0.005f && Mathf.Abs(fovPunchVel) < 0.01f) { fovPunch = 0f; fovPunchVel = 0f; }
         }
 
         void UpdateBaseParams(PlayerController p, float dt)
@@ -297,21 +356,25 @@ namespace Nindo
             Vector3 targetFocus = ppos;
             float targetDist = exploreDistance + zoneDistanceOffset;
             float targetPitch = explorePitch + zonePitchOffset;
-            float targetYaw = zoneYaw;
             var combat = Game.Combat;
-            bool boss = combat != null && combat.ActiveBoss != null;
+            Boss boss = combat != null && combat.ActiveBoss != null && combat.ActiveBoss.IsAlive ? combat.ActiveBoss : null;
+            bool fighting = true;
 
             if (lockTarget != null)
             {
-                Vector3 t = lockTarget.position + Vector3.up;
-                float d = CombatMath.FlatDistance(t, ppos);
-                targetFocus = Vector3.Lerp(ppos, t, Mathf.Clamp01(0.42f - d * 0.005f));
-                targetDist = Mathf.Clamp(15.5f + d * 0.6f, combatDistanceMin - 1f, combatDistanceMax);
-                targetPitch = combatPitch + zonePitchOffset;
-                // giro sutil hacia el objetivo para dar profundidad
-                Vector3 baseFwd = Quaternion.Euler(0f, zoneYaw, 0f) * Vector3.forward;
-                float side = Vector3.SignedAngle(baseFwd, (t - ppos).Flat(), Vector3.up);
-                targetYaw = zoneYaw + Mathf.Clamp(side * 0.08f, -9f, 9f);
+                // nunca más cerca de 19 m (la cámara vieja, a 17 m y 47° mirando un 40 % hacia el fijado, dejaba ~2.7 m
+                // de suelo detrás de Kaito y la estocada del ninja, que arranca a 5.5 m, empezaba fuera de pantalla).
+                // El foco va al final, con la distancia y el ángulo definitivos
+                targetDist = Mathf.Clamp(18f + CombatMath.FlatDistance(lockTarget.position, ppos) * 0.5f, lockDistanceMin, lockDistanceMax);
+            }
+            else if (boss != null)
+            {
+                // sin fijar: el jefe y Kaito en cuadro. Se mira 45 % hacia el jefe, pero Kaito nunca a más de 6 m del
+                // centro (el borde de abajo está a ~7 m del punto de mira con 45°)
+                Vector3 b = boss.transform.position + Vector3.up;
+                float d = CombatMath.FlatDistance(b, ppos);
+                targetFocus = Vector3.Lerp(ppos, b, d > 0.01f ? Mathf.Min(0.45f, 6f / d) : 0f);
+                targetDist = Mathf.Clamp(combatDistanceMin + d * 0.35f, combatDistanceMin, combatDistanceMax);
             }
             else if (combat != null && combat.InCombat && combat.EngagedBounds(out var center, out var radius))
             {
@@ -319,18 +382,34 @@ namespace Nindo
                 float d = CombatMath.FlatDistance(center, ppos);
                 targetFocus = Vector3.Lerp(ppos, center, Mathf.Clamp01(0.3f - d * 0.004f));
                 targetDist = Mathf.Clamp(combatDistanceMin + (radius + d * 0.5f) * 0.55f, combatDistanceMin, combatDistanceMax);
-                targetPitch = combatPitch + zonePitchOffset;
             }
             else
             {
+                fighting = false;
                 targetFocus += p.Velocity * lookAhead;
             }
-            if (boss) targetDist += bossExtraDistance;
+            if (fighting) targetPitch = combatPitch + zonePitchOffset;
+            if (boss != null)
+            {
+                if (boss is ICameraProfile prof)
+                {
+                    targetDist += prof.CameraExtraDistance;
+                    if (prof.CameraPitch > 0f) targetPitch = prof.CameraPitch;
+                }
+                else targetDist += Mathf.Clamp(0.9f * (boss.config.height * boss.config.scale - 1.7f), 0f, bossExtraMax);
+            }
+            if (lockTarget != null) targetFocus = LockFocus(p, ppos, targetPitch, ref targetDist);
+            baseTargetDist = targetDist;
+            targetDist += fitExtra;
+
+            focusBias = CombatMath.Damp(focusBias, focusBiasTarget, 2f, dt);
+            targetFocus += focusBias;
 
             focus = CombatMath.Damp(focus, targetFocus, followDamping, dt);
             distance = CombatMath.Damp(distance, targetDist, paramDamping, dt);
             pitch = CombatMath.Damp(pitch, targetPitch, paramDamping, dt);
-            yaw = Mathf.LerpAngle(yaw, targetYaw, 1f - Mathf.Exp(-2.5f * dt));
+            // solo el giro de la zona: el fijado ya no agrega giro (rotaba la base de los controles al rodear)
+            yaw = Mathf.LerpAngle(yaw, zoneYaw, 1f - Mathf.Exp(-2.5f * dt));
             BaseYaw = yaw;
         }
 
@@ -340,69 +419,131 @@ namespace Nindo
             pos = focus - rot * Vector3.forward * distance;
         }
 
-        // ================================================================== oclusión
-        readonly RaycastHit[] hits = new RaycastHit[32];
-        readonly HashSet<Occluder> hidden = new HashSet<Occluder>();
-        readonly List<Occluder> toShow = new List<Occluder>();
-        float occluderTimer;
+        // ================================================================== fijado
+        /// <summary>Cuánto se inclina el foco hacia el fijado (fracción de la separación).</summary>
+        const float LockLean = 0.12f;
+        /// <summary>Alturas de pantalla que no pasan la cabeza del fijado (arriba) ni sus pies o los de Kaito (abajo).</summary>
+        const float LockTopV = 0.92f, LockBottomV = 0.10f;
+        /// <summary>Suelo que se quiere ver detrás de Kaito (m) y cuánto puede alejarse la cámara para lograrlo.</summary>
+        const float LockBehind = 4.5f, LockStretch = 2f;
+        /// <summary>Altura máxima del fijado que se encuadra acá: lo más alto de un jefe lo cubre el auto-encuadre.</summary>
+        const float LockHeightMax = 2.6f;
 
-        void UpdateOccluders(PlayerController p)
+        /// <summary>
+        /// Foco del fijado: Kaito casi centrado y el foco corrido hacia el objetivo solo lo justo para que su cabeza no
+        /// pase el 92 % de la pantalla y sus pies (o los de Kaito) no bajen del 10 %. Con el 40 % fijo hacia el objetivo
+        /// de antes, detrás de Kaito se veían 2.6-4.3 m de suelo y lo que atacaba por la espalda arrancaba fuera de
+        /// cuadro; así se ven ~5 m con el objetivo a 2-8 m. Si el objetivo está tan lejos hacia arriba que no se llega a
+        /// LockBehind, la cámara se aleja hasta LockStretch m más. Todo se mide en el plano vertical de la cámara (de
+        /// costado sobra pantalla: ±10 m a 21 m de distancia).
+        /// </summary>
+        Vector3 LockFocus(PlayerController p, Vector3 ppos, float pitchDeg, ref float dist)
         {
-            occluderTimer -= Time.unscaledDeltaTime;
-            if (occluderTimer > 0f) return;
-            occluderTimer = 0.1f;
-            Vector3 target = p.transform.position + Vector3.up * 0.9f;
-            Vector3 dir = target - transform.position;
-            float len = dir.magnitude - 0.6f;
-            int n = Physics.SphereCastNonAlloc(transform.position, 0.6f, dir.normalized, hits, len, ~0, QueryTriggerInteraction.Collide);
-            toShow.Clear();
-            foreach (var o in hidden) toShow.Add(o);
-            for (int i = 0; i < n; i++)
+            var e = p.LockTarget;
+            float height = e != null && e.transform == lockTarget ? e.config.height * e.config.scale : 1.7f;
+            Vector3 fwd = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            Vector3 off = (lockTarget.position - ppos).Flat();
+            float along = Vector3.Dot(off, fwd);
+            // alturas sobre el foco (que está 1 m sobre los pies de Kaito)
+            const float kFeet = -1f, kHead = 0.7f;
+            float tFeet = lockTarget.position.y - ppos.y, tHead = tFeet + Mathf.Min(height, LockHeightMax);
+            float lo = 0f, hi = 0f;
+            for (int i = 0; i <= 8; i++)
             {
-                var occ = hits[i].collider != null ? hits[i].collider.GetComponentInParent<Occluder>() : null;
-                if (occ == null) continue;
-                occ.SetHidden(true);
-                hidden.Add(occ);
-                toShow.Remove(occ);
+                // un punto a x metros del foco queda por debajo de la altura v si x <= ViewX(v); correr el foco f le resta f
+                lo = Mathf.Max(along - ViewX(dist, pitchDeg, tHead, LockTopV), -ViewX(dist, pitchDeg, kHead, LockTopV));
+                hi = Mathf.Min(along - ViewX(dist, pitchDeg, tFeet, LockBottomV), -ViewX(dist, pitchDeg, kFeet, LockBottomV));
+                float behindOk = -ViewX(dist, pitchDeg, kFeet, 0f) - LockBehind;
+                if (lo <= behindOk || i == 8) break;
+                dist += LockStretch / 8f;
             }
-            foreach (var o in toShow) { if (o != null) o.SetHidden(false); hidden.Remove(o); }
-        }
-    }
-
-    /// <summary>
-    /// Objeto que se vuelve "solo sombra" cuando tapa a Kaito. Crea un volumen trigger del tamaño
-    /// de todo el modelo (la copa de un árbol no tiene collider) en la capa "Ignore Raycast", así
-    /// solo lo detecta el sphere-cast de la cámara y no molesta a la jugabilidad ni al NavMesh.
-    /// </summary>
-    public class Occluder : MonoBehaviour
-    {
-        Renderer[] rs;
-        bool isHidden;
-
-        void Awake()
-        {
-            rs = GetComponentsInChildren<Renderer>();
-            if (rs.Length == 0) return;
-            Bounds b = rs[0].bounds;
-            for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
-            var vol = new GameObject("OccluderVolume");
-            vol.layer = 2; // Ignore Raycast
-            vol.transform.SetParent(transform, false);
-            vol.transform.SetPositionAndRotation(b.center, Quaternion.identity);
-            var box = vol.AddComponent<BoxCollider>();
-            box.isTrigger = true;
-            Vector3 s = vol.transform.lossyScale;
-            // un poco más chico que el AABB: que no se oculte por rozarlo
-            box.size = new Vector3(b.size.x / Mathf.Max(0.01f, s.x), b.size.y / Mathf.Max(0.01f, s.y), b.size.z / Mathf.Max(0.01f, s.z)) * 0.85f;
+            // si no entran los dos, manda Kaito
+            float f = Mathf.Min(Mathf.Max(along * LockLean, lo), hi);
+            return ppos + fwd * f + (off - fwd * along) * LockLean;
         }
 
-        public void SetHidden(bool h)
+        /// <summary>
+        /// Con la cámara a 'dist' del foco y 'pitchDeg' de inclinación: a qué distancia sobre el suelo (hacia adelante de
+        /// la cámara, desde el foco) un punto a 'y' m sobre el foco cae a la altura de pantalla 'v' (0 abajo, 1 arriba).
+        /// </summary>
+        float ViewX(float dist, float pitchDeg, float y, float v)
         {
-            if (h == isHidden) return;
-            isHidden = h;
-            if (rs == null) rs = GetComponentsInChildren<Renderer>();
-            foreach (var r in rs)
-                if (r != null) r.shadowCastingMode = h ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.On;
+            float pr = pitchDeg * Mathf.Deg2Rad;
+            float b = Mathf.Atan((2f * v - 1f) * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
+            return (y - dist * Mathf.Sin(pr)) / Mathf.Tan(b - pr) - dist * Mathf.Cos(pr);
+        }
+
+        // ================================================================== auto-encuadre del jefe
+        float fitExtra, fitTarget, baseTargetDist, fitCalmSince;
+        Boss fitBoss;
+        /// <summary>Segundos con el jefe quieto y bajo el 86 % antes de volver a acercarse.</summary>
+        const float FitCalmTime = 3f;
+        readonly List<Renderer> fitRenderers = new List<Renderer>();
+        readonly List<Transform> fitBones = new List<Transform>();
+
+        /// <summary>
+        /// Con un jefe en pelea se proyecta lo más alto de su cuerpo (renderers y huesos: el bounds de un skinned mesh
+        /// no sigue un arma levantada) con la pose base. Funciona como trinquete: si pasa el 94 % de la altura de la
+        /// pantalla la cámara se aleja enseguida lo justo para dejarlo en el 92 % (hasta autoFitMax), y solo se vuelve
+        /// a acercar, despacio, después de FitCalmTime s con todo bajo el 86 % y el jefe sin atacar. Antes cada martillo
+        /// levantado alejaba la cámara un 8-11 % en pleno aviso y la acercaba al bajarlo: los anillos cambiaban de
+        /// tamaño en cada ataque.
+        /// </summary>
+        void UpdateAutoFit(Vector3 pos, Quaternion rot, float dt)
+        {
+            var boss = Game.Combat != null ? Game.Combat.ActiveBoss : null;
+            if (boss == null || !boss.IsAlive) { fitTarget = 0f; fitBoss = null; }
+            else if (!InShot)
+            {
+                float now = Time.unscaledTime;
+                if (boss != fitBoss) { CacheFitParts(boss); fitCalmSince = now; }
+                float top = float.NegativeInfinity;
+                for (int i = 0; i < fitRenderers.Count; i++)
+                {
+                    var r = fitRenderers[i];
+                    // un jefe puede cambiar de malla (fase 2): solo cuenta la que está prendida
+                    if (r != null && r.enabled && r.gameObject.activeInHierarchy) top = Mathf.Max(top, r.bounds.max.y);
+                }
+                // la malla sobresale del hueso más alto (cabeza, punta del arma): un margen
+                for (int i = 0; i < fitBones.Count; i++) if (fitBones[i] != null && fitBones[i].gameObject.activeInHierarchy) top = Mathf.Max(top, fitBones[i].position.y + 0.3f);
+                if (!float.IsInfinity(top))
+                {
+                    Vector3 bp = boss.transform.position;
+                    Vector3 local = Quaternion.Inverse(rot) * (new Vector3(bp.x, top, bp.z) - pos);
+                    float tanHalf = Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
+                    if (local.z > 0.5f)
+                    {
+                        float vy = 0.5f + 0.5f * local.y / (local.z * tanHalf);
+                        // alejarse Δ sobre el eje de la cámara suma Δ a local.z: Δ para que el punto quede en 'v'. Se mide
+                        // contra la distancia actual y se resta la del encuadre sin ajuste (no se acumula mientras la
+                        // cámara todavía viaja hacia la distancia pedida)
+                        if (vy > 0.94f) fitTarget = Mathf.Max(fitTarget, Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.92f) - baseTargetDist, 0f, autoFitMax));
+                        if (vy >= 0.86f || boss.InTell || boss.State == EnemyState.Attack) fitCalmSince = now;
+                        else if (now - fitCalmSince >= FitCalmTime)
+                            fitTarget = Mathf.Min(fitTarget, Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.90f) - baseTargetDist, 0f, autoFitMax));
+                    }
+                }
+            }
+            // se aleja rápido y se acerca despacio: la vuelta, después de una pausa del jefe, no se lee como un zoom
+            fitExtra = CombatMath.Damp(fitExtra, fitTarget, fitTarget > fitExtra ? 2.5f : 0.8f, dt);
+        }
+
+        static float NeededPullBack(Vector3 local, float tanHalf, float v)
+        {
+            // por debajo del eje óptico alejarse no lo baja: se puede volver a acercar del todo
+            if (local.y <= 0f) return float.NegativeInfinity;
+            return local.y / (tanHalf * (2f * v - 1f)) - local.z;
+        }
+
+        void CacheFitParts(Boss boss)
+        {
+            fitBoss = boss;
+            fitRenderers.Clear();
+            fitBones.Clear();
+            foreach (var r in boss.GetComponentsInChildren<Renderer>())
+                if (r is SkinnedMeshRenderer || r is MeshRenderer) fitRenderers.Add(r);
+            var animator = boss.GetComponentInChildren<Animator>();
+            if (animator != null) foreach (var t in animator.GetComponentsInChildren<Transform>()) fitBones.Add(t);
         }
     }
 }

@@ -263,7 +263,10 @@ namespace Nindo
         }
     }
 
-    /// <summary>Anillo que se expande sobre el piso (ondas de choque, parry, furia).</summary>
+    /// <summary>
+    /// Anillo que se expande sobre el piso (ondas de choque, parry, furia). Se reciclan: cada parry y cada onda creaba
+    /// un GameObject nuevo y lo destruía a los 0.4 s (basura y picos de GC en las peleas largas).
+    /// </summary>
     public class RingWave : MonoBehaviour
     {
         float t, life = 0.45f, radius = 4f;
@@ -271,18 +274,29 @@ namespace Nindo
         MeshRenderer mr;
         MaterialPropertyBlock mpb;
         static Mesh ringMesh;
+        static readonly System.Collections.Generic.Stack<RingWave> free = new System.Collections.Generic.Stack<RingWave>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPool() => free.Clear();
 
         public static RingWave Spawn(Vector3 pos, float radius, Color c, float life = 0.45f)
         {
-            var go = new GameObject("RingWave");
-            go.transform.position = pos + Vector3.up * 0.06f;
-            var rw = go.AddComponent<RingWave>();
-            rw.radius = radius; rw.color = c; rw.life = life;
-            go.AddComponent<MeshFilter>().sharedMesh = RingMesh;
-            rw.mr = go.AddComponent<MeshRenderer>();
-            rw.mr.sharedMaterial = FXMaterials.Additive;
-            rw.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            rw.mpb = new MaterialPropertyBlock();
+            RingWave rw = null;
+            // los de una escena anterior ya no existen (null de Unity): se descartan
+            while (rw == null && free.Count > 0) rw = free.Pop();
+            if (rw == null)
+            {
+                var go = new GameObject("RingWave");
+                rw = go.AddComponent<RingWave>();
+                go.AddComponent<MeshFilter>().sharedMesh = RingMesh;
+                rw.mr = go.AddComponent<MeshRenderer>();
+                rw.mr.sharedMaterial = FXMaterials.Additive;
+                rw.mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rw.mpb = new MaterialPropertyBlock();
+            }
+            rw.transform.position = pos + Vector3.up * 0.06f;
+            rw.radius = radius; rw.color = c; rw.life = life; rw.t = 0f;
+            rw.gameObject.SetActive(true);
             rw.Update();
             return rw;
         }
@@ -319,31 +333,41 @@ namespace Nindo
             var c = color; c.a *= 1f - k;
             mpb.SetColor("_BaseColor", c); mpb.SetColor("_Color", c);
             mr.SetPropertyBlock(mpb);
-            if (t >= life) Destroy(gameObject);
+            if (t >= life) { gameObject.SetActive(false); free.Push(this); }
         }
     }
 
-    /// <summary>Tajo luminoso recto (corte del viento, ejecuciones).</summary>
+    /// <summary>Tajo luminoso recto (corte del viento, ejecuciones). Reciclados como los RingWave.</summary>
     public class SlashLineFX : MonoBehaviour
     {
         float t, life = 0.35f;
         LineRenderer lr;
         Color color;
+        static readonly System.Collections.Generic.Stack<SlashLineFX> free = new System.Collections.Generic.Stack<SlashLineFX>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPool() => free.Clear();
 
         public static void Spawn(Vector3 a, Vector3 b, Color c, float width = 0.35f, float life = 0.35f)
         {
-            var go = new GameObject("SlashLine");
-            var s = go.AddComponent<SlashLineFX>();
-            s.lr = go.AddComponent<LineRenderer>();
-            s.lr.positionCount = 2;
+            SlashLineFX s = null;
+            while (s == null && free.Count > 0) s = free.Pop();
+            if (s == null)
+            {
+                var go = new GameObject("SlashLine");
+                s = go.AddComponent<SlashLineFX>();
+                s.lr = go.AddComponent<LineRenderer>();
+                s.lr.positionCount = 2;
+                s.lr.sharedMaterial = FXMaterials.Additive;
+                s.lr.widthCurve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.5f, 1f), new Keyframe(1f, 0f));
+                s.lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                s.lr.numCapVertices = 2;
+            }
             s.lr.SetPosition(0, a); s.lr.SetPosition(1, b);
-            s.lr.sharedMaterial = FXMaterials.Additive;
-            s.lr.widthCurve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(0.5f, 1f), new Keyframe(1f, 0f));
             s.lr.widthMultiplier = width;
-            s.lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            s.lr.numCapVertices = 2;
-            s.color = c; s.life = life;
+            s.color = c; s.life = life; s.t = 0f;
             s.lr.startColor = c; s.lr.endColor = c;
+            s.gameObject.SetActive(true);
         }
 
         void Update()
@@ -353,7 +377,7 @@ namespace Nindo
             var c = color; c.a *= 1f - k;
             lr.startColor = c; lr.endColor = c;
             lr.widthMultiplier *= 1f + Time.unscaledDeltaTime * 2f;
-            if (t >= life) Destroy(gameObject);
+            if (t >= life) { gameObject.SetActive(false); free.Push(this); }
         }
     }
 

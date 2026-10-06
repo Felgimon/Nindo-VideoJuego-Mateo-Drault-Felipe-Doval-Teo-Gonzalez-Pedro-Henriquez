@@ -697,9 +697,9 @@ def audio_entries():
         full = A(p)
         return read_guid(full) if os.path.exists(full) else None
     team = {
-        # el silbido de los enemigos son solo los generados: su pico está medido (TellStyle.SwingLight/Heavy) y el del
-        # equipo llega a su pico ~50 ms antes y ~20 dB más bajo (además así no suenan igual que los cortes de Kaito)
-        "swing": ["Audios/SwordSwing.wav"],
+        # los silbidos (de Kaito y de los enemigos) son solo los generados: SwordSwing.wav del equipo suena ~20 dB más
+        # bajo que el resto (uno de cada cinco cortes de Kaito salía casi mudo) y llega a su pico ~50 ms antes que lo
+        # medido para los avisos (TellStyle.SwingLight/Heavy). Kaito corta agudo y los enemigos más graves.
         "clang": ["Audios/SwordClash.wav"], "parry": ["Audios/SwordClash.wav"], "hurt": ["Audios/Hurt.wav"],
         "dash": ["Audios/Dash.wav"], "finisher_hit": ["Audios/Finisher.flac"], "ui_select": ["Audios/Boton.mp3"],
         "step": ["Audios/Footsteps.wav"],
@@ -715,7 +715,9 @@ def audio_entries():
     for k, v in gen.items():
         sfx.setdefault(k, [])
         sfx[k] = sorted(set(sfx[k] + v)) if k not in ("step",) else sorted(v)
-    vols = {"swing": 0.8, "hurt": 0.9, "ui_select": 0.6, "hit": 0.9, "clang": 0.85}
+    # mezcla por niveles (con el volumen de cada llamada): avisos y parry 1.0, golpes ~0.85, silbidos de los enemigos
+    # ~0.6, cortes de Kaito ~0.5, pasos ~0.35 (AudioManager.Tier decide además pitch, voces y 2D/3D)
+    vols = {"swing": 0.8, "enemy_swing": 0.85, "enemy_swing_heavy": 0.85, "hurt": 0.9, "ui_select": 0.6, "clang": 0.85}
     entries = []
     for k in sorted(sfx):
         clips = [g(p) for p in sfx[k] if g(p)]

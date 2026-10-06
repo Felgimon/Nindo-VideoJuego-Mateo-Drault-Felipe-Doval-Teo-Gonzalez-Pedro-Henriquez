@@ -40,7 +40,7 @@ Así nadie pisa la escena del otro en Git y el mapa se regenera con un comando.
 | Campo | Qué hace |
 |---|---|
 | `debugSkipIntro` | Saltea la cinemática del secuestro y da la katana. |
-| `debugStartCheckpoint` | Arranca en un santuario: `cp_home`, `cp_fields`, `cp_forest`, `cp_wall`, `cp_garden`, `cp_dojo_gate`, `cp_mountain`, `cp_mountain_top`, `cp_lake`, `cp_lake_docks`, `cp_bamboo`, `cp_dojo`. |
+| `debugStartCheckpoint` | Arranca en un santuario: `cp_home`, `cp_fields`, `cp_forest`, `cp_wall`, `cp_garden`, `cp_dojo_gate`, `cp_mountain`, `cp_mountain_top`, `cp_lake`, `cp_lake_docks`, `cp_lake_falls`, `cp_bamboo`, `cp_bamboo_gate`, `cp_dojo`. |
 | `debugUnlockAll` | Dash y habilidades desbloqueados desde el principio. |
 
 `debugStartCheckpoint` también saltea el prólogo. La partida se guarda en un JSON en
@@ -106,6 +106,17 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 * **Filo de Ira**: jugar bien (parries, golpes, sin recibir daño) lo carga; lleno, la katana se
   prende fuego y pega más fuerte durante 9 s, y cada golpe lo estira un poco. Matar cura un poco.
 * Los enemigos atacan por turnos (*tokens*) para que las peleas grupales se lean bien.
+* **Cámara de combate**: baja a 45° y fijada nunca queda a menos de 19 m ni gira (los controles
+  no cambian de dirección); con Kaito casi centrado se ven ~5 m detrás de él. Lo que tapa a
+  Kaito, al fijado, al jefe o a quien está por pegar se disuelve con una trama (hueco en cono,
+  también en las tomas de habilidad; lo pegado a la cámara, entero). Un aviso que arranca fuera
+  de pantalla no mueve la cámara: se marca en el borde con un trazo de pincel y un ensō chico
+  (dorado = parry, rojo doble = dash). El sonido se oye desde Kaito; avisos y parry no cambian
+  de tono con la cámara lenta.
+* **Reintentos**: pasar a menos de 6 m de un santuario ya lo deja como punto de reaparición
+  (rezar además cura y guarda). Hay santuarios a la entrada de las arenas de Mizuchi y Ōzeki,
+  morir devuelve al juego en ~3,6 s y la presentación completa de cada jefe sale solo la
+  primera vez.
 
 ## HUD e interfaz ("Tinta y Bandana")
 
@@ -148,7 +159,8 @@ Nindo/Assets/Nindo/
     Combat/       tipos de ataque, CombatDirector (tokens), CharacterAnimator (CrossFade por código)
     Player/       PlayerController (+ .Combat), PlayerConfig
     Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…)
-    Camera/       CameraDirector: tomas mezclables, lock-on, shake, punch de FOV, oclusión
+    Camera/       CameraDirector (tomas mezclables, fijado, perfiles de jefe, golpe de FOV, oído sobre
+                  Kaito), CameraOcclusion (disolución de lo que tapa, shader Nindo/Occluder Fade)
     FX/           partículas, hit-stop, post-proceso en runtime (URP Volume)
     Audio/        AudioManager: música por zona/combate/jefe, ambientes, efectos con pool
     UI/           HUD, menús, diálogos (todo creado por código)
@@ -183,7 +195,7 @@ B=/ruta/a/blender   # Blender 4.x
 # props (modelos low-poly con la paleta de Nindō)
 $B -b --python Tools/Blender/build_props.py -- --export [--module props_nature] [--only id1,id2] [--preview]
 # mundo (terreno, agua, límites, vegetación, marcadores)  ~2 min
-python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan (sin Blender)
+python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan y de los límites invisibles (sin Blender)
 $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview]
 # audio (descarga los packs CC0 la primera vez)
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]

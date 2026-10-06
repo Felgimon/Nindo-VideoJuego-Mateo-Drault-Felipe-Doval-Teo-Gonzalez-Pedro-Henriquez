@@ -627,14 +627,14 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 14f7ba3a4412b1f44b4cb47402cc1e77, type: 3}
     - {fileID: 8300000, guid: 52b77f3fcf4fe98ba18b3d3a1cf88d65, type: 3}
     - {fileID: 8300000, guid: e75dd510bf111361c27cb9df09877c39, type: 3}
-    volume: 1.0
+    volume: 0.85
     pitchVariance: 0.06
     spatial: 1
   - key: enemy_swing_heavy
     clips:
     - {fileID: 8300000, guid: 0ef9db20df93c001d1c070778c1ddc36, type: 3}
     - {fileID: 8300000, guid: 29abea91c06239a4e3cb274bf06da5ad, type: 3}
-    volume: 1.0
+    volume: 0.85
     pitchVariance: 0.06
     spatial: 1
   - key: exhausted
@@ -669,7 +669,7 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 35b0bbfe6f9f0eb316101346862a2741, type: 3}
     - {fileID: 8300000, guid: 02be1b639195c741034aebf2ad0f0dc6, type: 3}
     - {fileID: 8300000, guid: acce1c4d2d7f4270e88de3b0df319a48, type: 3}
-    volume: 0.9
+    volume: 1.0
     pitchVariance: 0.06
     spatial: 1
   - key: hit_heavy
@@ -809,7 +809,6 @@ MonoBehaviour:
     spatial: 1
   - key: swing
     clips:
-    - {fileID: 8300000, guid: 3516dc99fcc9eaa43b4bd69f2bda7578, type: 3}
     - {fileID: 8300000, guid: 2551063a02711e7835d91e6fa8c33079, type: 3}
     - {fileID: 8300000, guid: ca807b8e5714ec436d16e12a10e3ae2a, type: 3}
     - {fileID: 8300000, guid: d7074b5dbe56a5f1708763dbe8957710, type: 3}

@@ -62,6 +62,13 @@ namespace Nindo
             return cp != null ? cp.spawnPoint.position : StartPoint;
         }
 
+        /// <summary>Hacia dónde mira Kaito al reaparecer (la del santuario: antes reaparecía siempre mirando al norte).</summary>
+        public Quaternion RespawnRotation()
+        {
+            var cp = Checkpoint.Get(Game.Save.checkpoint);
+            return cp != null ? cp.spawnPoint.rotation : StartRotation;
+        }
+
         // ================================================================== construcción
         public IEnumerator Build()
         {
@@ -309,6 +316,8 @@ namespace Nindo
                         break;
                 }
             }
+            // lo que también tapa la pelea aunque el manifest no lo marque (acantilados, campana, bambú joven)
+            if (Occluder.AlsoOccludes(spec.id) && go.GetComponent<Occluder>() == null) go.AddComponent<Occluder>();
             foreach (var t in go.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = Array.IndexOf(spec.tags, "nonstatic") < 0;
         }
 

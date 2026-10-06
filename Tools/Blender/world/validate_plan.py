@@ -13,8 +13,18 @@ for pid, x, z, yaw, sc in W.LANDMARKS:
         WATER_OK.append((x, z, 9.2))
 
 
+# muelles de santuarios (rectángulo de 4 x 2.2 m con el largo según el yaw)
+LANDINGS = [(x, z, math.sin(math.radians(yaw)), math.cos(math.radians(yaw)), 2.0 * sc, 1.1 * sc)
+            for pid, x, z, yaw, sc in W.CHECKPOINT_LANDINGS]
+
+
+def on_landing(x, z, pad=0.0):
+    return any(abs((x - lx) * sa + (z - lz) * ca) <= hl + pad and abs((x - lx) * ca - (z - lz) * sa) <= hw + pad
+               for lx, lz, sa, ca, hl, hw in LANDINGS)
+
+
 def on_platform(x, z):
-    if any(math.hypot(x - a, z - b) < r for a, b, r in WATER_OK):
+    if any(math.hypot(x - a, z - b) < r for a, b, r in WATER_OK) or on_landing(x, z):
         return True
     # sobre la pasarela de tablones
     return any(name == "pasarela_lago" for name in [T.path_info(x, z)[3]]) and T.path_info(x, z)[0] < -0.3
@@ -38,6 +48,52 @@ def check(kind, name, x, z, margin=0.8):
 
 
 check("Start", "", W.START[0], W.START[1])
+# cada muelle: en el lago, con fondo, y con una punta sobre la pasarela (si no, el santuario queda aislado)
+for lx, lz, sa, ca, hl, hw in LANDINGS:
+    if not T.in_lake(lx, lz) or W.WATER_LAKE - T.height(lx, lz) < 0.5:
+        problems.append(f"Muelle ({lx},{lz}) fuera del lago o con poco fondo")
+    ends = [(lx + sa * hl * k, lz + ca * hl * k) for k in (-1, 1)]
+    if not any(T.path_info(ex, ez)[3] == "pasarela_lago" and T.path_info(ex, ez)[0] < 0.3 for ex, ez in ends):
+        problems.append(f"Muelle ({lx},{lz}): ninguna punta toca la pasarela")
+# el lugar donde se reaparece (1.8 m delante del santuario) también tiene que ser piso
+for cid, x, z, yaw in W.CHECKPOINTS:
+    sx, sz = x + math.sin(math.radians(yaw)) * 1.8, z + math.cos(math.radians(yaw)) * 1.8
+    check("Reaparición", cid, sx, sz, 0.3)
+
+
+# límites invisibles (la misma grilla que build_walls): ninguna pared entre la reaparición y el eje del camino o el
+# centro del área más cercanos (el muelle del lago llegó a quedar encerrado detrás de la pared del borde de la pasarela)
+def _cross(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _segments_cross(p1, p2, q1, q2):
+    return (_cross(q1, q2, p1) > 0) != (_cross(q1, q2, p2) > 0) and (_cross(p1, p2, q1) > 0) != (_cross(p1, p2, q2) > 0)
+
+
+GX0, GX1, GZ0, GZ1 = W.MAP_BOUNDS
+for cid, x, z, yaw in W.CHECKPOINTS:
+    sx, sz = x + math.sin(math.radians(yaw)) * 1.8, z + math.cos(math.radians(yaw)) * 1.8
+    goals = [(ax, az) for name, ax, az, r, h, soft in W.AREAS]
+    for name, pts, width, ph in W.PATHS:
+        for a, b in zip(pts, pts[1:]):
+            _, t = T.seg_dist(sx, sz, *a, *b)
+            goals.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    gx, gz = min(goals, key=lambda g: math.hypot(g[0] - sx, g[1] - sz))
+    win = (min(sx, gx) - 2, min(sz, gz) - 2, max(sx, gx) + 2, max(sz, gz) + 2)
+    walls = T.wall_segments(GX0, GZ0, int((GX1 - GX0) / 2), int((GZ1 - GZ0) / 2), 2.0, window=win)
+    hit = [w for w in walls if _segments_cross((sx, sz), (gx, gz), w[0], w[1])]
+    if hit:
+        problems.append(f"Reaparición {cid} ({sx:.1f},{sz:.1f}): {len(hit)} pared(es) invisible(s) antes de ({gx:.1f},{gz:.1f})")
+# el contorno tiene que ser cerrado: una punta suelta es un hueco en la pared (cajas finas de los muelles mal cortadas)
+_ends = {}
+for a, b in T.wall_segments(GX0, GZ0, int((GX1 - GX0) / 2), int((GZ1 - GZ0) / 2), 2.0):
+    for p in (a, b):
+        k = (round(p[0], 3), round(p[1], 3))
+        _ends[k] = _ends.get(k, 0) + 1
+for (ex, ez), n in _ends.items():
+    if n == 1 and GX0 < ex < GX1 and GZ0 < ez < GZ1:
+        problems.append(f"Límites invisibles: punta suelta en ({ex:.2f},{ez:.2f})")
 for k, (x, z) in W.POINTS.items():
     check("Point", k, x, z, 0.3)
 for cid, x, z, yaw in W.CHECKPOINTS:

@@ -528,6 +528,8 @@ namespace Nindo
             if (b == null) yield break;
             b.EnterScripted();
             b.ScriptedFace(P.transform.position);
+            // reintento: la presentación entera (~6 s más el diálogo) solo la primera vez
+            if (Game.Save.HasFlag(BossSeenFlag(b.bossId))) { yield return BossReintro(b); yield break; }
             Game.Audio?.StopMusic(1.5f);
             int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 4f);
             yield return new WaitForSecondsRealtime(0.8f);
@@ -538,7 +540,35 @@ namespace Nindo
             yield return new WaitForSecondsRealtime(2.6f);
             yield return Say(b.bossId + "_intro");
             Game.Camera.CancelShot(shot);
+            Game.Save.SetFlag(BossSeenFlag(b.bossId));
+            // se guarda ya: entre la presentación y una muerte nada más guarda (reaparecer no guarda y el santuario de la
+            // entrada ya era el punto de reaparición), y al salir y Continuar se repetía la presentación entera
+            SaveSystem.Save();
             yield return new WaitForSecondsRealtime(0.3f);
+            b.ExitScripted(false);
+            b.BeginFight();
+        }
+
+        /// <summary>
+        /// Ya vio la presentación de este jefe (se reintenta después de morir): las presentaciones propias de un jefe
+        /// también lo pueden usar para su versión corta.
+        /// </summary>
+        public static string BossSeenFlag(string bossId) => "boss_seen_" + bossId;
+
+        /// <summary>
+        /// Re-presentación de 1.2 s: corte directo al jefe, rugido y a pelear (sin título ni diálogo). Corte y no fundido:
+        /// fundir 20 m en 0.35 s y volver en 0.5 s eran dos latigazos de cámara en cada reintento; la vuelta (0.7 s) es la
+        /// de cualquier plano que devuelve el control.
+        /// </summary>
+        IEnumerator BossReintro(Boss b)
+        {
+            Game.Audio?.StopMusic(0.6f);
+            int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 1.2f, 0f, 0.7f);
+            b.ScriptedPlay(b.introAnim, 0.2f);
+            Game.Audio?.Play("boss_roar", b.transform.position, 0.8f);
+            Game.Camera.Shake(0.25f);
+            yield return new WaitForSecondsRealtime(1.2f);
+            Game.Camera.CancelShot(shot);
             b.ExitScripted(false);
             b.BeginFight();
         }
@@ -637,22 +667,40 @@ namespace Nindo
             deathRoutine = StartCoroutine(DeathRoutine());
         }
 
+        // Muerte -> de vuelta a jugar en ~3.6 s (antes ~6.4): 0.8 s de caída en cámara lenta, el panel de muerte con su
+        // entrada entera pero sin la espera larga, el fundido a negro y la reaparición en 0.8 s. Morir contra un jefe es
+        // parte de aprenderlo: lo caro tiene que ser la pelea, no la espera.
+        const float DeathFall = 0.8f, DeathHold = 0.2f, RespawnFadeIn = 0.8f;
+
         IEnumerator DeathRoutine()
         {
             EndParryWatch();
             waitingDash = false; dashWatch = null;
             Game.UI.HideTutorial();
             Game.Audio?.PlayMusic("gameover", 1f, loop: false);
-            yield return new WaitForSecondsRealtime(1.4f);
-            yield return Game.UI.DeathScreen();
+            yield return new WaitForSecondsRealtime(DeathFall);
+            yield return ShortDeathScreen();
             Game.Time.ClearSlowMotion();
             Game.World.ResetAfterDeath();
-            P.RespawnAt(Game.World.RespawnPoint(), Quaternion.identity);
+            P.RespawnAt(Game.World.RespawnPoint(), Game.World.RespawnRotation());
             Zone.ForceRefresh();
             Game.Audio?.ResumeExplore(1.5f);
-            yield return new WaitForSecondsRealtime(0.4f);
-            yield return Game.UI.Fade(0f, 1.2f);
+            yield return Game.UI.Fade(0f, RespawnFadeIn);
             deathRoutine = null;
+        }
+
+        /// <summary>
+        /// El panel de muerte de la UI (entrada 1.2 s + espera 1.6 s + fundido 0.6 s) recorrido acá con la espera
+        /// acortada a DeathHold: el panel y su animación quedan como los diseñó la UI.
+        /// </summary>
+        IEnumerator ShortDeathScreen()
+        {
+            var it = Game.UI.DeathScreen();
+            while (it.MoveNext())
+            {
+                if (it.Current is WaitForSecondsRealtime w) w.waitTime = Mathf.Min(w.waitTime, DeathHold);
+                yield return it.Current;
+            }
         }
 
         public void TravelTo(string checkpointId, bool fx)
