@@ -487,7 +487,7 @@ namespace Nindo
             lastShadowAt = Time.unscaledTime;
             Game.Time?.SlowMotion(0.35f, 0.4f, 0.02f, 0.15f);
             Game.FX?.Screen?.ShadowInstant();
-            Game.UI?.ShowToast("Instante sombra", new Color(0.6f, 0.85f, 1f));
+            Game.UI?.ShowCallout("Instante sombra", new Color(0.6f, 0.85f, 1f));
         }
 
         // =============================================================== FINISHER

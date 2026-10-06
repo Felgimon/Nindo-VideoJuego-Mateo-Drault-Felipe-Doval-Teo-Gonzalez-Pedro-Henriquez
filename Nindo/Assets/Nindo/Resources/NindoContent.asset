@@ -1006,6 +1006,6 @@ MonoBehaviour:
     height: 1
   menuEyesClosed: {fileID: 21300000, guid: 191465844bd02434b82d46feb96d73c4, type: 3}
   menuEyesOpen: {fileID: 21300000, guid: 329e1b1292002c345978a06237d2d013, type: 3}
-  logo: {fileID: 0}
+  logo: {fileID: 21300000, guid: 5b0a1b2a31786cd6840f8413bab33068, type: 3}
   titleFont: {fileID: 12800000, guid: 7a8f1a2492020b71d9bb0c469f2fcd36, type: 3}
   bodyFont: {fileID: 12800000, guid: c70b761f7e5011bda908185dbafe3d16, type: 3}

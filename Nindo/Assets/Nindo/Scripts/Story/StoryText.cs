@@ -139,7 +139,7 @@ namespace Nindo
                 case "abilities":
                     return new List<DialogueLine> {
                         L(Kaito, "La bandana brilla... el espíritu del abuelo me habla."),
-                        L("Espíritu de la Bandana", "Usá mi fuerza cuando el espíritu esté lleno. Corte del Viento [1] y Torbellino de Hojas [2]."),
+                        L("Espíritu de la Bandana", "Usá mi fuerza cuando el espíritu esté lleno. Corte del Viento {Ability1} y Torbellino de Hojas {Ability2}."),
                     };
                 case "dojo_gate":
                     return new List<DialogueLine> {

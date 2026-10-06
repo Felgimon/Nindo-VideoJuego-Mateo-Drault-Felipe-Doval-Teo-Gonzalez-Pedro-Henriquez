@@ -1,8 +1,11 @@
 // HUD de Nindō: la vida es la bandana roja del abuelo, y tiene que parecer tela.
 //  * flamea: una ola suave recorre la banda y las puntas del nudo (izquierda del marco) se agitan más;
 //    los pliegues toman la luz con la misma ola;
-//  * relleno con borde vivo y estela clara del daño que se vacía despacio (lo que se perdió);
-//  * golpe: destello blanco; poca vida: latido rojo (lo calcula UIManager en _Low).
+//  * relleno con borde vivo (antialias) y estela clara del daño que se vacía despacio (lo que se perdió);
+//  * golpe: destello blanco corto (_Flash) y las puntas latiguean (_Hit); curarse: un brillo dorado
+//    recorre la banda de izquierda a derecha (_Heal); poca vida: latido rojo (UIBeat, en _Low).
+// El marco es 9-slice (el nudo no se estira): su uv.x no es lineal en pantalla, por eso la ola usa la
+// posición en el canvas. Las puntas del nudo quedan en uv.x < _TailEnd (el borde izquierdo del slice).
 // _Mode: 0 = marco (con el nudo), 1 = relleno. _T = tiempo sin escala. Basado en UI/Default.
 Shader "Nindo/UI Bandana"
 {
@@ -13,11 +16,14 @@ Shader "Nindo/UI Bandana"
         _Mode ("0 marco / 1 relleno", Float) = 1
         _Fill ("Vida", Range(0, 1)) = 1
         _Ghost ("Estela de daño", Range(0, 1)) = 0
-        _WaveAmp ("Flameo (uv)", Float) = 0.022
+        _WaveAmp ("Flameo (uv)", Float) = 0.019
         _WaveFreq ("Frecuencia (por unidad de canvas)", Float) = 0.016
         _WaveSpeed ("Velocidad", Float) = 2.4
         _TailEnd ("Fin de las puntas del nudo (uv x del marco)", Float) = 0.17
-        _Hit ("Golpe", Range(0, 1)) = 0
+        _Hit ("Golpe (latigazo de las puntas)", Range(0, 1)) = 0
+        _Flash ("Destello del golpe", Range(0, 1)) = 0
+        _Heal ("Curación: dónde va el brillo", Range(0, 1.5)) = 0
+        _HealA ("Curación: intensidad", Range(0, 1)) = 0
         _Low ("Latido de poca vida", Range(0, 1)) = 0
         _T ("Tiempo sin escala", Float) = 0
 
@@ -54,7 +60,7 @@ Shader "Nindo/UI Bandana"
         CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma target 2.0
+            #pragma target 3.0
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
             #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
@@ -82,7 +88,7 @@ Shader "Nindo/UI Bandana"
             fixed4 _Color;
             fixed4 _TextureSampleAdd;
             float4 _ClipRect;
-            float _Mode, _Fill, _Ghost, _WaveAmp, _WaveFreq, _WaveSpeed, _TailEnd, _Hit, _Low, _T;
+            float _Mode, _Fill, _Ghost, _WaveAmp, _WaveFreq, _WaveSpeed, _TailEnd, _Hit, _Flash, _Heal, _HealA, _Low, _T;
 
             v2f vert(appdata_t v)
             {
@@ -102,10 +108,12 @@ Shader "Nindo/UI Bandana"
                 // puntas del nudo: solo en el marco, más amplitud y aleteo propio
                 float tails = _Mode < 0.5 ? 1 - smoothstep(_TailEnd * 0.45, _TailEnd, i.uv.x) : 0;
                 float2 uv = i.uv;
-                uv.y += sin(phase) * _WaveAmp * (0.35 + tails * 2.6) + sin(_T * 7.3 + i.uv.x * 40) * 0.006 * tails;
-                uv.x += sin(_T * 8.1 + i.uv.y * 13) * 0.005 * tails;
+                float whip = 1 + _Hit * 1.6;
+                uv.y += sin(phase) * _WaveAmp * (0.35 + tails * 2.6) + sin(_T * 7.3 + i.uv.x * 40) * 0.006 * tails * whip;
+                uv.x += sin(_T * 8.1 + i.uv.y * 13) * 0.005 * tails * whip;
 
                 fixed4 tex = tex2D(_MainTex, uv) + _TextureSampleAdd;
+                float aa = fwidth(i.uv.x) * 1.5;
                 half3 col = tex.rgb * i.color.rgb;
                 half alpha = tex.a * i.color.a;
                 // pliegues: la luz sigue a la ola
@@ -114,19 +122,23 @@ Shader "Nindo/UI Bandana"
                 if (_Mode < 0.5)
                 {
                     col = lerp(col, col + half3(0.45, 0.02, 0.02), _Low * 0.55);
+                    col = lerp(col, half3(1, 1, 1), _Flash * 0.35);
                 }
                 else
                 {
                     float x = saturate(i.uv.x);
                     float edge = _Fill + 0.006 * sin(uv.y * 40 + _T * 5);
-                    float inside = step(x, edge) * step(0.0005, _Fill);
-                    float ghost = step(edge, x) * step(x, max(_Ghost, edge));
+                    float inside = smoothstep(-aa, aa, edge - x) * step(0.0005, _Fill);
+                    float ghost = smoothstep(-aa, aa, x - edge) * smoothstep(-aa, aa, _Ghost - x);
                     float rim = inside * (1 - smoothstep(0, 0.03, edge - x));
-                    col *= lerp(0.78, 1.12, saturate((uv.y - 0.2) * 1.5));
+                    // la banda ocupa la franja media del sprite (el margen es para el aleteo)
+                    col *= lerp(0.78, 1.12, saturate((uv.y - 0.44) * 2.6));
                     col += rim * half3(0.9, 0.35, 0.3) + _Low * half3(0.35, 0.02, 0.02);
+                    float hd = (x - _Heal) / 0.05;   // cuadrado a mano: pow() con base negativa es indefinido
+                    col += half3(1, 0.85, 0.45) * exp(-hd * hd) * _HealA * 0.9;
                     col = lerp(col, half3(1, 0.88, 0.78), ghost * 0.85);
-                    col = lerp(col, half3(1, 1, 1), _Hit * 0.75);
-                    alpha *= inside + ghost * 0.75;
+                    col = lerp(col, half3(1, 1, 1), _Flash * 0.85);
+                    alpha *= saturate(inside + ghost * 0.75);
                 }
 
                 half4 o;

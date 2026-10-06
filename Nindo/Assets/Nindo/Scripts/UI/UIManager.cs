@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,50 +6,38 @@ using UnityEngine.UI;
 namespace Nindo
 {
     /// <summary>
-    /// Toda la UI del juego, construida por código (no depende de prefabs que se rompan).
-    /// HUD con el arte del equipo: la vida es la bandana roja y el Espíritu es el dragón dorado.
+    /// Toda la UI del juego, construida por código (no depende de prefabs que se rompan), con el estilo
+    /// "Tinta y Bandana": el HUD es solo la bandana roja (vida) y el dragón dorado (Espíritu, con el Filo de
+    /// Ira en el lomo); los paneles son de pincel seco y lo elegido se marca con una cinta de bandana.
+    /// Partes: HUD (UIManager.HUD.cs), marcas sobre el mundo (UIManager.World.cs), paneles (UIManager.Panels.cs).
     /// </summary>
     public partial class UIManager : MonoBehaviour
     {
         Canvas canvas;
-        RectTransform root, hud, world, overlay;
-
-        // HUD: campos y lógica en UIManager.HUD.cs
+        RectTransform root, hud, world, overlay, screen, screenFx, story, menus;
 
         // jefe
+        RectTransform bossRoot, bossBack, bossNameRt;
         CanvasGroup bossGroup;
-        Image bossFill, bossGhost;
-        Image[] bossPosture;   // mitades izquierda y derecha: se llenan desde el centro
-        TextMeshProUGUI bossName, bossSub;
+        Image bossFill, bossGhost, bossGlow, bossHanko;
+        Image[] bossPips = new Image[0];
+        TextMeshProUGUI bossName, bossSub, bossPostureLabel;
         Boss boss;
-        float bossGhostValue = 1f;
-
-        // marcadores en mundo
-        class EnemyWidget
-        {
-            public RectTransform rt;
-            public Image hp, hpBg;
-            public Image[] pips;
-            public TextMeshProUGUI status;
-            public Enemy enemy;
-            public float visibleUntil;
-        }
-        readonly List<EnemyWidget> widgets = new List<EnemyWidget>();
-        readonly Dictionary<Enemy, EnemyWidget> widgetOf = new Dictionary<Enemy, EnemyWidget>();
-        RectTransform lockReticle;
-        Enemy lockTarget;
-        TextMeshProUGUI finisherPrompt;
-        TextMeshProUGUI interactPrompt;
-        Interactable interactTarget;
-
-        class Marker { public RectTransform rt; public TextMeshProUGUI text; public Image icon; public Enemy e; public float t, life; public Vector3 offset; }
-        readonly List<Marker> markers = new List<Marker>();
+        float bossGhostValue = 1f, bossGhostHold, bossIntro, bossFlash, bossEnrage, bossShownHp, bossLastHp, bossLastPosture;
+        readonly float[] bossPipPop = new float[8];
 
         Image fadeImage, flashImage;
         float flashT, flashDur;
         Color flashColor;
         RectTransform letterTop, letterBottom;
         float letterbox, letterboxTarget;
+
+        /// <summary>
+        /// Momentos en que el HUD y las marcas sobre el mundo no van: cinemáticas, pausa, muerte, final y
+        /// diálogos. Antes solo se miraban las cinemáticas y el HUD (y "[E] Rezar en el santuario") se veía
+        /// a través del final y de la pausa.
+        /// </summary>
+        bool HideHud => Game.InCutscene || PauseOpen || deathPanel.activeSelf || endPanel.activeSelf || DialogueOpen;
 
         void Awake()
         {
@@ -63,10 +50,17 @@ namespace Nindo
             canvas.GetComponent<CanvasScaler>().screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             canvas.transform.SetParent(transform, false);
             root = (RectTransform)canvas.transform;
-            world = UIFactory.Stretch("World", root);
+            // canvas anidados: lo que se mueve cada cuadro se reconstruye solo (ver UIFactory.Nest)
+            world = UIFactory.Stretch("World", root); UIFactory.Nest(world);
             hud = UIFactory.Stretch("HUD", root);
             hudGroup = hud.gameObject.AddComponent<CanvasGroup>();
             overlay = UIFactory.Stretch("Overlay", root);
+            // orden: barras de cine, destello y fundido, y ENCIMA del fundido los títulos, diálogos y menús
+            // (el prólogo escribe sobre negro y la muerte deja "Caíste" mientras se funde)
+            screen = UIFactory.Stretch("Letterbox", overlay); UIFactory.Nest(screen);
+            screenFx = UIFactory.Stretch("ScreenFX", overlay); UIFactory.Nest(screenFx);
+            story = UIFactory.Stretch("Story", overlay); UIFactory.Nest(story);
+            menus = UIFactory.Stretch("Menus", overlay); UIFactory.Nest(menus, true);
             BuildHUD();
             BuildBossBar();
             BuildWorldMarkers();
@@ -77,270 +71,155 @@ namespace Nindo
         void OnDestroy() { if (Game.UI == this) Game.UI = null; }
 
         // ================================================================== jefe
+        // Trazo de tinta abajo: sello rojo con las katanas, nombre y título en el mismo renglón, vida en carmesí con
+        // estela de papel y, a la derecha, la POSTURA en rombos (antes no se veía: contra un jefe no había forma de
+        // saber cuánto faltaba para quebrarlo).
         void BuildBossBar()
         {
-            var r = UIFactory.Rect("BossBar", hud, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 56), new Vector2(1100, 110));
-            bossGroup = r.gameObject.AddComponent<CanvasGroup>();
+            bossRoot = UIFactory.Rect("BossBar", hud, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 40), new Vector2(1400, 150));
+            UIFactory.Nest(bossRoot);
+            bossGroup = bossRoot.gameObject.AddComponent<CanvasGroup>();
             bossGroup.alpha = 0f;
-            bossName = UIFactory.Text("Name", r, "", 44, UIFactory.Paper, new Vector2(0, 1), new Vector2(0, 0), new Vector2(700, 56), TextAlignmentOptions.BottomLeft, true);
-            UIFactory.Outline(bossName);
-            bossSub = UIFactory.Text("Sub", r, "", 24, UIFactory.Gold, new Vector2(1, 1), new Vector2(0, -4), new Vector2(600, 40), TextAlignmentOptions.BottomRight);
-            UIFactory.Outline(bossSub, 0.15f);
-            var back = UIFactory.Image("Back", r, new Color(0.05f, 0.03f, 0.03f, 0.9f), new Vector2(0.5f, 0.5f), new Vector2(0, -10), new Vector2(1100, 26));
-            bossGhost = UIFactory.Image("Ghost", back.transform, new Color(1f, 0.9f, 0.75f, 0.8f), UIFactory.White);
-            bossGhost.type = Image.Type.Filled; bossGhost.fillMethod = Image.FillMethod.Horizontal; bossGhost.rectTransform.Fill(new Vector2(3, 3), new Vector2(-3, -3));
-            bossFill = UIFactory.Image("Fill", back.transform, new Color(0.75f, 0.1f, 0.08f), UIFactory.White);
-            bossFill.type = Image.Type.Filled; bossFill.fillMethod = Image.FillMethod.Horizontal; bossFill.rectTransform.Fill(new Vector2(3, 3), new Vector2(-3, -3));
-            // postura del jefe bajo la vida: cada parry (y cada golpe a su guardia) la llena desde el centro; llena, se
-            // quiebra y queda agotado. Los jefes no tienen las marcas de los comunes y no había forma de saber cuánto faltaba
-            var pb = UIFactory.Image("PostureBack", r, new Color(0.05f, 0.03f, 0.03f, 0.8f), new Vector2(0.5f, 0.5f), new Vector2(0, -34), new Vector2(520, 10));
-            bossPosture = new Image[2];
-            for (int i = 0; i < 2; i++)
-            {
-                var img = UIFactory.Image(i == 0 ? "PostureL" : "PostureR", pb.transform, UIFactory.Gold, UIFactory.White);
-                img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal;
-                img.fillOrigin = (int)(i == 0 ? Image.OriginHorizontal.Right : Image.OriginHorizontal.Left);
-                img.fillAmount = 0f;
-                var rt = img.rectTransform;
-                rt.anchorMin = new Vector2(i == 0 ? 0f : 0.5f, 0f); rt.anchorMax = new Vector2(i == 0 ? 0.5f : 1f, 1f);
-                rt.offsetMin = new Vector2(i == 0 ? 2f : 0f, 2f); rt.offsetMax = new Vector2(i == 0 ? 0f : -2f, -2f);
-                bossPosture[i] = img;
-            }
+            bossGlow = UIFactory.Sliced("Glow", bossRoot, UISprites.BossBarBack, new Color(1f, 0.8f, 0.35f, 0f), 76f);
+            Place(bossGlow.rectTransform, new Vector2(0f, 0f), new Vector2(-10f, -10f), new Vector2(1420, 76));
+            var back = UIFactory.Sliced("Back", bossRoot, UISprites.BossBarBack, Color.white, 56f);
+            bossBack = back.rectTransform;
+            Place(bossBack, new Vector2(0f, 0f), Vector2.zero, new Vector2(1400, 56));
+            bossGhost = BarFill("Ghost", bossBack, new Color(UIFactory.Paper.r, UIFactory.Paper.g, UIFactory.Paper.b, 0.85f));
+            bossFill = BarFill("Fill", bossBack, BossRed);
+            bossHanko = UIFactory.Centered("Hanko", bossRoot, Color.white, new Vector2(0f, 0f), new Vector2(30f, 92f), new Vector2(72, 72), UISprites.Hanko("IconBoss"));
+            bossHanko.rectTransform.localRotation = Quaternion.Euler(0, 0, -5f);
+            bossName = UIFactory.Text("Name", bossRoot, "", 58, UIFactory.Paper, new Vector2(0f, 0f), new Vector2(84f, 62f), new Vector2(820, 70), TextAlignmentOptions.BottomLeft, true);
+            UIFactory.NoWrap(bossName);
+            UIFactory.Outline(bossName, 0.2f);
+            bossNameRt = bossName.rectTransform;
+            bossSub = UIFactory.Text("Sub", bossRoot, "", 28, UIFactory.Gold, new Vector2(0f, 0f), new Vector2(300f, 70f), new Vector2(700, 40), TextAlignmentOptions.BottomLeft);
+            UIFactory.NoWrap(bossSub);
+            UIFactory.Outline(bossSub, 0.18f);
+            bossPostureLabel = UIFactory.Text("Postura", bossRoot, "Postura", 22, new Color(0.86f, 0.82f, 0.74f), new Vector2(1f, 0f), new Vector2(-200f, 70f), new Vector2(160, 30), TextAlignmentOptions.BottomRight);
+            UIFactory.Outline(bossPostureLabel, 0.18f);
+        }
+
+        static readonly Color BossRed = new Color(0.77f, 0.086f, 0.078f);   // (196,22,20)
+
+        static void Place(RectTransform rt, Vector2 anchor, Vector2 pos, Vector2 size)
+        {
+            rt.anchorMin = rt.anchorMax = anchor; rt.pivot = anchor;
+            rt.anchoredPosition = pos; rt.sizeDelta = size;
+        }
+
+        Image BarFill(string name, RectTransform parent, Color c)
+        {
+            var img = UIFactory.Image(name, parent, c, UISprites.BossBarFill != null ? UISprites.BossBarFill : UIFactory.White);
+            img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0;
+            // adentro del trazo: el borde seco del pincel queda a la vista
+            img.rectTransform.anchorMin = Vector2.zero; img.rectTransform.anchorMax = Vector2.one;
+            img.rectTransform.offsetMin = new Vector2(20f, 11f); img.rectTransform.offsetMax = new Vector2(-20f, -11f);
+            return img;
         }
 
         public void ShowBossBar(Boss b)
         {
-            boss = b; bossGhostValue = 1f;
-            foreach (var img in bossPosture) img.fillAmount = b.Posture01;
+            boss = b; bossGhostValue = 0f; bossGhostHold = 0f; bossIntro = 0f; bossEnrage = 0f; bossFlash = 0f; bossShownHp = 0f; bossLastHp = b.Health01;
+            bossLastPosture = b.Imbalance;
             bossName.text = b.title;
             bossSub.text = b.subtitle;
+            bossSub.color = UIFactory.Gold;
+            // el título va en el mismo renglón, pegado al nombre
+            float nameW = bossName.GetPreferredValues(b.title, 9999f, 70f).x;
+            bossSub.rectTransform.anchoredPosition = new Vector2(84f + nameW + 18f, 70f);
+            // rombos de postura: uno por punto de desequilibrio del jefe (4 o 5)
+            int n = Mathf.Clamp(b.config.maxImbalance, 1, bossPipPop.Length);
+            if (bossPips.Length != n)
+            {
+                foreach (var p in bossPips) if (p != null) Destroy(p.gameObject);
+                bossPips = new Image[n];
+                for (int i = 0; i < n; i++)
+                {
+                    bossPips[i] = UIFactory.Centered("Pip" + i, bossRoot, PipEmpty, new Vector2(1f, 0f), new Vector2(-22f - (n - 1 - i) * 30f, 84f), new Vector2(26, 26), UISprites.Pip);
+                }
+                bossPostureLabel.rectTransform.anchoredPosition = new Vector2(-22f - n * 30f - 4f, 70f);
+            }
         }
 
         public void HideBossBar() => boss = null;
 
+        /// <summary>El jefe se enfurece (cambio de fase): la barra destella, el título cambia a "¡Enfurecido!" y el nombre tiembla.</summary>
+        public void BossEnraged(Boss b)
+        {
+            if (b == null || b != boss) return;
+            bossEnrage = 2f;
+            bossFlash = 1f;
+            bossSub.text = "¡Enfurecido!";
+            bossSub.color = UIFactory.Crimson;
+        }
+
+        static readonly Color PipEmpty = new Color(0.27f, 0.26f, 0.29f, 1f);
+
         void UpdateBossBar(float dt)
         {
-            bool show = boss != null && boss.IsAlive && !Game.InCutscene;
-            bossGroup.alpha = Mathf.MoveTowards(bossGroup.alpha, show ? 1f : 0f, dt * 2f);
+            bool show = boss != null && boss.IsAlive && !HideHud;
+            bossGroup.SetAlpha(Mathf.MoveTowards(bossGroup.alpha, show ? 1f : 0f, dt * 3f));
             if (boss == null) return;
+            float t = Time.unscaledTime;
+            // entrada: el trazo se pinta de izquierda a derecha y después la vida "se vierte"
+            bossIntro += dt;
+            float wipe = UIAnim.OutCubic(bossIntro / 0.4f);
+            bossBack.SetSize(new Vector2(Mathf.Lerp(120f, 1400f, wipe), 56f));
             float hp = boss.Health01;
-            bossFill.fillAmount = Mathf.MoveTowards(bossFill.fillAmount, hp, dt * 2f);
-            if (hp < bossGhostValue) bossGhostValue = Mathf.MoveTowards(bossGhostValue, hp, dt * 0.3f); else bossGhostValue = hp;
+            float pour = Mathf.Clamp01((bossIntro - 0.35f) / 0.6f);
+            // lo que se perdió queda en papel medio segundo y después se vacía despacio
+            if (hp < bossLastHp - 0.0001f) { bossGhostValue = Mathf.Max(bossGhostValue, bossShownHp); bossGhostHold = 0.5f; }
+            bossLastHp = hp;
+            bossShownHp = pour < 1f ? Mathf.Min(hp, UIAnim.OutCubic(pour)) : Mathf.MoveTowards(bossShownHp, hp, dt * 2f);
+            bossGhostHold -= dt;
+            if (bossGhostHold <= 0f || pour < 1f) bossGhostValue = Mathf.MoveTowards(bossGhostValue, bossShownHp, pour < 1f ? 9f : dt * 0.35f);
+            if (bossGhostValue < bossShownHp) bossGhostValue = bossShownHp;
+            bossFill.fillAmount = bossShownHp;
             bossGhost.fillAmount = bossGhostValue;
-            bossFill.color = boss.IsExhausted ? Color.Lerp(new Color(0.75f, 0.1f, 0.08f), UIFactory.Gold, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f)) : new Color(0.75f, 0.1f, 0.08f);
-            float posture = boss.Posture01;
-            float fill = Mathf.MoveTowards(bossPosture[0].fillAmount, posture, dt * 3f);
-            // ámbar apagado que se enciende a dorado al llenarse; agotado, late dorado y blanco
-            Color pc = boss.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f))
-                : Color.Lerp(new Color(0.7f, 0.5f, 0.22f), UIFactory.Gold, posture);
-            foreach (var img in bossPosture) { img.fillAmount = fill; img.color = pc; }
-        }
 
-        // ================================================================== marcadores
-        void BuildWorldMarkers()
-        {
-            lockReticle = UIFactory.Image("Lock", world, UIFactory.Gold, new Vector2(0, 0), Vector2.zero, new Vector2(46, 46)).rectTransform;
-            lockReticle.pivot = new Vector2(0.5f, 0.5f);
-            lockReticle.localRotation = Quaternion.Euler(0, 0, 45);
-            var inner = UIFactory.Image("Inner", lockReticle, new Color(0.1f, 0.05f, 0.02f, 0.9f));
-            inner.rectTransform.Fill(new Vector2(7, 7), new Vector2(-7, -7));
-            lockReticle.gameObject.SetActive(false);
-
-            finisherPrompt = UIFactory.Text("Finisher", world, "", 30, UIFactory.Gold, new Vector2(0, 0), Vector2.zero, new Vector2(420, 60), TextAlignmentOptions.Center, true);
-            finisherPrompt.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-#if UNITY_2023_2_OR_NEWER
-            finisherPrompt.textWrappingMode = TextWrappingModes.NoWrap;   // "Ejecutar (falta Espíritu)" no entraba en un renglón
-#else
-            finisherPrompt.enableWordWrapping = false;
-#endif
-            UIFactory.Outline(finisherPrompt, 0.25f);
-            interactPrompt = UIFactory.Text("Interact", world, "", 28, UIFactory.Paper, new Vector2(0, 0), Vector2.zero, new Vector2(420, 60), TextAlignmentOptions.Center);
-            interactPrompt.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            UIFactory.Outline(interactPrompt, 0.25f);
-        }
-
-        EnemyWidget GetWidget(Enemy e)
-        {
-            if (widgetOf.TryGetValue(e, out var w)) return w;
-            w = null;
-            foreach (var x in widgets) if (x.enemy == null || !x.enemy.IsAlive || !x.enemy.gameObject.activeInHierarchy) { w = x; break; }
-            if (w == null)
+            // destello del cambio de fase / del golpe fuerte
+            bossFlash = Mathf.MoveTowards(bossFlash, 0f, dt * 2.5f);
+            bossFill.color = Color.Lerp(BossRed, Color.white, bossFlash * bossFlash);
+            if (bossEnrage > 0f)
             {
-                w = new EnemyWidget();
-                w.rt = UIFactory.Rect("EnemyBar", world, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(120, 30));
-                w.hpBg = UIFactory.Image("Bg", w.rt, new Color(0.05f, 0.03f, 0.03f, 0.85f), new Vector2(0.5f, 0), new Vector2(0, 0), new Vector2(110, 9));
-                w.hp = UIFactory.Image("Hp", w.hpBg.transform, new Color(0.85f, 0.15f, 0.1f), UIFactory.White);
-                w.hp.type = Image.Type.Filled; w.hp.fillMethod = Image.FillMethod.Horizontal;
-                w.hp.rectTransform.Fill(new Vector2(1, 1), new Vector2(-1, -1));
-                w.pips = new Image[6];
-                for (int i = 0; i < w.pips.Length; i++)
-                {
-                    var pip = UIFactory.Image("Pip" + i, w.rt, new Color(1, 1, 1, 0.2f), new Vector2(0.5f, 0), new Vector2((i - 2.5f) * 17f, 18f), new Vector2(11, 11));
-                    pip.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                    pip.rectTransform.localRotation = Quaternion.Euler(0, 0, 45);
-                    w.pips[i] = pip;
-                }
-                w.status = UIFactory.Text("Status", w.rt, "", 26, UIFactory.Gold, new Vector2(0.5f, 0), new Vector2(0, 44), new Vector2(320, 40), TextAlignmentOptions.Center, true);
-                // en un renglón: "¡DESEQUILIBRADO!" se partía en dos y crecía hasta pisar el aviso de ejecutar
-#if UNITY_2023_2_OR_NEWER
-                w.status.textWrappingMode = TextWrappingModes.NoWrap;
-#else
-                w.status.enableWordWrapping = false;
-#endif
-                UIFactory.Outline(w.status, 0.25f);
-                widgets.Add(w);
-            }
-            if (w.enemy != null) widgetOf.Remove(w.enemy);
-            w.enemy = e;
-            widgetOf[e] = w;
-            return w;
-        }
-
-        // la llama WorldMarkersLate, después de que la cámara fija su pose
-        internal void UpdateWorldMarkers(float dt)
-        {
-            var cam = Game.Camera != null ? Game.Camera.Cam : null;
-            var p = Game.Player;
-            if (cam == null || p == null) { world.gameObject.SetActive(false); return; }
-            world.gameObject.SetActive(!Game.InCutscene && !Game.IsPaused);
-            float scale = root.localScale.x > 0 ? root.localScale.x : 1f;
-
-            // barras de enemigos en combate
-            var engaged = Game.Combat != null ? Game.Combat.Engaged : null;
-            if (engaged != null)
-                foreach (var e in engaged) { if (!(e is Boss)) GetWidget(e).visibleUntil = Time.time + 1.5f; }
-            foreach (var w in widgets)
-            {
-                var e = w.enemy;
-                bool show = e != null && e.IsAlive && e.gameObject.activeInHierarchy && (Time.time < w.visibleUntil || Time.time - e.LastHitTime < 3f) && !(e is Boss);
-                Vector3 sp = show ? cam.WorldToScreenPoint(e.transform.position + Vector3.up * (e.config.height * e.config.scale + 0.35f)) : Vector3.zero;
-                if (sp.z < 0f) show = false;
-                w.rt.gameObject.SetActive(show);
-                if (!show) continue;
-                w.rt.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
-                w.hp.fillAmount = e.Health01;
-                int max = Mathf.Min(e.config.maxImbalance, w.pips.Length);
-                for (int i = 0; i < w.pips.Length; i++)
-                {
-                    w.pips[i].gameObject.SetActive(i < max);
-                    if (i < max)
-                    {
-                        w.pips[i].rectTransform.anchoredPosition = new Vector2((i - (max - 1) * 0.5f) * 17f, 18f);
-                        // las fracciones también se ven (parry perfecto +0.5, guardia imperfecta, rebote en la guardia):
-                        // un pip a medias se enciende a medias. Antes pasaba de 1 pip a quebrado sin aviso
-                        float f = Mathf.Clamp01(e.Imbalance - i);
-                        Color off = new Color(1, 1, 1, 0.18f);
-                        w.pips[i].color = f >= 0.99f ? (e.IsExhausted ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f)) : UIFactory.Gold)
-                            : f > 0.01f ? Color.Lerp(off, UIFactory.Gold, 0.25f + 0.45f * f) : off;
-                    }
-                }
-                // agotado con la postura quebrada (se lo puede ejecutar) o solo abierto tras el combo (ventana de daño)
-                w.status.text = e.PostureBroken ? "¡DESEQUILIBRADO!" : e.IsExhausted ? "¡ABIERTO!" : (e.State == EnemyState.Guard ? "<color=#9fc8ff>EN GUARDIA</color>" : "");
+                bossEnrage -= dt;
+                float shake = Mathf.Clamp01(bossEnrage - 1.6f) / 0.4f;
+                bossNameRt.anchoredPosition = new Vector2(84f, 62f) + new Vector2(Mathf.Sin(t * 70f), Mathf.Cos(t * 53f)) * 4f * shake;
+                if (bossEnrage <= 0f) { bossSub.text = boss.subtitle; bossSub.color = UIFactory.Gold; bossNameRt.anchoredPosition = new Vector2(84f, 62f); }
             }
 
-            // fijado
-            if (lockTarget != null && lockTarget.IsAlive)
+            // postura: cada rombo se llena (también de a fracciones: guardia imperfecta, golpes a la guardia);
+            // el que se completa salta. Agotado: titilan dorado y blanco y el trazo se enciende
+            float imb = boss.Imbalance;
+            bool exhausted = boss.IsExhausted;
+            for (int i = 0; i < bossPips.Length; i++)
             {
-                Vector3 sp = cam.WorldToScreenPoint(lockTarget.AimPoint);
-                lockReticle.gameObject.SetActive(sp.z > 0f);
-                lockReticle.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
-                float pulse = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 8f);
-                lockReticle.localScale = Vector3.one * pulse;
-                lockReticle.localRotation = Quaternion.Euler(0, 0, 45 + Time.unscaledTime * 30f);
+                float f = Mathf.Clamp01(imb - i);
+                if (f >= 0.99f && Mathf.Clamp01(bossLastPosture - i) < 0.99f) bossPipPop[i] = 1f;
+                bossPipPop[i] = Mathf.MoveTowards(bossPipPop[i], 0f, dt / 0.15f);
+                Color c = f >= 0.99f ? UIFactory.Gold : Color.Lerp(PipEmpty, UIFactory.Gold, f * 0.55f);
+                if (exhausted) c = Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(t * 16f));
+                bossPips[i].color = c;
+                bossPips[i].rectTransform.SetScale(1f + 0.4f * bossPipPop[i]);
             }
-            else lockReticle.gameObject.SetActive(false);
-
-            // finisher
-            var cand = p.FinisherCandidate();
-            if (cand != null && p.State != PlayerState.Finisher)
-            {
-                // mismo punto que la barra del enemigo y corrido en unidades de canvas, encima del
-                // "¡DESEQUILIBRADO!" (antes iba 1 m más arriba en el mundo: con la cámara alta eran ~40 px y se pisaban)
-                Vector3 sp = cam.WorldToScreenPoint(cand.transform.position + Vector3.up * (cand.config.height * cand.config.scale + 0.35f));
-                finisherPrompt.gameObject.SetActive(sp.z > 0f);
-                bool afford = p.Spirit >= p.config.finisherCost;
-                finisherPrompt.text = afford ? $"[{Game.Input?.Glyph(Act.Finisher)}] Ejecutar" : "<color=#888>Ejecutar (falta Espíritu)</color>";
-                finisherPrompt.rectTransform.anchoredPosition = new Vector2(sp.x, sp.y) / scale + new Vector2(0f, 96f);
-                finisherPrompt.transform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(Time.unscaledTime * 9f));
-            }
-            else finisherPrompt.gameObject.SetActive(false);
-
-            // interacción
-            if (interactTarget != null && interactTarget.isActiveAndEnabled && p.State == PlayerState.Locomotion)
-            {
-                Vector3 sp = cam.WorldToScreenPoint(interactTarget.PromptPosition);
-                interactPrompt.gameObject.SetActive(sp.z > 0f);
-                interactPrompt.text = $"[{Game.Input?.Glyph(Act.Interact)}] {interactTarget.prompt}";
-                interactPrompt.rectTransform.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
-            }
-            else interactPrompt.gameObject.SetActive(false);
-
-            // marcadores temporales (alerta "!", ataque imparable, guardia)
-            for (int i = markers.Count - 1; i >= 0; i--)
-            {
-                var m = markers[i];
-                m.t += dt;
-                if (m.e == null || m.t > m.life || !m.e.gameObject.activeInHierarchy)
-                {
-                    // el contorno usa una instancia de material propia que TMP no destruye
-                    var mat = m.text != null ? m.text.fontSharedMaterial : null;
-                    if (mat != null && m.text.font != null && mat != m.text.font.material) Destroy(mat);
-                    Destroy(m.rt.gameObject); markers.RemoveAt(i); continue;
-                }
-                Vector3 sp = cam.WorldToScreenPoint(m.e.transform.position + m.offset);
-                m.rt.gameObject.SetActive(sp.z > 0f);
-                m.rt.anchoredPosition = new Vector2(sp.x, sp.y) / scale;
-                float k = m.t / m.life;
-                float pop = k < 0.15f ? Mathf.Lerp(0.3f, 1.25f, k / 0.15f) : Mathf.Lerp(1.25f, 1f, Mathf.Clamp01((k - 0.15f) / 0.15f));
-                m.rt.localScale = Vector3.one * pop;
-                float fade = k > 0.75f ? 1f - (k - 0.75f) / 0.25f : 1f;
-                if (m.text != null) { var c = m.text.color; c.a = fade; m.text.color = c; }
-                if (m.icon != null) { var c = m.icon.color; c.a = fade; m.icon.color = c; m.rt.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(m.t * 30f) * 6f * (1f - k)); }
-            }
+            bossLastPosture = imb;
+            var gc = bossGlow.color;
+            gc.a = Mathf.MoveTowards(gc.a, exhausted ? 0.55f + 0.35f * Mathf.Sin(t * 8f) : 0f, dt * 4f);
+            bossGlow.color = gc;
         }
 
-        void AddMarker(Enemy e, string text, Color c, float size, float life)
-        {
-            if (e == null) return;
-            var t = UIFactory.Text("Marker", world, text, size, c, new Vector2(0, 0), Vector2.zero, new Vector2(160, 120), TextAlignmentOptions.Center, true);
-            t.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            UIFactory.Outline(t, 0.3f);
-            markers.Add(new Marker { rt = t.rectTransform, text = t, e = e, life = life, offset = Vector3.up * (e.config.height * e.config.scale + 1.1f) });
-        }
-
-        /// <summary>Marcador con ícono dibujado (antes eran kanji que nadie entendía: 危 y 防).</summary>
-        void AddIconMarker(Enemy e, Sprite icon, Color c, float size, float life)
-        {
-            if (e == null) return;
-            if (icon == null) { AddMarker(e, "!", c, size, life); return; }
-            var img = UIFactory.Image("Marker", world, c, Vector2.zero, Vector2.zero, new Vector2(size, size), icon);
-            img.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            // sombra oscura detrás para que se lea sobre cualquier fondo
-            var sh = UIFactory.Image("Shadow", img.transform, new Color(0, 0, 0, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(3, -3), new Vector2(size * 1.06f, size * 1.06f), icon);
-            sh.transform.SetAsFirstSibling();
-            markers.Add(new Marker { rt = img.rectTransform, icon = img, e = e, life = life, offset = Vector3.up * (e.config.height * e.config.scale + 1.2f) });
-        }
-
-        public void ShowAlertMark(Enemy e) => AddMarker(e, "!", new Color(1f, 0.85f, 0.3f), 90, 1.1f);
-        public void ShowDanger(Enemy e) => AddIconMarker(e, UISprites.Danger, new Color(1f, 0.18f, 0.1f), 92, 1.0f);
-        public void ShowGuardMark(Enemy e) => AddIconMarker(e, UISprites.Guard, new Color(0.65f, 0.85f, 1f), 58, 0.7f);
-        public void PulseImbalance(Enemy e) { if (e != null && !(e is Boss)) GetWidget(e).visibleUntil = Time.time + 3f; }
-        public void SetLockTarget(Enemy e) => lockTarget = e;
-        public void SetInteractPrompt(Interactable i) => interactTarget = i;
-        public void HideInteractPrompt() => interactTarget = null;
-
-        // ================================================================== overlay
+        // ================================================================== overlay (letterbox, destello, fundido)
         void BuildOverlay()
         {
-            letterTop = UIFactory.Image("LetterTop", overlay, Color.black).rectTransform;
+            letterTop = UIFactory.Image("LetterTop", screen, Color.black).rectTransform;
             letterTop.anchorMin = new Vector2(0, 1); letterTop.anchorMax = new Vector2(1, 1); letterTop.pivot = new Vector2(0.5f, 1); letterTop.sizeDelta = new Vector2(0, 0);
-            letterBottom = UIFactory.Image("LetterBottom", overlay, Color.black).rectTransform;
+            letterBottom = UIFactory.Image("LetterBottom", screen, Color.black).rectTransform;
             letterBottom.anchorMin = new Vector2(0, 0); letterBottom.anchorMax = new Vector2(1, 0); letterBottom.pivot = new Vector2(0.5f, 0); letterBottom.sizeDelta = new Vector2(0, 0);
-            flashImage = UIFactory.Image("Flash", overlay, new Color(1, 1, 1, 0));
+            flashImage = UIFactory.Image("Flash", screenFx, new Color(1, 1, 1, 0));
             flashImage.rectTransform.Fill(Vector2.zero, Vector2.zero);
-            fadeImage = UIFactory.Image("Fade", overlay, new Color(0, 0, 0, 0));
+            fadeImage = UIFactory.Image("Fade", screenFx, new Color(0, 0, 0, 0));
             fadeImage.rectTransform.Fill(Vector2.zero, Vector2.zero);
-            fadeImage.transform.SetAsLastSibling();
         }
 
         public void ScreenFlash(Color c, float duration)
@@ -350,7 +229,11 @@ namespace Nindo
 
         public void Letterbox(bool on) => letterboxTarget = on ? 1f : 0f;
 
-        public void SetFade(float alpha) => fadeImage.color = new Color(0, 0, 0, alpha);
+        public void SetFade(float alpha)
+        {
+            fadeImage.color = new Color(0, 0, 0, alpha);
+            fadeImage.enabled = alpha > 0.001f;
+        }
 
         public IEnumerator Fade(float to, float duration)
         {
@@ -367,13 +250,21 @@ namespace Nindo
 
         void UpdateOverlay(float dt)
         {
-            flashT += dt;
-            float k = Mathf.Clamp01(flashT / flashDur);
-            var fc = flashColor; fc.a *= 1f - k; flashImage.color = fc;
-            letterbox = Mathf.MoveTowards(letterbox, letterboxTarget, dt * 2.5f);
-            float h = 120f * Mathf.SmoothStep(0f, 1f, letterbox);
-            letterTop.sizeDelta = new Vector2(0, h);
-            letterBottom.sizeDelta = new Vector2(0, h);
+            if (flashT < flashDur)
+            {
+                flashT += dt;
+                float k = Mathf.Clamp01(flashT / flashDur);
+                var fc = flashColor; fc.a *= 1f - k; flashImage.color = fc;
+                flashImage.enabled = fc.a > 0.001f;
+            }
+            else if (flashImage.enabled) flashImage.enabled = false;
+            if (!Mathf.Approximately(letterbox, letterboxTarget))
+            {
+                letterbox = Mathf.MoveTowards(letterbox, letterboxTarget, dt * 2.5f);
+                float h = 120f * Mathf.SmoothStep(0f, 1f, letterbox);
+                letterTop.sizeDelta = new Vector2(0, h);
+                letterBottom.sizeDelta = new Vector2(0, h);
+            }
         }
 
         void Update()
@@ -388,6 +279,12 @@ namespace Nindo
 
     static class RectExt
     {
+        // solo si cambia: asignar el mismo valor igual marca sucio el canvas y se rehacía la malla cada cuadro
+        public static void SetAlpha(this CanvasGroup g, float a) { if (g.alpha != a) g.alpha = a; }
+        public static void SetPos(this RectTransform rt, Vector2 p) { if (rt.anchoredPosition != p) rt.anchoredPosition = p; }
+        public static void SetSize(this RectTransform rt, Vector2 s) { if (rt.sizeDelta != s) rt.sizeDelta = s; }
+        public static void SetScale(this Transform t, float s) { var v = new Vector3(s, s, s); if (t.localScale != v) t.localScale = v; }
+
         public static void Fill(this RectTransform rt, Vector2 offsetMin, Vector2 offsetMax)
         {
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(0.5f, 0.5f);

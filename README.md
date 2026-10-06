@@ -1,4 +1,4 @@
-# Nindō 忍道
+# Nindō — el camino ninja
 
 Juego de acción ninja low‑poly con cámara elevada (estilo *Tunic*), hecho en Unity por
 Felipe Doval, Teo González, Mateo Drault y Pedro Henríquez.
@@ -97,14 +97,44 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 * **Aviso de cada golpe**: un anillo de tinta (ensō) se dibuja alrededor del atacante y se
   cierra justo cuando hay que apretar; un toc de madera (hyōshigi) suena a tiempo para
   reaccionar de oído. Dorado = parry; rojo dentado = no se desvía, dash.
-* **Ataques imparables (anillo rojo dentado + zona roja)**: no se desvían; se esquivan con el
-  dash cuando el anillo se cierra. La esquiva perfecta también ralentiza el tiempo (como mucho
+* **Ataques imparables (anillo rojo dentado + zona roja, y un rombo rojo con ">>" sobre el
+  enemigo)**: no se desvían; se esquivan con el dash cuando el anillo se cierra. La esquiva perfecta también ralentiza el tiempo (como mucho
   una vez cada 6 s).
 * **Espíritu (maná)**: se llena con parries y golpes; lo gastan el dash, el remate y las dos
   habilidades. Sin Espíritu igual hay un dash *cansado* (más corto, con espera de 1,2 s). Al usar una habilidad la cámara se mueve detrás de Kaito (Corte del Viento:
   sobre el hombro; Torbellino: órbita baja).
-* **Filo de Ira**: con poca vida, Kaito pega más fuerte. Matar cura un poco.
+* **Filo de Ira**: jugar bien (parries, golpes, sin recibir daño) lo carga; lleno, la katana se
+  prende fuego y pega más fuerte durante 9 s, y cada golpe lo estira un poco. Matar cura un poco.
 * Los enemigos atacan por turnos (*tokens*) para que las peleas grupales se lean bien.
+
+## HUD e interfaz ("Tinta y Bandana")
+
+El HUD es **solo** el arte del equipo: la **bandana roja** (vida) y el **dragón dorado**
+(Espíritu). No hay barras aparte; todo se lee en ellos:
+
+* **Dragón**: el oro es el Espíritu. El **lomo** se enciende como brasa de la cola a la cabeza
+  a medida que se carga el Filo de Ira (aunque el Espíritu esté vacío); listo para encenderse le
+  salen lenguas de fuego y le arde el ojo; activo, el dragón arde y las llamas se retiran hacia
+  la cola con el tiempo que queda; si un golpe le saca carga, el tramo perdido se vuelve ceniza
+  (brasas grises y un lomo apagado que se vacía). Si algo no alcanza, se raya en rojo lo que falta; sin Espíritu
+  para el dash el oro se apaga y el dragón entrecierra el ojo (lo cierra mientras el dash cansado
+  se recupera). Destella al pasar los umbrales del dash, el remate y las habilidades.
+* **Bandana**: flamea, destella al recibir un golpe (lo perdido queda claro y se vacía despacio),
+  brilla al curarse y late con poca vida (`UI/UIBeat`, el mismo latido para todo).
+* Arriba a la derecha, fuera del combate: los tres **sellos** (pictogramas: montaña, olas, bambú)
+  y el **objetivo**. En la pelea se apartan: quedan solo la bandana y el dragón.
+* Sobre los enemigos: barra de tinta con los rombos de **postura**, el **kunai dorado** del
+  fijado (arriba, nunca sobre el cuerpo: ahí se lee la anticipación del golpe), la cinta de
+  **Ejecutar** con su tecla y las marcas (alerta, imparable, guardia). Los avisos de combate de
+  Kaito ("¡FILO DE IRA!", "¡Parry!") salen sobre su cabeza; los de progreso, en cola debajo
+  de la franja del HUD (donde va el título de zona, al que esperan).
+* En los textos de consejos y diálogos, `{Parry}`, `{Attack}`... (nombres de `Act`) se dibujan
+  como la tecla del dispositivo de ese momento y cambian si se pasa del teclado al mando.
+* Sin kanji ni símbolos japoneses: los sellos de los títulos de zona son pictogramas en rojo.
+  Las teclas se dibujan según el dispositivo (teclado, Xbox o PlayStation).
+* **Opciones**: volúmenes, sacudida, cámara lenta, vibración, pantalla completa, calidad y
+  **Marcas en enemigos** (todas / solo imparables / ninguna, `Settings.CombatAids`): solo las
+  marcas de la UI sobre los enemigos; los anillos ensō y las zonas del piso se ven siempre.
 
 ---
 
@@ -157,6 +187,8 @@ python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan
 $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview]
 # audio (descarga los packs CC0 la primera vez)
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]
+# kit de UI: paneles de pincel, cintas, teclas, pictogramas, sellos (Resources/UI)
+python3 Tools/UI/build_ui_art.py [--preview carpeta]
 # metas, materiales, controllers, NindoContent, escenas  (correr después de cualquiera de los anteriores)
 python3 Tools/Unity/generate_assets.py
 # vocales con macrón en las fuentes (lo llama también generate_assets.py; necesita fontTools)

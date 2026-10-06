@@ -74,27 +74,85 @@ def textures():
 
 
 def ui_sprites():
-    """Recorta el arte del HUD del equipo (bandana roja y dragón dorado)."""
+    """Recorta el arte del HUD del equipo (bandana roja y dragón dorado) y procesa el logo."""
     from PIL import Image
     os.makedirs(P_UI, exist_ok=True)
     out = {}
-    def crop_pair(frame_src, fill_src, name, pad=6):
+    def crop_pair(frame_src, fill_src, name, pad_x=6, pad_top=6, pad_bottom=6, frame_border=(0, 0, 0, 0)):
+        # margen vertical propio: los shaders del HUD ondulan el arte (la bandana flamea, el dragón nada y
+        # le salen llamas del lomo) y con 6 px los cuernos y el fuego se cortaban contra el borde del quad
         f = Image.open(A(frame_src)).convert("RGBA")
         l = Image.open(A(fill_src)).convert("RGBA")
         fb, lb = f.getbbox(), l.getbbox()
-        ub = (min(fb[0], lb[0]) - pad, min(fb[1], lb[1]) - pad, max(fb[2], lb[2]) + pad, max(fb[3], lb[3]) + pad)
-        fc = f.crop(ub)
-        lc = l.crop((lb[0], ub[1], lb[2], ub[3]))
-        fp = os.path.join(P_UI, f"{name}_Frame.png"); fc.save(fp)
-        lp = os.path.join(P_UI, f"{name}_Fill.png"); lc.save(lp)
-        W = ub[2] - ub[0]
-        area = [(lb[0] - ub[0]) / W, 0.0, (lb[2] - lb[0]) / W, 1.0]
-        for p in (fp, lp):
-            write_meta(p, texture_meta(sprite=True, compress=False, max_size=2048), force=True)
+        top, bot = min(fb[1], lb[1]), max(fb[3], lb[3])
+        x0, x1 = min(fb[0], lb[0]) - pad_x, max(fb[2], lb[2]) + pad_x
+        W, H = x1 - x0, bot - top + pad_top + pad_bottom
+        def crop(img, cx0, cx1):
+            c = Image.new("RGBA", (cx1 - cx0, H), (0, 0, 0, 0))
+            c.paste(img.crop((cx0, top, cx1, bot)), (0, pad_top))
+            return c
+        fp = os.path.join(P_UI, f"{name}_Frame.png"); crop(f, x0, x1).save(fp)
+        lp = os.path.join(P_UI, f"{name}_Fill.png"); crop(l, lb[0], lb[2]).save(lp)
+        area = [(lb[0] - x0) / W, 0.0, (lb[2] - lb[0]) / W, 1.0]
+        write_meta(fp, texture_meta(sprite=True, compress=False, max_size=2048, border=frame_border), force=True)
+        write_meta(lp, texture_meta(sprite=True, compress=False, max_size=2048), force=True)
         out[name] = (ensure_guid(fp), ensure_guid(lp), area)
-    crop_pair("Sprites/EmptyHealthBar.png", "Sprites/HealthBarFull.png", "Health")
-    crop_pair("Sprites/dragonBar.png", "Sprites/dragonFill.png", "Spirit")
+    # bandana: 9-slice (nudo a la izquierda, punta en diagonal a la derecha) para que el nudo no se estire
+    # al ancho del HUD; 30 px arriba y abajo para el aleteo de las puntas
+    crop_pair("Sprites/EmptyHealthBar.png", "Sprites/HealthBarFull.png", "Health", pad_top=30, pad_bottom=30, frame_border=(252, 0, 60, 0))
+    # dragón: más aire arriba (llamas del Filo de Ira sobre el lomo) que abajo (solo la ondulación)
+    crop_pair("Sprites/dragonBar.png", "Sprites/dragonFill.png", "Spirit", pad_top=64, pad_bottom=28)
+    spirit_profile(os.path.join(P_UI, "Spirit_Frame.png"))
+    out["Logo"] = logo()
     return out
+
+
+def spirit_profile(frame_png, n=512):
+    """Perfil del dragón a lo largo del cuerpo (Resources/UI/SpiritProfile.png, n x 4): R = alto de la cresta,
+    G = piel del lomo (sin las púas, suavizada), B = panza; en v del sprite (0 abajo). Las llamas del Filo de
+    Ira suben desde G (Nindo/UI Spirit) y las brasas del HUD salen de la cresta (se lee en C#)."""
+    from PIL import Image
+    import numpy as np
+    a = np.asarray(Image.open(frame_png).convert("RGBA"))[..., 3] > 128
+    H, W = a.shape
+    has = a.any(0)
+    idx = np.arange(W)
+    def fill_gaps(v):
+        return np.interp(idx, idx[has], v[has])
+    top = fill_gaps(1 - np.argmax(a, 0) / (H - 1))
+    bottom = fill_gaps(1 - (H - 1 - np.argmax(a[::-1], 0)) / (H - 1))
+    # piel: mínimo móvil de 31 px (saca las púas de la cresta) y suavizado gaussiano
+    pad = np.pad(top, 15, mode="edge")
+    skin = np.min(np.lib.stride_tricks.sliding_window_view(pad, 31), axis=1)
+    k = np.exp(-0.5 * (np.arange(-30, 31) / 10.0) ** 2); k /= k.sum()
+    skin = np.convolve(np.pad(skin, 30, mode="edge"), k, mode="valid")
+    xs = np.linspace(0, W - 1, n)
+    rows = np.stack([np.interp(xs, idx, c) for c in (top, skin, bottom)], -1)
+    img = np.repeat((np.clip(rows, 0, 1) * 255 + 0.5).astype(np.uint8)[None], 4, 0)
+    os.makedirs(os.path.join(P_RES, "UI"), exist_ok=True)
+    p = os.path.join(P_RES, "UI", "SpiritProfile.png")
+    Image.fromarray(img, "RGB").save(p)
+    # datos, no color: lineal, sin mips ni compresión, y legible desde C# (las brasas)
+    write_meta(p, texture_meta(srgb=False, mips=False, compress=False, readable=True, max_size=512, alpha_transparency=False), force=True)
+
+
+def logo():
+    """Logo de pincel del equipo (Sprites/Logo.jpg, blanco sobre negro) -> Art/UI/Logo.png: blanco con el
+    negro vuelto transparente, para teñirlo (tinta en el menú, papel en la pausa, oro en el final)."""
+    from PIL import Image
+    import numpy as np
+    src = Image.open(A("Sprites/Logo.jpg")).convert("L")
+    a = np.clip((np.asarray(src).astype(np.float32) / 255 - 0.15) / 0.7, 0, 1)
+    img = np.zeros(a.shape + (4,), np.uint8)
+    img[..., :3] = 255
+    img[..., 3] = (a * 255).astype(np.uint8)
+    im = Image.fromarray(img, "RGBA")
+    bb = im.getbbox()
+    im = im.crop((max(0, bb[0] - 8), max(0, bb[1] - 8), min(im.width, bb[2] + 8), min(im.height, bb[3] + 8)))
+    p = os.path.join(P_UI, "Logo.png")
+    im.save(p)
+    write_meta(p, texture_meta(sprite=True, compress=False, max_size=2048), force=True)
+    return ensure_guid(p)
 
 
 def fonts():
@@ -843,7 +901,7 @@ MonoBehaviour:
     height: 1
   menuEyesClosed: {sprite(eyes_closed)}
   menuEyesOpen: {sprite(eyes_open)}
-  logo: {{fileID: 0}}
+  logo: {sprite(sprites['Logo'])}
   titleFont: {ref(fonts_g.get('ShipporiMinchoB1-ExtraBold.ttf'), 12800000, 3)}
   bodyFont: {ref(fonts_g.get('ZenMaruGothic-Bold.ttf'), 12800000, 3)}
 """
