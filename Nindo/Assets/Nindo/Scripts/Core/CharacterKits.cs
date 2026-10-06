@@ -122,7 +122,12 @@ namespace Nindo
                 result = smr;
             }
             Object.Destroy(inst);
-            if (result == null) return null;
+            if (result == null)
+            {
+                // no encajó: los huesos que ya se colgaron del personaje se van con el resto del kit
+                foreach (var (bone, _) in roots) Object.Destroy(bone.gameObject);
+                return null;
+            }
 
             if (roots.Exists(r => r.bone.name.StartsWith(ChainPrefix)))
             {
