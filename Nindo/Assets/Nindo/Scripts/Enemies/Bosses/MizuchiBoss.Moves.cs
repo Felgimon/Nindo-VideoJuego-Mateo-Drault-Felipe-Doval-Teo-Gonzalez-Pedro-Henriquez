@@ -34,7 +34,8 @@ namespace Nindo
         const float JetHalf = 0.75f, JetLock = 0.75f, SweepLock = 1.0f, SweepHalf = 30f, SweepTime = 0.8f;
         // el abanico: relleno (MizuchiMarks.ShowWedge) y sus dos bordes; el borde donde arranca el barrido, entero
         const int SweepLanes = 2;
-        static readonly Color AimColor = new Color(0.55f, 0.9f, 1f);
+        // celeste = por acá no pega (los canales de la ola); no se usa para nada que lastime
+        static readonly Color SafeColor = new Color(0.55f, 0.9f, 1f);
         bool jetLocked, jetFired, jetSwung;
         Vector3 jetOrigin, jetDir;
         float sweepSign = 1f;
@@ -378,12 +379,12 @@ namespace Nindo
             {
                 if (toFire > (sweep ? SweepLock : JetLock))
                 {
-                    // apunta: una línea tenue de agua (todavía no es la zona roja: se mueve con él)
+                    // apunta: una línea roja fina y tenue que lo sigue (todavía no es la zona: se mueve con él)
                     if (target != null) Face(target.transform.position, 1.4f, dt);
                     Vector3 o = Ground(Snout);
-                    if (aimMark == null) aimMark = marks.Lane(o, transform.forward, len, 0.6f, AimColor);
+                    if (aimMark == null) aimMark = marks.Lane(o, transform.forward, len, 0.5f, TellStyle.Crimson);
                     else aimMark.Aim(o, transform.forward, len);
-                    aimMark.SetAlpha(0.35f);
+                    aimMark.SetAlpha(0.3f);
                     aimMark.Progress = 1f;
                 }
                 else LockJet(a, sweep, len);
@@ -433,6 +434,7 @@ namespace Nindo
         void ClearJetMarks()
         {
             jetLocked = false;
+            if (marks == null) return;
             if (aimMark != null) { marks.Finish(aimMark, false); aimMark = null; }
             for (int i = 0; i < sweepMarks.Length; i++) { marks.Finish(sweepMarks[i], false); sweepMarks[i] = null; }
             marks?.HideWedge();
@@ -767,7 +769,7 @@ namespace Nindo
                 float half = Mathf.Min(RailRadius - 0.1f, 13.5f - Mathf.Abs(gaps[i]));
                 float top = Mathf.Min(BandNear, half);
                 Vector3 from = Center + North * top + East * gaps[i];
-                laneMarks[i] = marks.Lane(from, -North, top + half, GapHalf * 2f, AimColor);
+                laneMarks[i] = marks.Lane(from, -North, top + half, GapHalf * 2f, SafeColor);
                 laneMarks[i].SetAlpha(0.45f);
                 laneMarks[i].Progress = 1f;
             }
