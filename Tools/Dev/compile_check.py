@@ -16,6 +16,7 @@ import argparse
 import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -60,13 +61,18 @@ def main():
     # analizadores/generadores con ruta relativa
     text = re.sub(r'(<Analyzer Include=")([^"]+)(")', absref, text)
 
+    # carpeta temporal propia que se borra al terminar: con varios agentes compilando seguido, los
+    # restos (DLL + obj, ~4 MB por corrida) llegaban a llenar el disco
     tmp = tempfile.mkdtemp(prefix="nindo_cc_")
-    proj = os.path.join(tmp, "Check.csproj")
-    open(proj, "w", encoding="utf-8").write(text)
-    r = subprocess.run(["dotnet", "msbuild", proj, "-t:Build", "-nologo", "-v:q",
-                        "-p:OutputPath=" + os.path.join(tmp, "out") + os.sep,
-                        "-p:BaseIntermediateOutputPath=" + os.path.join(tmp, "obj") + os.sep],
-                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    try:
+        proj = os.path.join(tmp, "Check.csproj")
+        open(proj, "w", encoding="utf-8").write(text)
+        r = subprocess.run(["dotnet", "msbuild", proj, "-t:Build", "-nologo", "-v:q",
+                            "-p:OutputPath=" + os.path.join(tmp, "out") + os.sep,
+                            "-p:BaseIntermediateOutputPath=" + os.path.join(tmp, "obj") + os.sep],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     errs = sorted({re.sub(r"\s*\[[^\]]*\]\s*$", "", l.strip()) for l in (r.stdout + r.stderr).splitlines() if " error " in l})
     print("%d archivos .cs" % len(files))
     if errs:
