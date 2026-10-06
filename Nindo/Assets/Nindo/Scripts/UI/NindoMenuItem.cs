@@ -19,6 +19,7 @@ namespace Nindo
         public Image cursorImage;
         public TextMeshProUGUI label;
         public Vector2 cursorPos;
+        public float gap = 48f;              // del centro del kunai al comienzo del texto
         // los no elegidos bien apagados: sin la cinta, el contraste de la letra es lo que separa al elegido
         public Color labelNormal = new Color(0.62f, 0.59f, 0.53f, 1f);
         public Color labelSelected = UIFactory.Paper;
@@ -74,6 +75,21 @@ namespace Nindo
             Apply();
         }
 
+        /// <summary>
+        /// El kunai apunta al comienzo de la palabra (a 'gap' px), no al borde del ítem: en la pausa quedaba a
+        /// 130 px del texto, pegado al borde de la pantalla, y no se entendía qué señalaba. Sirve igual para
+        /// textos alineados a la izquierda o centrados (menú principal).
+        /// </summary>
+        Vector2 CursorHome()
+        {
+            if (label == null) return cursorPos;
+            var lr = label.rectTransform;
+            float start = lr.offsetMin.x;
+            if (label.alignment == TMPro.TextAlignmentOptions.Center || label.alignment == TMPro.TextAlignmentOptions.Midline)
+                start += Mathf.Max(0f, (lr.rect.width - label.preferredWidth) * 0.5f);
+            return new Vector2(start - gap, cursorPos.y);
+        }
+
         void Apply()
         {
             float e = selected ? UIAnim.OutCubic(k) : k * k;
@@ -82,7 +98,7 @@ namespace Nindo
                 // entra desde 24 px a la izquierda; elegido, pincha 6 px hacia el texto cada 1.1 s (atrae la vista
                 // sin vibrar todo el tiempo)
                 float poke = selected ? Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f / 1.1f)), 6f) * 6f : 0f;
-                cursor.anchoredPosition = cursorPos + new Vector2(-24f * (1f - e) + poke * e, 0f);
+                cursor.anchoredPosition = CursorHome() + new Vector2(-24f * (1f - e) + poke * e, 0f);
                 var c = cursorImage.color; c.a = e; cursorImage.color = c;
                 cursorImage.enabled = e > 0.001f;
             }

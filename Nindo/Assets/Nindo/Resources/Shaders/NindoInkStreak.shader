@@ -66,17 +66,18 @@ Shader "Nindo/InkStreak"
 
                 // tramo vivo [_Tail, _Head]: se afina en la cola y en la punta (pincel que entra y sale)
                 float alive = step(_Tail, u) * step(u, _Head);
-                float taper = smoothstep(_Tail, _Tail + 0.22, u) * (1 - smoothstep(_Head - 0.06, _Head + 0.001, u) * step(_Head, 0.999));
+                // cola larga y fina (de dónde viene), cuerpo lleno hacia la llegada: se lee la dirección
+                float taper = smoothstep(_Tail, _Tail + 0.5, u) * (1 - smoothstep(_Head - 0.06, _Head + 0.001, u) * step(_Head, 0.999));
                 float w = taper * (0.88 + 0.24 * vnoise(float2(u * 14 + _Seed, 0.5)));   // presión del pincel
 
                 // tres franjas: tinta al medio, dos filos dorados, y un halo de tinta que los separa del fondo
-                float core = band(v, 0.38 * w, aa);
-                float edge = band(abs(v - 0.62 * w), 0.1 * w, aa) * step(0.02, w);
-                float halo = band(v, 0.86 * w, aa);
+                float core = band(v, 0.3 * w, aa);
+                float edge = band(abs(v - 0.56 * w), 0.085 * w, aa) * step(0.02, w);
+                float halo = band(v, 0.78 * w, aa);
 
-                // pincel seco: pelos que abren la tinta hacia la cola (lo que se está borrando)
-                float hair = vnoise(float2(u * 70 + _Seed * 3, i.uv.y * 9));
-                float dry = smoothstep(_Tail + 0.35, _Tail, u) * 0.55;
+                // pincel seco: rayas a lo largo (velocidad) en toda la tinta, que se abren hacia la cola
+                float hair = vnoise(float2(u * 5 + _Seed * 3, i.uv.y * 16));
+                float dry = 0.16 + smoothstep(_Tail + 0.45, _Tail, u) * 0.45;
                 core *= 1 - step(hair, dry);
                 edge *= 1 - 0.6 * step(hair, dry * 0.8);
 

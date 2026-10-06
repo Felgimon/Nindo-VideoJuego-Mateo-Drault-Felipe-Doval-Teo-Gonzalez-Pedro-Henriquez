@@ -263,7 +263,7 @@ namespace Nindo
         public static NindoMenuItem AttachFocus(RectTransform rt, string label, float fontSize, TextAlignmentOptions align, Vector2 size, bool labelOwnsRow = true)
         {
             var item = rt.gameObject.AddComponent<NindoMenuItem>();
-            var cur = Centered("Cursor", rt, Gold, new Vector2(0f, 0.5f), new Vector2(-62f, 0f), new Vector2(80f, 28f), UISprites.Kunai);
+            var cur = Centered("Cursor", rt, Gold, new Vector2(0f, 0.5f), new Vector2(-62f, 0f), new Vector2(86f, 30f), UISprites.Kunai);
             var t = Text("Label", rt, label, fontSize, item.labelNormal, align, true);
             NoWrap(t);
             var trt = t.rectTransform;

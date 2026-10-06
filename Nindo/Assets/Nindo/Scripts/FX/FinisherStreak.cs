@@ -11,7 +11,8 @@ namespace Nindo
     /// </summary>
     public class FinisherStreak : MonoBehaviour
     {
-        const float PaintTime = 0.07f, HoldTime = 0.1f, EraseTime = 0.34f, Overshoot = 0.9f, Width = 0.95f;
+        // fino y largo: con 0.95 m de ancho y poco recorrido parecía una espada tirada en el piso, no una estela
+        const float PaintTime = 0.07f, HoldTime = 0.1f, EraseTime = 0.34f, BackOvershoot = 0.5f, FrontOvershoot = 1.5f, Width = 0.58f;
 
         static readonly Stack<FinisherStreak> free = new Stack<FinisherStreak>();
         static Material mat;
@@ -58,8 +59,8 @@ namespace Nindo
             Vector3 dir = to - from;
             if (dir.sqrMagnitude < 1e-4f) dir = Vector3.forward;
             dir.Normalize();
-            s.a = from - dir * Overshoot;
-            s.b = to + dir * Overshoot;
+            s.a = from - dir * BackOvershoot;
+            s.b = to + dir * FrontOvershoot;
             s.t = 0f;
             s.mpb.Clear();
             s.mpb.SetColor(IdGold, rage ? new Color(1f, 0.45f, 0.14f) : new Color(1f, 0.8f, 0.34f));
