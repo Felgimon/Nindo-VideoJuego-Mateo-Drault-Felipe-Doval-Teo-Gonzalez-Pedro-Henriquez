@@ -483,11 +483,14 @@ def run_springs(rig, frames, springs, root_offsets, loop=False, preroll=1.0, sub
 # =============================================================================== clips
 class Key:
     """Pose clave: cuadro, diccionario de controles y la curva del tramo que TERMINA en ella.
-    ease_ch cambia la curva de algunos canales en ese tramo (un pie que se clava antes que el cuerpo)."""
+    ease_ch cambia la curva de algunos canales en ese tramo (un pie que se clava antes que el cuerpo).
+    stops: canales en los que la clave es un tope del arco (tangente cero): el Catmull-Rom no se pasa de
+    largo entre dos claves muy distintas (una mano que baja al piso entre dos poses altas no lo atraviesa)."""
 
-    def __init__(self, frame, ctrl, ease="inout", ease_ch=None):
+    def __init__(self, frame, ctrl, ease="inout", ease_ch=None, stops=()):
         self.frame, self.ctrl, self.ease = frame, ctrl, ease
         self.ease_ch = ease_ch or {}
+        self.stops = set(stops)
 
 
 # canales que se interpolan como direcciones (slerp) y como escalares
@@ -560,8 +563,8 @@ class Clip:
             return ks[max(0, min(len(ks) - 1, j))].ctrl.get(channel)
         p0 = nb(i - 1)
         p3 = nb(i + 2)
-        p0 = V(p0) if p0 is not None else p1
-        p3 = V(p3) if p3 is not None else p2
+        p0 = V(p0) if p0 is not None and channel not in a.stops else p1
+        p3 = V(p3) if p3 is not None and channel not in b.stops else p2
         return catmull(p0, p1, p2, p3, s)
 
     def controls(self, f):
@@ -620,15 +623,17 @@ def bake_clip(rig, clip, solve, springs=(), preroll=1.0):
 def write_pack(arm, rig, baked, start=1, gap=10, name="Pack"):
     """Escribe todos los clips en UNA acción, uno detrás de otro (Blender 4.4 exporta una sola toma
     confiable: Unity la corta por rangos de cuadros). baked = [(clip, frames W)].
+    En el cuadro start - 1 (fuera de la toma exportada) queda la pose de reposo: es la pose por defecto
+    del FBX (ver export_fbx), la que mide CharacterFactory.NormalizeHeight al instanciar el modelo.
     Devuelve {clip: (primer cuadro, último cuadro)}."""
     act = bpy.data.actions.new(name)
     arm.animation_data_create()
     arm.animation_data.action = act
-    data = {n: ([], [], [], [], [], [], []) for n in rig.names}   # lx ly lz qw qx qy qz
-    times = []
+    data = {n: ([0.0], [0.0], [0.0], [1.0], [0.0], [0.0], [0.0]) for n in rig.names}   # lx ly lz qw qx qy qz
+    times = [start - 1]
     ranges = {}
     cur = start
-    prevq = {}
+    prevq = {n: Quaternion() for n in rig.names}
     for clip, frames in baked:
         ranges[clip.name] = (cur, cur + clip.frames)
         for i, W in enumerate(frames):
@@ -665,9 +670,13 @@ def write_pack(arm, rig, baked, start=1, gap=10, name="Pack"):
 
 def export_fbx(path, arm, meshes, frame_start, frame_end):
     """Exportación validada en la fase A: esqueleto solo de huesos que deforman, sin hojas extra,
-    una toma 'Scene' con todos los cuadros (sin simplificar: no se pierden los golpes de 2 cuadros)."""
+    una toma 'Scene' con todos los cuadros (sin simplificar: no se pierden los golpes de 2 cuadros).
+    El exportador escribe como transform por defecto de cada hueso la pose del cuadro ACTUAL: se exporta
+    parado en frame_start - 1, la pose de reposo que deja write_pack (si no, el prefab de Unity nace en
+    la primera pose del primer clip y NormalizeHeight mide otra altura)."""
     scn = bpy.context.scene
     scn.frame_start, scn.frame_end = frame_start, frame_end
+    scn.frame_set(frame_start - 1)
     bpy.ops.object.select_all(action='DESELECT')
     for o in [arm] + list(meshes):
         o.select_set(True)
@@ -734,25 +743,106 @@ def loop_seam_deg(rig, frames):
     return round(seam, 3), round(step, 3)
 
 
-def mesh_height_range(objs, frame_list, scene=None):
-    """Altura mínima/máxima de los vértices evaluados (armadura aplicada) en los cuadros dados."""
+def world_verts(o, dg):
+    """Vértices evaluados (armadura aplicada) de un objeto en mundo, como array numpy (n, 3)."""
+    import numpy as np
+    oe = o.evaluated_get(dg)
+    me = oe.to_mesh()
+    n = len(me.vertices)
+    co = np.empty(n * 3)
+    me.vertices.foreach_get("co", co)
+    co = co.reshape(n, 3)
+    M = np.array(oe.matrix_world)
+    oe.to_mesh_clear()
+    return co @ M[:3, :3].T + M[:3, 3]
+
+
+def mesh_z_frames(objs, frame_list, scene=None):
+    """Altura mínima y máxima de los vértices evaluados de cada objeto en cada cuadro:
+    [{nombre: (z_min, z_max)}, ...] (el piso y el techo de la silueta se miden por pieza)."""
     scn = scene or bpy.context.scene
-    zmax, zmin, at = -1e9, 1e9, None
+    out = []
     for f in frame_list:
         scn.frame_set(f)
         dg = bpy.context.evaluated_depsgraph_get()
+        row = {}
         for o in objs:
-            oe = o.evaluated_get(dg)
-            me = oe.to_mesh()
-            M = oe.matrix_world
-            for v in me.vertices:
-                z = (M @ v.co).z
-                if z > zmax:
-                    zmax, at = z, f
-                if z < zmin:
-                    zmin = z
-            oe.to_mesh_clear()
-    return zmin, zmax, at
+            w = world_verts(o, dg)
+            if len(w):
+                row[o.name] = (float(w[:, 2].min()), float(w[:, 2].max()))
+        out.append(row)
+    return out
+
+
+def mesh_height_range(objs, frame_list, scene=None):
+    """Altura mínima/máxima de los vértices evaluados en los cuadros dados (y el cuadro del máximo)."""
+    fl = list(frame_list)
+    zs = [(min(v[0] for v in r.values()), max(v[1] for v in r.values())) for r in mesh_z_frames(objs, fl, scene)]
+    i = max(range(len(zs)), key=lambda k: zs[k][1])
+    return min(z[0] for z in zs), zs[i][1], fl[i]
+
+
+def unity_height(skinned, rigid):
+    """La altura que mide CharacterFactory.NormalizeHeight en Unity, en la pose actual de la escena:
+    el skinned aporta los bounds de su malla de bind (sin deformar) y cada pieza rígida las 8 esquinas
+    de SUS bounds locales llevadas al mundo (una caja girada mide más que los vértices). Devuelve
+    (z_min, z_max). Con ese alto en NindoContent el modelo queda a escala 1 (metros reales)."""
+    lo, hi = 1e9, -1e9
+    M = skinned.matrix_world
+    for v in skinned.data.vertices:
+        z = (M @ v.co).z
+        lo, hi = min(lo, z), max(hi, z)
+    for o in rigid:
+        bb = [Vector(c) for c in o.bound_box]          # caja local de la malla (sin modificadores)
+        for c in bb:
+            z = (o.matrix_world @ c).z
+            lo, hi = min(lo, z), max(hi, z)
+    return lo, hi
+
+
+def silhouette_mask(objs, cam, scene=None, res=(1920, 1080)):
+    """Silueta de los objetos vista por la cámara, rasterizada con numpy a la densidad de píxeles de la
+    pantalla del juego. Devuelve una imagen booleana (alto, ancho) de píxeles cubiertos (para comparar
+    poses: cuánto de una pose de aviso cae FUERA de la silueta de la guardia)."""
+    import numpy as np
+    dg = bpy.context.evaluated_depsgraph_get()
+    P = np.array(cam.calc_matrix_camera(dg, x=res[0], y=res[1]))
+    Vw = np.array(cam.matrix_world.inverted())
+    PV = P @ Vw
+    cov = np.zeros((res[1], res[0]), dtype=bool)
+    for o in objs:
+        if o.hide_render:
+            continue
+        oe = o.evaluated_get(dg)
+        me = oe.to_mesh()
+        n = len(me.vertices)
+        co = np.empty(n * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(n, 3)
+        M = np.array(oe.matrix_world)
+        w = co @ M[:3, :3].T + M[:3, 3]
+        h = np.c_[w, np.ones(n)] @ PV.T
+        sx = (h[:, 0] / h[:, 3] * 0.5 + 0.5) * res[0]
+        sy = (h[:, 1] / h[:, 3] * 0.5 + 0.5) * res[1]
+        me.calc_loop_triangles()
+        tri = np.empty(len(me.loop_triangles) * 3, dtype=np.int64)
+        me.loop_triangles.foreach_get("vertices", tri)
+        oe.to_mesh_clear()
+        for a, b, c in tri.reshape(-1, 3):
+            xs = (sx[a], sx[b], sx[c])
+            ys = (sy[a], sy[b], sy[c])
+            x0, x1 = max(0, int(math.floor(min(xs)))), min(res[0], int(math.ceil(max(xs))))
+            y0, y1 = max(0, int(math.floor(min(ys)))), min(res[1], int(math.ceil(max(ys))))
+            if x1 <= x0 or y1 <= y0:
+                continue
+            d = (xs[1] - xs[0]) * (ys[2] - ys[0]) - (ys[1] - ys[0]) * (xs[2] - xs[0])
+            if abs(d) < 1e-9:
+                continue
+            gx, gy = np.meshgrid(np.arange(x0, x1) + 0.5, np.arange(y0, y1) + 0.5)
+            l1 = ((xs[1] - gx) * (ys[2] - gy) - (ys[1] - gy) * (xs[2] - gx)) / d
+            l2 = ((xs[2] - gx) * (ys[0] - gy) - (ys[2] - gy) * (xs[0] - gx)) / d
+            cov[y0:y1, x0:x1] |= (l1 >= 0) & (l2 >= 0) & (l1 + l2 <= 1)
+    return cov
 
 
 # =============================================================================== render de revisión
@@ -766,20 +856,29 @@ class GameLook:
 
     MOON_COLOR = (0.62, 0.72, 1.0)
     MOON_INTENSITY = 1.05
-    MOON_EULER_UNITY = (48.0, -38.0)        # rotación del transform de la luna en Unity (x, y)
+    WORLD_MOON = (48.0, -38.0)              # rotación (x, y) de la luna de World/WorldBuilder.cs
+    ARENA_MOON = (35.0, 180.0)              # luna de las arenas de jefe del diseño: a contraluz del jefe
     SKY, EQUATOR, GROUND = (0.22, 0.28, 0.42), (0.12, 0.15, 0.22), (0.05, 0.05, 0.07)
     FOG, FOG_DENSITY = (0.07, 0.1, 0.17), 0.012
 
-    def __init__(self, moon_scale=1.0):
+    def __init__(self, moon_scale=1.0, moon_euler=WORLD_MOON):
         self.moon_scale = moon_scale
-        # dirección HACIA la luna en Blender: Unity forward = R(48,-38) * +Z; Blender = (-x, -z, y)
-        ax, ay = (math.radians(a) for a in self.MOON_EULER_UNITY)
-        fwd_u = Vector((math.sin(ay) * math.cos(ax), -math.sin(ax), math.cos(ay) * math.cos(ax)))
-        fwd_b = Vector((-fwd_u.x, -fwd_u.z, fwd_u.y))
-        self.to_moon = (-fwd_b).normalized()
+        self.to_moon = self.moon_dir(moon_euler)
         self.game_moon = self.to_moon.copy()
         self._moon_nodes, self._fill_nodes, self._moon_col_nodes = [], [], []
         self._state = (None, None, None, (0, 0, 0))
+
+    @staticmethod
+    def moon_dir(euler_xy):
+        """Dirección HACIA la luna en la escena de revisión para una rotación (x, y) de Unity.
+
+        La escena de revisión es el mundo del juego visto igual que en pantalla: la cámara mira a +Y de
+        Blender como la del juego mira a +Z de Unity (el norte) y el este (+X) queda a la derecha en los
+        dos. Unity es zurdo, así que el cambio es solo cambiar y por z: (x, y, z)_unity = (x, z, y)_blender.
+        Un personaje que mira a la cámara (su frente -Y) mira al sur, como el jefe que enfrenta a Kaito."""
+        ax, ay = (math.radians(a) for a in euler_xy)
+        fwd_u = Vector((math.sin(ay) * math.cos(ax), -math.sin(ax), math.cos(ay) * math.cos(ax)))
+        return -Vector((fwd_u.x, fwd_u.z, fwd_u.y)).normalized()
 
     def set_moon(self, to_moon=None, scale=None, fill_dir=None, fill_rgb=(0, 0, 0)):
         """Cambia la luz de todos los materiales ya creados (para mostrar el modelado de frente o la

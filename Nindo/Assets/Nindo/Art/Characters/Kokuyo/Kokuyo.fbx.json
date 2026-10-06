@@ -1,9 +1,10 @@
 {
  "fps": 30,
  "take": "Scene",
- "bind_height": 4.482,
+ "bind_height": 4.511,
+ "bind_height_note": "alto que mide CharacterFactory.NormalizeHeight en la pose por defecto del FBX (el reposo): con este valor en NindoContent la escala es 1",
  "tris": {
-  "body": 5108,
+  "body": 4816,
   "Sode_R": 304,
   "Sode_R_Broken": 144,
   "Crest_R": 56,
@@ -12,12 +13,13 @@
   "Face": 186,
   "Katana_Nodachi": 330,
   "Crack_1": 44,
-  "Crack_2": 36,
-  "Crack_3": 36,
+  "Crack_2": 28,
+  "Crack_3": 28,
   "Crack_4": 36,
-  "Crack_5": 36
+  "Crack_5": 20
  },
  "facing": "frente +Z en Unity (Blender -Y): modelYaw 0",
+ "root_travel": "travel_m[f] = metros que el transform tiene que haber avanzado (hacia su frente; negativo = hacia atrás) en el cuadro f del clip. Los pies apoyados quedan clavados solo si el juego mueve el transform por deltas de travel_m(stepNorm * frames), con el reloj del paso (AttackDef.lunge = 0); la embestida lineal de Enemy.cs no sigue la curva y hace patinar los pies",
  "clips": {
   "Idle": {
    "first": 1,
@@ -41,7 +43,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "Kesagiri": {
@@ -132,18 +135,61 @@
     0.14000000059604645
    ],
    "notes": "apex HIGH_R (hoja alta y afuera, atrás del hombro derecho); el pie izquierdo apoya en el impacto",
+   "reach_m": 3.88,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.225,
+    0.45,
+    0.6,
+    0.72,
+    1.1528,
+    1.1957,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ],
    "lint": {
     "reach_miss_cm": {
-     "hands": 4.1,
+     "hands": 3.8,
      "legs": 0.0
     },
-    "tip_peak_mps": 188.3,
-    "tip_outside_ratio": 0.18,
+    "reach_m": 3.88,
+    "tip_peak_mps": 192.9,
+    "tip_outside_ratio": 0.17,
     "apex_tip_mps": [
      8.4,
-     6.6
+     6.4
     ],
-    "max_height_m": 5.2
+    "max_height_m": 5.2,
+    "min_z_m": -0.009,
+    "tell_silhouette_change": 0.2
    }
   },
   "RecoverL": {
@@ -179,7 +225,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "RecoverHR": {
@@ -215,7 +262,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "Gyakugiri": {
@@ -301,18 +349,55 @@
     0.14000000059604645
    ],
    "notes": "apex enroscado bajo a su izquierda (cadera 15 cm más baja); corta subiendo hasta arriba a su derecha",
+   "reach_m": 3.21,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3,
+    0.45,
+    0.6,
+    0.7803,
+    0.7982,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8
+   ],
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "tip_peak_mps": 130.5,
-    "tip_outside_ratio": 0.26,
+    "reach_m": 3.21,
+    "tip_peak_mps": 130.7,
+    "tip_outside_ratio": 0.23,
     "apex_tip_mps": [
-     0.6,
-     0.8
+     0.7,
+     1.2
     ],
-    "max_height_m": 5.62
+    "max_height_m": 5.62,
+    "min_z_m": -0.013,
+    "tell_silhouette_change": 0.164
    }
   },
   "Tsuki": {
@@ -341,14 +426,13 @@
      42
     ],
     "lunge": [
-     19,
-     24,
+     20,
+     26,
      3.5
     ],
     "kind": "parry",
     "chain_from": "READY",
-    "chain_to": "THRUST_END",
-    "tip_ratio_max": 0.75
+    "chain_to": "THRUST_END"
    },
    "normalized": {
     "apex": 0.4286,
@@ -370,8 +454,8 @@
      1.0
     ],
     "lunge": [
-     0.4524,
-     0.5714,
+     0.4762,
+     0.619,
      3.5
     ]
    },
@@ -380,6 +464,11 @@
      "frame": 18,
      "t": 0.4286,
      "fn": "Apex"
+    },
+    {
+     "frame": 21,
+     "t": 0.5,
+     "fn": "Step"
     },
     {
      "frame": 23,
@@ -398,19 +487,68 @@
     2.75,
     0.14000000059604645
    ],
-   "notes": "estocada: la línea del brazo izquierdo apunta a Kaito; deslizamiento de 3.5 m (lo mueve el juego)",
+   "notes": "estocada desde hanmi: la nodachi recogida atrás de la cadera derecha y el brazo izquierdo apunta a Kaito; salta 3.2 m (los pies dejan el piso) y cae sobre el pie de adelante en el impacto; la punta llega a ~1.1 m de alto",
+   "reach_m": 4.37,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.06,
+    0.12,
+    0.8,
+    1.9,
+    3.2,
+    3.4111,
+    3.4889,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5,
+    3.5
+   ],
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "tip_peak_mps": 51.3,
-    "tip_outside_ratio": 0.61,
+    "reach_m": 4.37,
+    "tip_peak_mps": 72.9,
+    "tip_outside_ratio": 0.24,
     "apex_tip_mps": [
-     1.0,
-     1.2
+     0.1,
+     0.7
     ],
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.011,
+    "tell_silhouette_change": 0.162
    }
   },
   "TsukiRecover": {
@@ -452,7 +590,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.007
    }
   },
   "Ichimonji": {
@@ -534,18 +673,22 @@
     0.14000000059604645
    ],
    "notes": "barrido de 240° a la cintura; se pasa 0.33 s (castigo). Sin embestida: la hoja ya llega a 4.4 m",
+   "reach_m": 3.64,
    "lint": {
     "reach_miss_cm": {
-     "hands": 4.1,
+     "hands": 3.4,
      "legs": 0.0
     },
-    "tip_peak_mps": 77.4,
+    "reach_m": 3.64,
+    "tip_peak_mps": 74.1,
     "tip_outside_ratio": 0.29,
     "apex_tip_mps": [
-     1.1,
-     2.2
+     1.7,
+     2.4
     ],
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.008,
+    "tell_silhouette_change": 0.17
    }
   },
   "KabutoWari": {
@@ -647,18 +790,22 @@
     0.14000000059604645
    ],
    "notes": "la hoja queda clavada f28-44 (0.55 s de golpes libres); la grieta de obsidiana arranca en f27",
+   "reach_m": 4.1,
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "tip_peak_mps": 167.5,
-    "tip_outside_ratio": 0.26,
+    "reach_m": 4.1,
+    "tip_peak_mps": 163.9,
+    "tip_outside_ratio": 0.27,
     "apex_tip_mps": [
      1.6,
      1.7
     ],
-    "max_height_m": 5.68
+    "max_height_m": 5.68,
+    "min_z_m": -0.02,
+    "tell_silhouette_change": 0.264
    }
   },
   "ShadowSink": {
@@ -673,6 +820,12 @@
     "ground": [
      [
       8,
+      21
+     ]
+    ],
+    "sink": [
+     [
+      7,
       21
      ]
     ]
@@ -697,7 +850,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.31
+    "max_height_m": 4.31,
+    "min_z_m": -0.0
    }
   },
   "ShadowEmerge": {
@@ -733,6 +887,12 @@
     "kind": "parry",
     "chain_to": "READY",
     "ground": [
+     [
+      0,
+      4
+     ]
+    ],
+    "sink": [
      [
       0,
       4
@@ -788,18 +948,58 @@
     0.14000000059604645
    ],
    "notes": "sale del charco enroscado y corta subiendo (como el gyakugiri)",
+   "reach_m": 3.21,
+   "travel_m": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3,
+    0.45,
+    0.6,
+    0.7803,
+    0.7982,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8,
+    0.8
+   ],
    "lint": {
     "reach_miss_cm": {
-     "hands": 0.0,
+     "hands": 0.3,
      "legs": 0.0
     },
-    "tip_peak_mps": 130.5,
+    "reach_m": 3.21,
+    "tip_peak_mps": 130.7,
     "tip_outside_ratio": 0.22,
     "apex_tip_mps": [
      0.0,
-     1.6
+     1.9
     ],
-    "max_height_m": 5.62
+    "max_height_m": 5.62,
+    "min_z_m": -0.013,
+    "tell_silhouette_change": 0.159
    }
   },
   "Parried": {
@@ -814,7 +1014,9 @@
      30
     ],
     "resume": 15,
-    "chain_to": "READY"
+    "chain_to": "READY",
+    "knock_m": 0.6,
+    "knock_curve": "1 - exp(-10 t)"
    },
    "normalized": {
     "recover": [
@@ -827,6 +1029,11 @@
      "frame": 0,
      "t": 0.0,
      "fn": "Parried"
+    },
+    {
+     "frame": 5,
+     "t": 0.1667,
+     "fn": "Step"
     }
    ],
    "strike_bone": "Katana",
@@ -835,13 +1042,47 @@
     2.75,
     0.14000000059604645
    ],
-   "notes": "el clip de 'feel' más importante: cada parry tiene que sacudir al gigante. f15 = LOW_L (sigue el combo)",
+   "notes": "el clip de 'feel' más importante: cada parry tiene que sacudir al gigante. Retrocede knock_m (0.6 m) con la curva de Enemy.knock: el juego lo tiene que empujar exactamente eso, en parry y en parry perfecto (Enemy.OnParried empuja 0.4 / 0.8; con eso los pies patinan +-20 cm). f15 = LOW_L (sigue el combo)",
+   "travel_m": [
+    0.0,
+    -0.146,
+    -0.2919,
+    -0.3569,
+    -0.4218,
+    -0.4867,
+    -0.5075,
+    -0.5284,
+    -0.5493,
+    -0.5701,
+    -0.5723,
+    -0.5779,
+    -0.5851,
+    -0.5923,
+    -0.5978,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6,
+    -0.6
+   ],
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 5.51
+    "max_height_m": 5.52,
+    "min_z_m": -0.011
    }
   },
   "Flinch": {
@@ -876,7 +1117,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "Guard": {
@@ -903,7 +1145,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "Counter": {
@@ -958,12 +1201,15 @@
     0.14000000059604645
    ],
    "notes": "desvía la katana de Kaito y lo empuja con el hombro; termina en LOW_L para seguir con un gyakugiri",
+   "reach_m": 2.43,
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.27
+    "reach_m": 2.43,
+    "max_height_m": 4.27,
+    "min_z_m": -0.0
    }
   },
   "Roar": {
@@ -996,7 +1242,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.0
    }
   },
   "Kneel": {
@@ -1054,7 +1301,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.025
    }
   },
   "KneelRise": {
@@ -1087,7 +1335,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.026
    }
   },
   "ShadowTear": {
@@ -1130,7 +1379,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.63
+    "max_height_m": 4.6,
+    "min_z_m": -0.007
    }
   },
   "Eclipse": {
@@ -1179,7 +1429,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.6
+    "max_height_m": 4.59,
+    "min_z_m": -0.0
    }
   },
   "LastStand": {
@@ -1217,7 +1468,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.32
+    "max_height_m": 4.32,
+    "min_z_m": -0.019
    }
   },
   "Defeat": {
@@ -1273,7 +1525,9 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 3.45
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.49,
+    "min_z_m": -0.011
    }
   },
   "DefeatLoop": {
@@ -1306,7 +1560,9 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 3.3
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.47,
+    "min_z_m": 0.002
    }
   },
   "SeizaBow": {
@@ -1339,7 +1595,9 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 3.27
+    "sword_planted_drift_cm": 0.0,
+    "max_height_m": 3.44,
+    "min_z_m": 0.002
    }
   },
   "SeizaIdle": {
@@ -1364,7 +1622,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 3.39
+    "max_height_m": 3.56,
+    "min_z_m": 0.002
    }
   },
   "Intro": {
@@ -1385,23 +1644,23 @@
      "fn": "HeadRise"
     },
     {
-     "frame": 52,
-     "t": 0.5417,
+     "frame": 49,
+     "t": 0.5104,
      "fn": "Step"
     },
     {
-     "frame": 62,
-     "t": 0.6458,
+     "frame": 69,
+     "t": 0.7188,
      "fn": "Step"
     },
     {
-     "frame": 78,
-     "t": 0.8125,
+     "frame": 79,
+     "t": 0.8229,
      "fn": "Chiburi"
     },
     {
-     "frame": 80,
-     "t": 0.8333,
+     "frame": 81,
+     "t": 0.8438,
      "fn": "EyesIgnite"
     }
    ],
@@ -1411,13 +1670,14 @@
     2.75,
     0.14000000059604645
    ],
-   "notes": "seiza -> levanta la cabeza -> se para empujándose en la rodilla -> alza la nodachi -> chiburi -> guardia",
+   "notes": "seiza -> levanta la cabeza -> mete los dedos -> adelanta el pie izquierdo -> se empuja en la rodilla y da el paso -> alza la nodachi -> chiburi -> guardia",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.6
+    "max_height_m": 4.53,
+    "min_z_m": -0.01
    }
   },
   "Tsukuyomi": {
@@ -1471,7 +1731,8 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "max_height_m": 4.33
+    "max_height_m": 4.33,
+    "min_z_m": -0.0
    }
   },
   "Walk": {
@@ -1515,7 +1776,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 4.28
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
    }
   },
   "Stalk": {
@@ -1559,7 +1821,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.04,
-    "max_height_m": 4.27
+    "max_height_m": 4.27,
+    "min_z_m": -0.0
    }
   },
   "StrafeL": {
@@ -1603,7 +1866,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 4.28
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
    }
   },
   "StrafeR": {
@@ -1647,7 +1911,8 @@
      "legs": 0.0
     },
     "loop_seam_deg": 0.0,
-    "max_height_m": 4.28
+    "max_height_m": 4.28,
+    "min_z_m": -0.0
    }
   }
  },
@@ -1705,11 +1970,12 @@
    "Kokuyo_Edge",
    "Kokuyo_Seams",
    "Kokuyo_Ribbon",
-   "Kokuyo_MaskCrack"
+   "Kokuyo_MaskCrack",
+   "Kokuyo_Cracks"
   ],
   "hidden_at_spawn": [
    "Sode_R_Broken"
   ],
-  "notes": "Sode_R_Broken queda adentro de Sode_R (se ve al apagar Sode_R). Kokuyo_MaskCrack es del mismo rojo que la máscara: se ve solo al subirle la emisión."
+  "notes": "Sode_R_Broken queda adentro de Sode_R (se ve al apagar Sode_R). Kokuyo_MaskCrack es del mismo rojo que la máscara: se ve solo al subirle la emisión. Crack_1..5 (Kokuyo_Cracks) nacen como vetas tenues: se encienden de a una por punto de desequilibrio con MaterialPropertyBlock (_EmissionColor de Kokuyo_Seams = encendida)."
  }
 }

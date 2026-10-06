@@ -22,13 +22,16 @@ import nindo_lib as L
 import kokuyo_rig as KR
 
 # --------------------------------------------------------------------------- materiales propios
-SLOT_EDGE, SLOT_SEAMS, SLOT_RIBBON, SLOT_MASKCRACK = 4, 5, 6, 7
-EXTRA_MATS = ["Kokuyo_Edge", "Kokuyo_Seams", "Kokuyo_Ribbon", "Kokuyo_MaskCrack"]
+SLOT_EDGE, SLOT_SEAMS, SLOT_RIBBON, SLOT_MASKCRACK, SLOT_CRACKS = 4, 5, 6, 7, 8
+EXTRA_MATS = ["Kokuyo_Edge", "Kokuyo_Seams", "Kokuyo_Ribbon", "Kokuyo_MaskCrack", "Kokuyo_Cracks"]
 # color de la bandana de Kaito tal como lo guarda su material (kaitooo.fbx, 'AmarilloBandana'): el
 # proyecto está en espacio Gamma, así que en pantalla se ve exactamente este valor (#ef7600)
 BANDANA_RGB = (0.9387, 0.4614, 0.0)
 SEAM_RGB = (0.753, 0.541, 1.0)        # glow_purple
 EDGE_BASE_RGB = (0.62, 0.64, 0.70)
+# grietas del pecho apagadas: vetas violetas tenues (~15 % del brillo encendido, que es el de Kokuyo_Seams)
+CRACK_BASE_RGB = (0.2, 0.12, 0.3)
+CRACK_IDLE_EMISSION = (0.17, 0.12, 0.22)
 
 C = dict(plate="ink", plate2="tile_dark", bevel="tile_light", bevel2="cloth_purple", gold="gold", gold2="gold_dark",
          lace="cloth_purple", cloth="cloth_indigo", obi="cloth_red", obi2="wood_red_dark", rope="rope", straw="straw",
@@ -194,42 +197,74 @@ def tri_count(obj):
 
 
 # --------------------------------------------------------------------------- piernas
+# perfil del sabatón a lo largo del pie: (y, medio ancho, z del centro, medio alto). La suela termina en
+# KR.SOLE_TOE_Y / KR.SOLE_HEEL_Y: son los pivotes de los pies en punta y en talón de las poses
+FOOT_RINGS = [(0.19, 0.125, 0.16, 0.11), (0.02, 0.17, 0.19, 0.14), (-0.27, 0.18, 0.145, 0.095), (-0.5, 0.145, 0.095, 0.045)]
+
+
+def _foot_surface(y, a, grow=0.0):
+    """Punto de la superficie del sabatón a la altura 'y' y al ángulo 'a' (0 = arriba, + = afuera del pie
+    derecho), y su normal. Interpola los anillos de FOOT_RINGS (para apoyar las lamas del empeine)."""
+    rs = FOOT_RINGS
+    for (y0, w0, z0, h0), (y1, w1, z1, h1) in zip(rs[:-1], rs[1:]):
+        if y1 <= y <= y0:
+            t = (y0 - y) / (y0 - y1)
+            w, z, h = w0 + (w1 - w0) * t, z0 + (z1 - z0) * t, h0 + (h1 - h0) * t
+            break
+    else:
+        w, z, h = rs[-1][1], rs[-1][2], rs[-1][3]
+    r = math.radians(a)
+    p = Vector((KR.ANKLE.x - math.sin(r) * (w + grow), y, z + math.cos(r) * (h + grow)))
+    n = Vector((-math.sin(r) / max(w, 1e-3), 0.0, math.cos(r) / max(h, 1e-3))).normalized()
+    return p, n
+
+
 def build_leg_r(kits):
     s = -1.0
     x0 = KR.ANKLE.x
-    # pie acorazado: suela de madera, empeine de laca, puntera de oro
+    # ---- pie acorazado (kogake): suela de madera, sabatón de laca que baja hacia la punta en dos lamas con
+    # filo de oro (se lee el empeine y la punta; nada de ladrillos)
     k = kits["Foot_R"] = Kit("part_Foot_R", "Foot_R")
-    sole = [(x0 + 0.17 * s, 0.24), (x0 + 0.21 * s, 0.05), (x0 + 0.23 * s, -0.36), (x0 + 0.15 * s, -0.62),
-            (x0 - 0.15 * s, -0.62), (x0 - 0.22 * s, -0.36), (x0 - 0.2 * s, 0.05), (x0 - 0.16 * s, 0.24)]
-    if s < 0:
-        sole = list(reversed(sole))
-    k.extrude_polygon(sole, 0.0, 0.07, C["sole"], top_color=C["sole"])
-    k.tube([(x0, 0.24, 0.20), (x0, 0.02, 0.22), (x0, -0.30, 0.15), (x0, -0.56, 0.12)],
-           [(0.16, 0.12), (0.2, 0.15), (0.215, 0.09), (0.17, 0.055)], 6, C["plate"],
-           ups=[(0, 0, 1)] * 4, phase=math.pi / 6)
-    # placas del empeine (lamas cortas que suben hacia el tobillo)
-    for i, (y, z) in enumerate(((-0.36, 0.19), (-0.18, 0.25))):
-        k.obox((x0, y, z + 0.035), (0.36, 0.16, 0.05), (1, 0, 0), (0, 1, 0.45 - 0.15 * i), C["plate2"], up_color=C["bevel2"])
-    k.obox((x0, -0.55, 0.15), (0.34, 0.15, 0.1), (1, 0, 0), (0, 1, -0.35), C["gold"], up_color=C["gold"])
-    # grebas (suneate): laca negra, placa frontal con filo de oro, rodillera dorada
+    hw = [(KR.SOLE_HEEL_Y, 0.11), (0.08, 0.16), (-0.2, 0.185), (-0.44, 0.165), (KR.SOLE_TOE_Y + 0.06, 0.11), (KR.SOLE_TOE_Y, 0.04)]
+    sole = [(x0 + w * s, y) for y, w in hw] + [(x0 - w * s, y) for y, w in reversed(hw)]
+    k.extrude_polygon(sole, 0.0, 0.05, C["sole"], top_color=C["sole"])
+    body = k.tube([(x0, y, z) for y, _, z, _ in FOOT_RINGS], [(w, h) for _, w, _, h in FOOT_RINGS], 8, C["plate"],
+                  ups=[(0, 0, 1)] * 4, phase=math.pi / 8, power=2.6)
+    k.up_shade(body, C["plate2"], 0.8)
+    # dos lamas del empeine: cada una monta sobre la anterior y termina en un filo de oro
+    for y0, y1, g in ((0.04, -0.22, 0.025), (-0.17, -0.45, 0.04)):
+        tops, bots, outs = [], [], []
+        for a in (-62.0, 0.0, 62.0):
+            p0, n0 = _foot_surface(y0, a, g)
+            p1, _ = _foot_surface(y1, a, g)
+            tops.append(p0)
+            bots.append(p1)
+            outs.append(n0)
+        k.lame(tops, bots, outs, t=0.03, bev=0.025, trim=0.035, face=C["plate"], top=C["bevel"], tr=C["gold"], skip=(5,))
+    # ---- grebas (suneate): polaina de tela que se angosta en el tobillo y tres placas de laca curvas
+    # (frente y costados) con canto claro arriba y filo de oro abajo
     k = kits["Shin_R"] = Kit("part_Shin_R", "Shin_R")
     kn = KR.KNEE
-    k.tube([(x0, 0.0, 0.18), (x0, 0.01, 0.5), (x0, -0.02, 0.8), (kn.x, kn.y + 0.02, 0.98)],
-           [(0.21, 0.21), (0.25, 0.26), (0.26, 0.27), (0.27, 0.27)], 8, C["plate"], phase=math.pi / 8)
-    tops, bots, outs = [], [], []
-    for a in (-60, -30, 0, 30, 60):
-        r = math.radians(a)
-        o = Vector((math.sin(r), -math.cos(r), 0.0))
-        tops.append(Vector((x0, -0.03, 0.92)) + o * 0.27)
-        bots.append(Vector((x0, 0.0, 0.3)) + o * 0.23)
-        outs.append(o)
-    k.lame(tops, bots, outs, t=0.04, bev=0.04, trim=0.05, face=C["plate2"], top=C["bevel"], tr=C["gold"])
-    k.tube([(x0, 0.0, 0.2), (x0, 0.0, 0.27)], [0.235, 0.235], 8, C["gold2"], phase=math.pi / 8, cap0=False, cap1=False)
-    k.tube([(x0, -0.02, 0.86), (x0, -0.03, 0.93)], [0.285, 0.285], 8, C["gold2"], phase=math.pi / 8, cap0=False, cap1=False)
-    # rodillera: domo de 6 caras hacia adelante
-    kc = k.tube([(x0, -0.16, 1.03), (x0, -0.27, 1.03), (x0, -0.33, 1.04)], [0.2, 0.17, 0.08], 6, C["gold"],
-                ups=[(0, 0, 1)] * 3, phase=math.pi / 6, cap0=False)
-    k.up_shade(kc, C["gold"])
+    k.tube([(x0, 0.0, 0.22), (x0, 0.0, 0.5), (x0, -0.03, 0.8), (kn.x, kn.y + 0.02, 0.98)],
+           [0.14, 0.185, 0.215, 0.215], 8, C["glove"], phase=math.pi / 8, cap1=False)
+    # (columnas, z arriba, z abajo, cuánto más afuera, arista central): las placas de los costados son más
+    # cortas (el borde de arriba escalonado) y la del frente tiene una arista que agarra la luz
+    for cols, top_z, bot_z, grow, keel in (((-82.0, -58.0, -34.0), 0.84, 0.37, 0.0, 0.0), ((34.0, 58.0, 82.0), 0.84, 0.37, 0.0, 0.0),
+                                          ((-28.0, 0.0, 28.0), 0.96, 0.31, 0.02, 0.035)):
+        tops, bots, outs = [], [], []
+        for a in cols:
+            r = math.radians(a)
+            o = Vector((math.sin(r), -math.cos(r), 0.0))
+            kk = keel if a == 0.0 else 0.0
+            tops.append(Vector((x0, -0.035, top_z)) + o * (0.255 + grow + kk))
+            bots.append(Vector((x0, 0.0, bot_z)) + o * (0.165 + grow + kk))
+            outs.append(o)
+        k.lame(tops, bots, outs, t=0.035, bev=0.03, trim=0.04, face=C["plate"], top=C["bevel"], tr=C["gold"],
+               back=C["plate2"])
+    # rodillera dorada: domo facetado hacia adelante (un punto de oro por pierna desde la cámara)
+    kc = k.tube([(x0, -0.12, 1.04), (x0, -0.24, 1.05), (x0, -0.31, 1.02), (x0, -0.34, 0.98)], [0.2, 0.185, 0.13, 0.045], 6,
+                C["gold2"], ups=[(0, 0, 1)] * 4, phase=math.pi / 6, cap0=False, cap1=False)
+    k.up_shade(kc, C["gold"], 0.2)
     # hakama: tela índigo que se infla y entra en la greba (mezcla con la cadera arriba)
     hip = KR.HIP_J
 
@@ -288,11 +323,12 @@ def build_sash(kits):
 
 
 def build_skirt(kits):
-    """8 faldones de 3 lamas cada uno, con cordones violetas y el ruedo de oro."""
+    """8 faldones de 3 lamas cada uno: canto de arriba que agarra la luna (acero, después el brillo violeta
+    de la laca) y ruedo de oro en cada lama, como el concepto. Sin cordones verticales: desde arriba la
+    trama de cordones se leía como una tela escocesa violeta."""
     for a in KR.SKIRT_ANGLES:
         bn = KR.skirt_name(a)
         k = kits[bn] = Kit("part_" + bn, bn)
-        h0, down, out, tang = KR.skirt_frame(a)
         half = 24.5
         ncol = 2
         L3 = 0.36
@@ -308,13 +344,7 @@ def build_skirt(kits):
                 outs.append(oo)
             last = j == 2
             k.lame(tops, bots, outs, t=0.045, bev=0.035, trim=0.045 if last else 0.03,
-                   face=C["plate"], top=C["bevel2"] if j else C["bevel"], tr=C["gold"] if last else C["lace"])
-        # dos cordones verticales (odoshi) sobre las lamas
-        for u in (-0.42, 0.42):
-            aa = a + u * half
-            hh, dd, oo, tt = KR.skirt_frame(aa)
-            pts = [hh + dd * (0.02 + 0.84 * i / 2.0) + oo * (0.085 + 0.012 * i) for i in range(3)]
-            k.strip(pts, [0.035] * 3, [oo] * 3, C["lace"], thick=0.015)
+                   face=C["plate"], top=C["bevel2"] if j else C["bevel"], tr=C["gold"] if last else C["gold2"])
 
 
 # --------------------------------------------------------------------------- tronco (dō)
@@ -483,24 +513,24 @@ def build_arm_r(kits):
     k = kits["UpperArm_R"] = Kit("part_UpperArm_R", "UpperArm_R", weights=w_sleeve)
     k.tube([S - u * 0.05, S + u * 0.3, S + u * 0.62, E + u * 0.03], [0.27, 0.3, 0.28, 0.24], 8, C["glove"],
            ups=[(0, -1, 0)] * 4, phase=math.pi / 8, cap0=False, cap1=False)
-    # tres lamas en anillo (como las del dō, en chico) que dejan ver tela negra entre ellas
+    # dos lamas en anillo (como las del dō, en chico) que dejan ver tela negra entre ellas
     ka = Vector((0, -1, 0))
     for j, (t0, r0, r1) in enumerate(((0.3, 0.325, 0.34), (0.56, 0.32, 0.31))):
         c0, c1 = S + u * t0, S + u * (t0 + 0.17)
         xv = ka.cross(u).normalized()
         yv = u.cross(xv).normalized()
         tops, bots, outs = [], [], []
-        for i in range(8):
-            a = 2 * math.pi * (i + 0.5) / 8
+        for i in range(6):
+            a = 2 * math.pi * (i + 0.5) / 6
             o = xv * math.cos(a) + yv * math.sin(a)
             tops.append(c0 + o * r0)
             bots.append(c1 + o * r1)
             outs.append(o)
         k.lame(tops, bots, outs, t=0.04, bev=0.03, trim=0.03, face=C["plate"], top=C["bevel2"], tr=C["lace"], closed=True, skip=(5,))
-    # kote: antebrazo de laca con placa superior, tachas doradas y puño de hierro
+    # kote: antebrazo de laca que se angosta hacia la muñeca, placa de afuera con tachas y puño dorado
     k = kits["Forearm_R"] = Kit("part_Forearm_R", "Forearm_R")
-    k.tube([E - l * 0.04, E + l * 0.4, Wr - l * 0.04], [0.24, 0.235, 0.19], 8, C["plate"], ups=[(0, -1, 0)] * 3, phase=math.pi / 8,
-           cap0=False, cap1=False)
+    k.tube([E - l * 0.04, E + l * 0.36, Wr - l * 0.03], [0.235, 0.21, 0.155], 8, C["plate"], ups=[(0, -1, 0)] * 3,
+           phase=math.pi / 8, cap0=False, cap1=False, power=2.4)
     up = (Vector((0, 0, 1)) - l * l.z).normalized()      # parte de afuera/arriba del antebrazo
     side = l.cross(up).normalized()
     tops, bots, outs = [], [], []
@@ -508,28 +538,40 @@ def build_arm_r(kits):
         r = math.radians(a)
         o = (up * math.cos(r) + side * math.sin(r)).normalized()
         tops.append(E + l * 0.08 + o * 0.245)
-        bots.append(Wr - l * 0.1 + o * 0.205)
+        bots.append(Wr - l * 0.16 + o * 0.18)
         outs.append(o)
     k.lame(tops, bots, outs, t=0.03, bev=0.03, trim=0.03, face=C["plate2"], top=C["bevel"], tr=C["gold2"])
-    for i in range(3):
-        p = E + l * (0.18 + 0.2 * i) + up * (0.262 - 0.012 * i)
+    for i in range(2):
+        p = E + l * (0.22 + 0.24 * i) + up * (0.252 - 0.022 * i)
         k.obox(p, (0.07, 0.07, 0.04), side, l, C["gold"])
-    k.tube([Wr - l * 0.13, Wr - l * 0.02], [0.215, 0.215], 8, C["steel"], ups=[(0, -1, 0)] * 2, phase=math.pi / 8, cap0=False, cap1=False)
+    # puño (tekubi): anillo dorado que se abre sobre el guante
+    k.tube([Wr - l * 0.15, Wr - l * 0.02], [0.17, 0.205], 8, C["gold2"], ups=[(0, -1, 0)] * 2, phase=math.pi / 8,
+           cap0=False, cap1=False)
     # codera: tapa dorada en la punta del codo (hacia afuera de la flexión)
     tip = (u - l).normalized()
     k.tube([E + tip * 0.14, E + tip * 0.26], [0.16, 0.06], 6, C["gold2"], phase=math.pi / 6)
-    # guante enorme, puño cerrado: la empuñadura pasa por el centro del puño
+    # guante enorme, puño cerrado alrededor de la empuñadura (que pasa por el centro del puño): dorso con
+    # placa (tekkō) de filo dorado, rollo de dedos que se afina hacia el meñique y el pulgar aparte
     k = kits["Hand_R"] = Kit("part_Hand_R", "Hand_R")
     hb = Vector(KR.WRIST)
     hdir = (KR.GRIP - KR.WRIST).normalized()
     across = (KR.BLADE_REST - hdir * KR.BLADE_REST.dot(hdir)).normalized()
-    thick = hdir.cross(across).normalized()
+    thick = hdir.cross(across).normalized()            # + = dorso de la mano
     g = KR.GRIP
-    k.obox(g + hdir * 0.01, (0.27, 0.31, 0.25), across, hdir, C["glove"], bevel=0.05)
-    # barra de nudillos (oro) y pulgar
-    k.obox(g + hdir * 0.15 + thick * 0.06, (0.25, 0.06, 0.08), across, hdir, C["gold"])
-    k.obox(g + across * 0.12 - thick * 0.11 + hdir * 0.02, (0.1, 0.16, 0.1), across, hdir, C["glove"])
-    k.tube([hb - hdir * 0.02, hb + hdir * 0.08], [0.17, 0.2], 8, C["glove"], ups=[thick] * 2, phase=math.pi / 8, cap0=False, cap1=False)
+    k.tube([hb - hdir * 0.03, g - hdir * 0.05], [(0.12, 0.1), (0.155, 0.12)], 6, C["glove"], ups=[thick] * 2,
+           phase=math.pi / 6, cap0=False, cap1=False, power=2.6)
+    fc = g + hdir * 0.05 - thick * 0.01
+    k.tube([fc - across * 0.15, fc - across * 0.02, fc + across * 0.13], [(0.115, 0.1), (0.15, 0.135), (0.13, 0.115)], 6,
+           C["glove"], ups=[thick] * 3, phase=math.pi / 6, power=2.4)
+    tops, bots, outs = [], [], []
+    for c in (-0.11, 0.0, 0.11):
+        tops.append(hb + hdir * 0.02 + thick * 0.11 + across * c * 0.8)
+        bots.append(g + hdir * 0.15 + thick * 0.12 + across * c)
+        outs.append(thick + across * c * 1.5)
+    k.lame(tops, bots, outs, t=0.03, bev=0.025, trim=0.035, face=C["plate"], top=C["bevel"], tr=C["gold"], skip=(5,))
+    tb = g - hdir * 0.07 + across * 0.12 - thick * 0.07
+    k.tube([tb, tb + hdir * 0.09 - thick * 0.06, tb + hdir * 0.15 - thick * 0.05 - across * 0.03],
+           [(0.055, 0.045), (0.05, 0.04), (0.035, 0.03)], 4, C["glove"], ups=[thick] * 3, phase=math.pi / 4)
 
 
 # --------------------------------------------------------------------------- cabeza: kabuto y melena
@@ -826,24 +868,27 @@ def build_sword(rigid):
 
 
 # --------------------------------------------------------------------------- grietas del pecho
-CRACKS = [   # (x, z) desde el punto de impacto (0.12, 2.95), apenas a la izquierda del esternón, hacia afuera;
-             # se encienden de 1 a 5, una por punto de desequilibrio
-    [(0.12, 2.95), (0.02, 3.0), (-0.06, 2.98), (-0.17, 3.07), (-0.3, 3.1), (-0.42, 3.19)],
-    [(0.12, 2.95), (0.2, 3.04), (0.27, 3.03), (0.36, 3.13), (0.48, 3.16)],
-    [(0.12, 2.95), (0.1, 2.85), (0.15, 2.77), (0.11, 2.68), (0.14, 2.58)],
-    [(0.12, 2.95), (0.24, 2.9), (0.33, 2.93), (0.45, 2.84), (0.58, 2.83)],
-    [(0.12, 2.95), (0.03, 2.88), (-0.08, 2.9), (-0.16, 2.8), (-0.3, 2.77)],
+# Una grieta por punto de desequilibrio (se encienden de 1 a 5 con MaterialPropertyBlock; apagadas son
+# vetas violetas tenues). Cada una nace en la costura de una lama y se abre en zigzag por la placa, con
+# largos distintos y lejos del esternón: se leen como fracturas sueltas, no como un emblema central.
+# (x, z) sobre el frente del dō; la última columna es el ancho en el nacimiento.
+CRACKS = [
+    ([(-0.16, 3.0), (-0.24, 3.06), (-0.3, 3.04), (-0.41, 3.11), (-0.5, 3.1), (-0.63, 3.17)], 0.06),   # pectoral derecho
+    ([(0.22, 2.96), (0.3, 3.03), (0.37, 2.99), (0.47, 3.08)], 0.05),                                 # pectoral izquierdo
+    ([(-0.05, 2.79), (0.02, 2.73), (-0.01, 2.66), (0.06, 2.59)], 0.045),                             # boca del estómago
+    ([(0.3, 2.78), (0.39, 2.72), (0.47, 2.75), (0.58, 2.66), (0.66, 2.67)], 0.05),                   # costado izquierdo
+    ([(-0.36, 2.78), (-0.43, 2.71), (-0.52, 2.73)], 0.04),                                           # costado derecho
 ]
 
 
 def build_cracks(rigid):
-    for i, pts2 in enumerate(CRACKS):
+    for i, (pts2, w0) in enumerate(CRACKS):
         k = rigid[f"Crack_{i + 1}"] = Kit(f"Crack_{i + 1}", "Chest")
         pts = [Vector((x, torso_front_y(x, z) - 0.03, z)) for x, z in pts2]
         n = len(pts)
-        ws = [0.06 - 0.045 * j / (n - 1) for j in range(n)]
+        ws = [w0 * (1.0 - 0.8 * j / (n - 1)) for j in range(n)]
         st = k.strip(pts, ws, [(0, -1, 0)] * len(pts), "glow_purple", thick=0.025)
-        k.tag(st.faces, "glow_purple", SLOT_SEAMS)
+        k.tag(st.faces, "glow_purple", SLOT_CRACKS)
 
 
 # --------------------------------------------------------------------------- armado

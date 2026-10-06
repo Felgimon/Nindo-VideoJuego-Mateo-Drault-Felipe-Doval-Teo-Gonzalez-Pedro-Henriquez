@@ -175,7 +175,7 @@ MonoBehaviour:
   - id: kokuyo
     model: {fileID: 919132149155446097, guid: 577c0e6da078b9e3b8fb5df01ccabaa3, type: 3}
     controller: {fileID: 9100000, guid: f5f5e6722d7a37dedb98a94f73adff6f, type: 2}
-    height: 4.48
+    height: 4.51
     modelYaw: 0
     materialOverrides: []
     stateNames:

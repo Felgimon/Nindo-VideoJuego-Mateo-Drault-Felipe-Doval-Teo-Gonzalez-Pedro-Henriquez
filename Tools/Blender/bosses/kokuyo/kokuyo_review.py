@@ -37,7 +37,11 @@ class Review:
             "Kokuyo_Seams": L.build("rv_seams", albedo_rgb=(0.35, 0.25, 0.5), emission_rgb=KM.SEAM_RGB, emission_gain=1.0),
             "Kokuyo_Ribbon": L.build("rv_ribbon", albedo_rgb=KM.BANDANA_RGB),
             "Kokuyo_MaskCrack": L.build("rv_maskcrack", albedo_rgb=hx("wood_red")),
+            # grietas como nacen (vetas tenues) y encendidas (el desequilibrio al máximo)
+            "Kokuyo_Cracks": L.build("rv_cracks", albedo_rgb=KM.CRACK_BASE_RGB, emission_rgb=KM.CRACK_IDLE_EMISSION),
         }
+        self.crack_lit = L.build("rv_cracks_lit", albedo_rgb=KM.CRACK_BASE_RGB, emission_rgb=KM.SEAM_RGB, emission_gain=1.0)
+        self.crack_idle = mats["Kokuyo_Cracks"]
         for o in [body] + list(rigid.values()):
             for s in o.material_slots:
                 if s.material and s.material.name in mats:
@@ -171,9 +175,20 @@ class Review:
             pass
 
     # ------------------------------------------------------------------ hojas
-    def model_sheet(self, tag="model"):
-        """Frente/perfil/espalda con luz de estudio (para juzgar el modelado) + la lectura del juego."""
+    def set_cracks(self, lit):
+        for i in range(1, 6):
+            o = self.rigid.get(f"Crack_{i}")
+            if o:
+                for s in o.material_slots:
+                    s.material = self.crack_lit if lit else self.crack_idle
+
+    def model_sheet(self, tag="model", frame=None):
+        """Frente/perfil/espalda con luz de estudio (para juzgar el modelado), detalles de cerca y la lectura
+        del juego con las dos lunas: la del mundo (WorldBuilder, de frente y arriba a la derecha de la
+        cámara) y la de la arena del diseño (a contraluz del jefe)."""
         L = self.look
+        if frame is not None:
+            self.scn.frame_set(frame)
         tiles = []
         self.show_kaito(False)
         studio = Vector((-0.45, -0.7, 0.75))
@@ -184,42 +199,47 @@ class Review:
             p = os.path.join(self.out, f"_{tag}_{az}.png")
             self.render_framed(p, margin=0.03)
             tiles.append({"img": p, "label": name + " (luz de estudio)"})
-        row2 = []
-        L.set_moon(None)
-        self.show_kaito(True)
-        self.place_kaito((0.6, -4.6), 0)
-        self.game_view(pitch=55, dist=30)
-        p = os.path.join(self.out, f"_{tag}_game55.png")
-        self.render_framed(p)
-        row2.append({"img": p, "label": "juego 55°/30 m, luna real (detrás del jefe)"})
-        self.game_view(focus=(0, -2.3, 1.0), pitch=52, dist=24)
-        p = os.path.join(self.out, f"_{tag}_game52.png")
-        self.render_framed(p)
-        row2.append({"img": p, "label": "juego 52°/24 m"})
-        L.set_moon(None, fill_dir=Vector((0.2, -1.0, 0.25)), fill_rgb=(0.55, 0.32, 0.12))
-        p = os.path.join(self.out, f"_{tag}_game55_brasero.png")
-        self.game_view(pitch=55, dist=30)
-        self.render_framed(p)
-        row2.append({"img": p, "label": "con braseros (relleno cálido)"})
-        L.set_moon(None)
-        self.show_kaito(False)
-        self.ortho((0, -0.25, 3.75), 1.9, 20, 10)
+        close = []
         L.set_moon(studio)
-        p = os.path.join(self.out, f"_{tag}_head.png")
-        self.render_full_square(p)
-        row2.append({"img": p, "label": "cabeza"})
+        for name, center, scale, az, el in (("piernas y sabatones", (-0.05, -0.3, 0.75), 2.0, 28, 10),
+                                            ("antebrazo y guante derechos", self.bone_head("Hand_R") + Vector((0.0, 0.1, 0.25)), 1.4, -70, 20),
+                                            ("cabeza", (0, -0.25, 3.75), 1.9, 20, 10)):
+            self.ortho(center, scale, az, el)
+            p = os.path.join(self.out, f"_{tag}_close_{len(close)}.png")
+            self.render_full_square(p)
+            close.append({"img": p, "label": name})
         # el rostro que queda al caer la máscara (final)
         self.rigid["Mask"].hide_render = True
         p = os.path.join(self.out, f"_{tag}_face.png")
         self.ortho((0, -0.25, 3.7), 1.2, 15, 4)
         self.render_full_square(p)
         self.rigid["Mask"].hide_render = False
-        row2.append({"img": p, "label": "rostro (sin máscara)"})
+        close.append({"img": p, "label": "rostro (sin máscara)"})
+        row3 = []
+        self.show_kaito(True)
+        self.place_kaito((0.6, -4.6), 0)
+        for lab, moon, fill, lit in (("55°/30 m, luna del mundo", L.WORLD_MOON, (0, 0, 0), False),
+                                     ("55°/30 m, luna de la arena (contraluz)", L.ARENA_MOON, (0, 0, 0), False),
+                                     ("arena + braseros (relleno cálido)", L.ARENA_MOON, (0.55, 0.32, 0.12), False),
+                                     ("luna del mundo, 5 grietas encendidas", L.WORLD_MOON, (0, 0, 0), True)):
+            L.set_moon(L.moon_dir(moon), fill_dir=Vector((0.2, -1.0, 0.25)), fill_rgb=fill)
+            self.set_cracks(lit)
+            self.game_view(pitch=55, dist=30)
+            p = os.path.join(self.out, f"_{tag}_game_{len(row3)}.png")
+            self.render_framed(p)
+            row3.append({"img": p, "label": lab})
+        self.set_cracks(False)
         L.set_moon(None)
+        self.show_kaito(False)
         out = os.path.join(self.out, f"{tag}_sheet.png")
-        self.sheet({"out": out, "title": "Kokuyō - modelo", "width": 1280, "tile_h": 420, "delete": True,
-                    "rows": [{"label": "modelo (ortográfica)", "tiles": tiles}, {"label": "lectura en el juego", "tiles": row2}]})
+        self.sheet({"out": out, "title": "Kokuyō - modelo", "width": 1280, "tile_h": 400, "delete": True,
+                    "rows": [{"label": "modelo (ortográfica)", "tiles": tiles}, {"label": "de cerca (luz de estudio)", "tiles": close},
+                             {"label": "lectura en el juego (cámara del jefe)", "tiles": row3}]})
         return out
+
+    def bone_head(self, name):
+        bpy.context.view_layer.update()
+        return self.arm.matrix_world @ self.arm.pose.bones[name].head
 
     def render_full_square(self, path, size=600):
         scn = self.scn
@@ -251,7 +271,7 @@ class Review:
         scn = self.scn
         L = self.look
         rows = []
-        views = [("juego, perfil del jefe 55°/30 m (luna del juego, de espaldas a ella)", "game"),
+        views = [("juego, perfil del jefe 55°/30 m (luna del mundo)", "game"),
                  ("juego 52°/24 m (cámara normal)", "game52"), ("perfil (desde su derecha)", "side")]
         for title, kind in views:
             if kind in ("game", "game52"):
@@ -380,14 +400,14 @@ class Review:
             x += 2.4 if h < 3 else 3.0
         L = self.look
         tiles = []
-        for lab, fill in (("luna del juego", (0, 0, 0)), ("con braseros", (0.55, 0.32, 0.12))):
+        for lab, fill in (("luna del mundo", (0, 0, 0)), ("con braseros", (0.55, 0.32, 0.12))):
             L.set_moon(None, fill_dir=Vector((0.2, -1.0, 0.25)), fill_rgb=fill)
             self.game_view(focus=(0.0, -1.0, 1.4), pitch=52, dist=26)
             p = os.path.join(self.out, f"_lineup_{len(tiles)}.png")
             self.render_framed(p, margin=0.03)
             tiles.append({"img": p, "label": "cámara 52° - " + lab})
         L.set_moon(Vector((-0.45, -0.7, 0.75)))
-        self.ortho((0.0, -1.0, 2.3), 5.2, 0, 4)
+        self.ortho((0.0, -1.0, 2.6), 6.8, 0, 4)
         p = os.path.join(self.out, "_lineup_front.png")
         self.render_framed(p, margin=0.02)
         tiles.append({"img": p, "label": "frente (luz de estudio)"})

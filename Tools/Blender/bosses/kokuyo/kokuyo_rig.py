@@ -19,6 +19,9 @@ HIP_J = Vector((-0.40, 0.0, 1.74))          # cabeza del muslo derecho
 KNEE = Vector((-0.42, -0.07, 1.00))         # rodilla apenas adelantada: el IK sabe para dónde doblar
 ANKLE = Vector((-0.42, 0.0, ANKLE_Z))
 TOE = Vector((-0.42, -0.46, 0.06))
+# punta y talón de la suela (respecto del tobillo en y; la suela apoya en z 0): los pivotes de un pie que
+# se para en punta o se echa atrás sobre el talón (el borde que toca el piso no se mete en él)
+SOLE_TOE_Y, SOLE_HEEL_Y = -0.6, 0.22
 SHOULDER = Vector((-0.98, 0.02, 3.12))
 UPPER_LEN, FORE_LEN, HAND_LEN = 0.84, 0.78, 0.30
 _u = Vector((-math.sin(math.radians(45)), 0.0, -math.cos(math.radians(45))))

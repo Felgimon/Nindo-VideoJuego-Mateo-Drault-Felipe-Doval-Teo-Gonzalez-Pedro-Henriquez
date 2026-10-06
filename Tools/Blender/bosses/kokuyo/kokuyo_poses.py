@@ -12,6 +12,7 @@ de un clip y el principio del siguiente: así un combo nunca salta de pose en el
 """
 import copy, math
 from mathutils import Vector, Matrix
+import kokuyo_rig as KR
 
 # lo que se autora en el MUNDO (clavado en el piso); el resto va relativo al transform del juego
 WORLD_POS = ("foot_r", "foot_l", "sword_pos", "mask_pos")
@@ -47,13 +48,25 @@ def flat(x, y, yaw=0.0):
 
 
 def toe(x, y, yaw=0.0, heel=25.0):
-    """Pie en punta con la MISMA huella que flat(x, y, yaw): la punta queda donde estaba y el talón
-    sube 'heel' grados (el pie gira sobre la punta, no patina)."""
+    """Pie en punta con la MISMA huella que flat(x, y, yaw): el borde de la punta de la suela queda donde
+    estaba y el talón sube 'heel' grados (el pie gira sobre ese borde: no patina ni se mete en el piso)."""
     R = Matrix.Rotation(math.radians(yaw), 3, 'Z')
-    tip = Vector((x, y, 0.24)) + R @ Vector((0.0, -0.46, -0.18))
+    ty, tz = -KR.SOLE_TOE_Y, KR.ANKLE_Z
+    tip = Vector((x, y, 0.24)) - R @ Vector((0.0, ty, tz))
     h = math.radians(heel)
-    ank = tip + R @ Vector((0.0, 0.46 * math.cos(h) - 0.18 * math.sin(h), 0.46 * math.sin(h) + 0.18 * math.cos(h)))
+    ank = tip + R @ Vector((0.0, ty * math.cos(h) - tz * math.sin(h), ty * math.sin(h) + tz * math.cos(h)))
     return tuple(ank), (heel, 0.0, yaw)
+
+
+def shifted(p, dy):
+    """La misma pose corrida 'dy' metros hacia atrás (+Y): cuerpo, manos y pies (una postura en el piso
+    que tiene que coincidir con dónde quedaron apoyados los pies en la clave anterior)."""
+    q = copy.deepcopy(p)
+    for k in ("hips", "grip", "hand_l", "hand_r", "foot_r", "foot_l"):
+        if q.get(k) is not None:
+            x, y, z = q[k]
+            q[k] = (x, y + dy, z)
+    return q
 
 
 def feet(p, r=None, l=None):
@@ -67,9 +80,10 @@ def feet(p, r=None, l=None):
 def heel(x, y, yaw=0.0, toe_up=20.0):
     """Pie apoyado en el talón con la punta levantada (se echa atrás), misma huella que flat()."""
     R = Matrix.Rotation(math.radians(yaw), 3, 'Z')
-    hp = Vector((x, y, 0.24)) + R @ Vector((0.0, 0.2, -0.22))       # talón
+    hy, hz = KR.SOLE_HEEL_Y, KR.ANKLE_Z
+    hp = Vector((x, y, 0.24)) + R @ Vector((0.0, hy, -hz))       # borde del talón
     h = math.radians(toe_up)
-    ank = hp + R @ Vector((0.0, -0.2 * math.cos(h) + 0.22 * math.sin(h), 0.2 * math.sin(h) + 0.22 * math.cos(h)))
+    ank = hp + R @ Vector((0.0, -hy * math.cos(h) + hz * math.sin(h), hy * math.sin(h) + hz * math.cos(h)))
     return tuple(ank), (-toe_up, 0.0, yaw)
 
 
@@ -102,10 +116,11 @@ GUARD = feet(mod(READY, hips=(0.0, 0.05, -0.2), hips_rot=(0.0, 0.0, -8.0), spine
                  grip_l=1.0, elbow_l=(0.8, 0.3, -0.5)),
              r=flat(*R_FOOT), l=flat(*L_FOOT))
 
-# final de la estocada: estirado, la hoja horizontal al frente, el brazo libre atrás de contrapeso
-THRUST_END = feet(mod(READY, hips=(0.0, -0.32, -0.5), hips_rot=(0.0, 0.0, 26.0), spine=(16.0, 0.0, 10.0), chest=(6.0, 0.0, 8.0),
-                      neck=(-8.0, 0.0, -14.0), head=(-10.0, 0.0, -18.0), clav_r=(0.0, 0.0, 10.0),
-                      grip=(-0.3, -1.62, 2.2), blade=(0.04, -0.998, 0.04), edge=(0.0, 0.0, -1.0), elbow_r=(-0.6, 0.4, -0.6),
+# final de la estocada: estirado y bajo, la hoja al frente apuntando 17° abajo (la punta llega a la altura
+# del pecho de Kaito, ~1.1 m), el brazo libre atrás de contrapeso
+THRUST_END = feet(mod(READY, hips=(0.0, -0.34, -0.62), hips_rot=(0.0, 0.0, 26.0), spine=(18.0, 0.0, 10.0), chest=(6.0, 0.0, 8.0),
+                      neck=(-10.0, 0.0, -14.0), head=(-12.0, 0.0, -18.0), clav_r=(0.0, 0.0, 10.0),
+                      grip=(-0.3, -1.7, 1.95), blade=(0.04, -0.953, -0.3), edge=(0.0, -0.3, -0.953), elbow_r=(-0.6, 0.4, -0.6),
                       hand_l=(1.1, 0.75, 2.0), hand_l_dir=(0.4, 0.8, -0.4), hand_l_up=(0.0, 0.3, 1.0), elbow_l=(0.4, 0.9, -0.3)),
                   r=toe(*R_FOOT, heel=20.0), l=flat(0.52, -1.08, 14.0))
 
@@ -117,11 +132,18 @@ KNEEL = feet(mod(READY, hips=(0.0, 0.18, -0.82), hips_rot=(0.0, 0.0, -6.0), spin
                  knee_r=(0.0, -0.55, -0.83), sword_ground=1.0),
              r=toe(-0.45, 0.62, -6.0, 62.0), l=flat(0.52, -0.82, 8.0))
 
-# seiza: sentado sobre los talones, la espada cruzada sobre los muslos (espera e intro)
-SEIZA = {**mod(READY, hips=(0.0, 0.16, -1.07), hips_rot=(0.0, 0.0, 0.0), spine=(4.0, 0.0, 0.0), chest=(-2.0, 0.0, 0.0),
+# seiza: sentado sobre los talones, la espada cruzada sobre los muslos (espera e intro). Las grebas son
+# gruesas: las tibias apoyan sobre las placas (tobillo a 24 cm del piso) y el pie estirado toca el piso
+# con la punta, como un empeine que no llega a aplanarse
+SEIZA_FEET = {"foot_r": (-0.38, 0.38, 0.24), "foot_r_rot": (147.0, 0.0, 0.0),
+              "foot_l": (0.38, 0.38, 0.24), "foot_l_rot": (147.0, 0.0, 0.0)}
+SEIZA = {**mod(READY, hips=(0.0, 0.16, -0.9), hips_rot=(0.0, 0.0, 0.0), spine=(4.0, 0.0, 0.0), chest=(-2.0, 0.0, 0.0),
                neck=(4.0, 0.0, 0.0), head=(8.0, 0.0, 0.0), clav_r=(0.0, 0.0, 0.0), clav_l=(0.0, 0.0, 0.0),
-               grip=(-0.6, -0.5, 1.12), blade=(0.995, 0.0, 0.06), edge=(0.0, -1.0, 0.0), elbow_r=(-0.7, 0.5, -0.3),
-               hand_l=(0.62, -0.55, 1.1), hand_l_dir=(0.0, -0.98, -0.2), hand_l_up=(0.0, 0.2, 1.0), elbow_l=(0.7, 0.5, -0.3),
-               knee_r=(0.0, -0.85, -0.5), knee_l=(0.0, -0.85, -0.5)),
-         "foot_r": (-0.38, 0.38, 0.13), "foot_r_rot": (165.0, 0.0, 0.0),
-         "foot_l": (0.38, 0.38, 0.13), "foot_l_rot": (165.0, 0.0, 0.0)}
+               grip=(-0.6, -0.5, 1.28), blade=(0.995, 0.0, 0.06), edge=(0.0, -1.0, 0.0), elbow_r=(-0.7, 0.5, -0.3),
+               hand_l=(0.62, -0.55, 1.26), hand_l_dir=(0.0, -0.98, -0.2), hand_l_up=(0.0, 0.2, 1.0), elbow_l=(0.7, 0.5, -0.3),
+               knee_r=(0.0, -0.85, -0.5), knee_l=(0.0, -0.85, -0.5)), **SEIZA_FEET}
+
+# kiza: de rodillas con los dedos metidos y los talones arriba (el paso entre seiza y pararse, o al revés)
+KIZA_FEET = {**dict(zip(("foot_r", "foot_r_rot"), toe(-0.38, 0.98, 0.0, 74.0))),
+             **dict(zip(("foot_l", "foot_l_rot"), toe(0.38, 0.98, 0.0, 74.0)))}
+KIZA = {**mod(SEIZA, hips=(0.0, 0.12, -0.86), spine=(10.0, 0.0, 0.0)), **KIZA_FEET}

@@ -619,9 +619,12 @@ def kokuyo_info():
 
 def kokuyo_assets(mats):
     """Materiales propios de Kokuyō y el .meta de su FBX (clips cortados de la toma única 'Scene').
-    Filo y grietas/ojos tienen emisión violeta de base: el jefe los maneja con MaterialPropertyBlock
-    (dorado en el aviso de parry, rojo en los imparables). La grieta de la máscara es del mismo rojo
-    que la máscara con la emisión en ~0 (la keyword queda activa para poder encenderla en el eclipse)."""
+    Filo y ojos tienen emisión violeta de base: el jefe los maneja con MaterialPropertyBlock (dorado en el
+    aviso de parry, rojo en los imparables). Las grietas del pecho nacen como vetas tenues y se encienden de
+    a una por punto de desequilibrio (con la emisión de Kokuyo_Seams). La grieta de la máscara es del mismo
+    rojo que la máscara con la emisión en ~0 (la keyword queda activa para poder encenderla en el eclipse).
+    Sin compresión de animación: los golpes de 2 cuadros y los pies clavados no aguantan el error de la
+    reducción de claves (0.5° por hueso, acumulado en cadera-muslo-tibia-pie)."""
     info = kokuyo_info()
     if info is None:
         return
@@ -635,11 +638,14 @@ def kokuyo_assets(mats):
                              base_color=(0.9387, 0.4614, 0.0, 1), smooth=0.08),
         "Kokuyo_MaskCrack": lit(os.path.join(P_KOKUYO, "Kokuyo_MaskCrack.mat"), "Kokuyo_MaskCrack", None,
                                 base_color=(0.659, 0.196, 0.165, 1), smooth=0.12, emission=(0.001, 0.001, 0.001, 1)),
+        "Kokuyo_Cracks": lit(os.path.join(P_KOKUYO, "Kokuyo_Cracks.mat"), "Kokuyo_Cracks", None, base_color=(0.2, 0.12, 0.3, 1),
+                             smooth=0.2, emission=(0.17, 0.12, 0.22, 1)),
     }
     remap = {"Nindo_Palette": mats["palette"], "Nindo_Emissive": mats["emissive"], **km}
     clips = [dict(name=n, take=info.get("take", "Scene"), id=stable_id("kokuyo", n), first=r["first"], last=r["last"], loop=r["loop"])
              for n, r in info["clips"].items()]
-    write_meta(KOKUYO_FBX, model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False), force=True)
+    meta = model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False)
+    write_meta(KOKUYO_FBX, meta.replace("animationCompression: 1", "animationCompression: 0"), force=True)
     write_meta(KOKUYO_FBX + ".json", TEXT_META)
 
 
@@ -759,8 +765,8 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
             # hacia ella; con la orientación original el ninja va adelante tirando de las piernas del abuelo
             defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 0))
         if "kokuyo" in ctrls:
-            # Kokuyō mira a -Y en Blender = +Z en Unity (modelYaw 0); la altura es la medida en la pose de
-            # reposo (4.48 m hasta las puntas de la media luna): escala 1, los golpes quedan en metros reales
+            # Kokuyō mira a -Y en Blender = +Z en Unity (modelYaw 0); la altura es la que mide NormalizeHeight en
+            # la pose por defecto del FBX (el reposo, ver build_kokuyo.py): escala 1, los golpes en metros reales
             defs.append(("kokuyo", ensure_guid(KOKUYO_FBX), ctrls["kokuyo"], round(kokuyo_info()["bind_height"], 2), 0))
         for cid, mg, (cg, lens), h, yaw in defs:
             # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
