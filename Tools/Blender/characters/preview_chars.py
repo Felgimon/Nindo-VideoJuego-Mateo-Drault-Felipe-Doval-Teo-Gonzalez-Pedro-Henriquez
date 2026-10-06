@@ -3,7 +3,8 @@
   sheet   <id> <out.png> [--src fbx] [--action A --frame F]   giros + cabeza de cerca + cámara del juego
   lineup  <out.png> [--src id=fbx,...] [--day] [--rim]         los 5 a escala real con la cámara del juego
                                                                 (pitch 52°, 24 m, FOV 30) bajo luz de luna;
-                                                                --rim imita el borde frío de Nindo/CharacterLit
+                                                                --rim imita el borde frío de Nindo/CharacterLit;
+                                                                --anim id=fbx: pose de Idle prestada (FBX sin tomas)
   (sheet y lineup) --glint: filos encendidos como en un aviso; --prologue: Kaito sin bandana
   frames  <id> <out.png> <acción> <f1,f2,...> [--src fbx]       deformación en frames de una acción
   detail  <id> <out.png> <Objeto[,Objeto]> [--src fbx]          primer plano (armas) desde 4 lados
@@ -251,9 +252,15 @@ def sheet(cid, out):
 def lineup(out):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     srcs = dict(kv.split("=", 1) for kv in opt("--src", "").split(",") if "=" in kv)
+    anims = dict(kv.split("=", 1) for kv in opt("--anim", "").split(",") if "=" in kv)
     placed = []
     for cid in ("kaito", "grandpa", "ninja", "sumo", "goro"):
         arm, ms, acts = import_char(cid, srcs.get(cid))
+        if not acts and cid in anims:
+            # el FBX ya no trae tomas (el sumo anima con .anim de Unity): se toma la pose de otro FBX con el mismo esqueleto
+            helper, hms, hacts = import_char(cid, anims[cid])
+            for o in [helper] + hms: bpy.data.objects.remove(o, do_unlink=True)
+            acts = hacts
         C.rest(arm, True)
         mn, mx = bounds(ms)   # como NormalizeHeight: bounds de bind de todos los renderers
         s = CHARS[cid][1] / (mx.z - mn.z)
