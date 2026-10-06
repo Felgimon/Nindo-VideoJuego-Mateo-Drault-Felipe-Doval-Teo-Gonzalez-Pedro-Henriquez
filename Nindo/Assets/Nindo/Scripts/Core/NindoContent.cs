@@ -21,10 +21,30 @@ namespace Nindo
             public RuntimeAnimatorController controller;
             [Tooltip("Altura final en metros (el modelo se escala solo)")] public float height = 1.6f;
             [Tooltip("Giro del modelo en grados si su frente no es +Z (el abuelo, exportado de Blender, mira a -Z)")] public float modelYaw;
-            public Material[] materialOverrides;
+            [Tooltip("Ajustes por NOMBRE de material del FBX (antes eran por índice de slot y el cuerpo y el arma no tienen el mismo orden)")]
+            public MaterialSwap[] materialSwaps = new MaterialSwap[0];
             [Tooltip("Estados del controller y la duración (s, a velocidad 1) de su clip. Los calcula Tools/Unity/generate_assets.py")]
             public string[] stateNames = new string[0];
             public float[] stateLengths = new float[0];
+
+            public MaterialSwap Swap(string material)
+            {
+                if (materialSwaps != null)
+                    foreach (var s in materialSwaps)
+                        if (s != null && s.material == material) return s;
+                return null;
+            }
+        }
+
+        /// <summary>Cómo queda un material del FBX al pasarlo a Nindo/CharacterLit (CharacterFactory).</summary>
+        [Serializable]
+        public class MaterialSwap
+        {
+            [Tooltip("Nombre del material en el FBX, sin '.001' ni '(Instance)'")] public string material;
+            [Tooltip("Color base nuevo; alfa 0 = deja el del FBX")] public Color color = new Color(1f, 1f, 1f, 0f);
+            [Range(0f, 1f)] public float smoothness = 0.15f;
+            [Tooltip("Emisión fija (ojos que brillan); negro = la del FBX")] [ColorUsage(false, true)] public Color emission = Color.black;
+            [Tooltip("Quitar la textura base: las fotos 4K del equipo no van con el facetado plano")] public bool clearBaseMap;
         }
 
         [Serializable]

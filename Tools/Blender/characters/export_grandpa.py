@@ -1,94 +1,115 @@
-"""Exporta al abuelo (ViejoGaga.blend del Drive del equipo) a Unity.
+"""El abuelo (Nindo/Art/Models/Characters/Grandpa.fbx): pulido y re-exportación en el mismo lugar.
 
-El .blend trae al abuelo (malla 'Cuerpo', sin materiales) y a un ninja ('Cube') con la
-animación 'inicio' = el secuestro. Coloreamos al abuelo por hueso dominante y exportamos
-ambos con el clip. En Unity: clip 'Idle' (primer frame) y 'Kidnap' (completo).
+blender -b --python export_grandpa.py -- [--write] [--src otro.fbx] [--out carpeta]
 
-blender -b ViejoGaga.blend --python export_grandpa.py -- <out.fbx> [preview.png]
+La primera versión de este script (en el historial de git) armaba el FBX desde ViejoGaga.blend del Drive
+del equipo, coloreando por hueso dominante. Ahora el punto de partida es el propio FBX, como el resto de
+los personajes. El archivo trae al abuelo ('Cuerpo') y al ninja del secuestro ('Cube') en un solo
+Armature con una toma global 'Scene' (frames 1-75 a 30 fps): Grandpa.fbx.json y el .meta que genera
+generate_assets.py (clips 'Idle' y 'Kidnap') dependen de ese nombre y ese rango, así que se re-exporta igual
+(toma de escena, sin desplazar frames, unidades FBX_SCALE_UNITS como la exportación original).
+
+El abuelo mira a +Y en Blender, Z arriba, 3.18 u = 1.45 m. Cambios (audit_models MODEL-08):
+  - la faja roja: la regla vieja no tocaba ninguna cara (el kimono no tenía aristas en la cintura).
+    Se cortan dos anillos en z 1.33 / 1.52 (los pesos se interpolan) y la franja pasa a 'Abuelo_Faja',
+    con un moño atrás
+  - el sombrero era casi del color del camino (#c9a868 contra #b9a074): paja oscura con anillos tejidos
+    más claros, se separa del suelo desde la cámara alta; la frente vuelve a ser piel (la regla vieja,
+    descentrada en x, la pintaba de sombrero de un solo lado)
+  - cara amable: ojos cerrados en arco, cejas blancas caídas, bigote y mejillas
+  - el ninja del secuestro pasa al mismo carbón neutro que los ninjas del juego
 """
-import bpy, sys, os, json, math, collections
+import bpy, os, sys, math
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import charlib as C
 from mathutils import Vector
-argv = sys.argv[sys.argv.index("--") + 1:]
-out = argv[0]
 
-def mat(name, rgb, rough=0.8):
-    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-    m.use_nodes = True
-    b = m.node_tree.nodes.get("Principled BSDF")
-    b.inputs["Base Color"].default_value = (*rgb, 1)
-    b.inputs["Roughness"].default_value = rough
-    m.diffuse_color = (*rgb, 1)
-    return m
+REL = "Nindo/Art/Models/Characters/Grandpa.fbx"
+COLORS = {
+    "Abuelo_Sombrero": "#7a5634",
+    "Abuelo_Kimono": "#3d5a7a",
+    "Abuelo_Faja": "#9a2c22",
+    "Abuelo_Piel": "#e3ab84",
+    "GrisOscuro": "#2e2b2c",          # el secuestrador: el mismo carbón neutro que export_ninja.py
+    "Piel": "#e9b88a",
+}
+GRANDPA = dict(apply_scale_options='FBX_SCALE_UNITS', bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False)
 
-def srgb(h):
-    h = h.lstrip('#'); c = [int(h[i:i+2], 16) / 255 for i in (0, 2, 4)]
-    return tuple((x / 12.92) if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
+o = C.args()
+src = o["src"] or os.path.join(C.ASSETS, REL)
+arm = C.load(src, anim_offset=0.0)      # frames del archivo tal cual: la toma de escena es absoluta
+act = arm.animation_data.action
+f0, f1 = (int(round(x)) for x in act.frame_range)
+scn = bpy.context.scene
+scn.frame_start, scn.frame_end = f0, f1
+poses = C.sample_poses(arm)
+C.rest(arm, True)
+body = bpy.data.objects["Cuerpo"]
+faja = C.material("Abuelo_Faja", "#9a2c22")
+trenza = C.material("Abuelo_SombreroTrenza", "#a8814a")
+ojos = C.material("Abuelo_Ojos", "#3a2a22")
+mejilla = C.material("Abuelo_Mejilla", "#dc9a84")
+barba = bpy.data.materials["Abuelo_Barba"]
 
-o = bpy.data.objects['Cuerpo']
-me = o.data
-me.materials.clear()
-M = {k: mat("Abuelo_" + k, srgb(v)) for k, v in {
-    "Sombrero": "#c9a868", "Piel": "#e8b48a", "Kimono": "#3d5a7a", "Faja": "#8a2b22", "Pantalon": "#3a3633", "Sandalia": "#5a3d28", "Barba": "#e8e4dc"}.items()}
-order = list(M.keys())
-for k in order: me.materials.append(M[k])
-idx2name = {g.index: g.name for g in o.vertex_groups}
-# centro de la cabeza
-head = [o.matrix_world @ p.center for p in me.polygons]
-for p in me.polygons:
-    w = collections.Counter()
-    for vi in p.vertices:
-        for g in me.vertices[vi].groups:
-            w[g.group] += g.weight
-    dom = idx2name[w.most_common(1)[0][0]] if w else "Root"
-    c = o.matrix_world @ p.center
-    if dom == "Cabeza":
-        r = math.hypot(c.x - 0.1, c.y - 0.0)
-        k = "Sombrero" if (c.z > 2.66 or r > 0.46) else ("Barba" if c.z < 2.33 else "Piel")
-    elif dom.startswith(("Mano", "Dedo", "Pulgar", "Punta")):
-        k = "Piel"
-    elif dom.startswith("Pie"):
-        k = "Sandalia"
-    elif dom.startswith("Tibia"):
-        k = "Pantalon"
-    elif dom == "Root" and 1.25 < c.z < 1.45:
-        k = "Faja"
-    else:
-        k = "Kimono"
-    p.material_index = order.index(k)
-    p.use_smooth = False
+# ------------------------------------------------------------------ faja
+if C.count(body, "Abuelo_Faja") == 0:
+    C.bisect_loops(body, (1.33, 1.52), "Abuelo_Kimono")
+    n = C.reassign(body, lambda f: f.mat == "Abuelo_Kimono" and 1.33 < f.c.z < 1.52, faja)
+    print("faja", n, "caras")
 
-# limpiar la escena
-for ob in list(bpy.data.objects):
-    if ob.type not in ('ARMATURE', 'MESH') or (ob.type == 'MESH' and ob.name not in ('Cuerpo', 'Cube')):
-        bpy.data.objects.remove(ob, do_unlink=True)
-arm = next(ob for ob in bpy.data.objects if ob.type == 'ARMATURE')
-act = bpy.data.actions['inicio']
-arm.animation_data.action = act
-f0, f1 = (int(x) for x in act.frame_range)
-bpy.context.scene.frame_start, bpy.context.scene.frame_end = f0, f1
-bpy.context.scene.render.fps = 30
+# ------------------------------------------------------------------ sombrero y frente
+# lo que estaba pintado de sombrero debajo del ala y mirando de costado es la frente
+n = C.reassign(body, lambda f: f.mat == "Abuelo_Sombrero" and f.c.z < 2.76 and abs(f.n.z) < 0.5, bpy.data.materials["Abuelo_Piel"])
+print("frente devuelta a piel", n)
+# anillos tejidos: las caras empinadas de los escalones del ala (n.z 0.4-0.78; las planas pasan de 0.85)
+# van más claras, así los anillos siguen la geometría (desde arriba es lo que más se ve de él)
+n = C.reassign(body, lambda f: f.mat == "Abuelo_Sombrero" and f.c.z > 2.76 and 0.4 < f.n.z < 0.78, trenza)
+print("anillos del sombrero", n)
+C.recolor(COLORS)
 
-if len(argv) > 1:
-    # vista previa
-    scn = bpy.context.scene
-    scn.render.engine = 'BLENDER_WORKBENCH'
-    scn.display.shading.color_type = 'MATERIAL'
-    scn.render.resolution_x = scn.render.resolution_y = 420
-    cd = bpy.data.cameras.new("C"); cam = bpy.data.objects.new("C", cd); scn.collection.objects.link(cam)
-    cd.type = 'ORTHO'; cd.ortho_scale = 4.2
-    cam.location = (3.5, -5, 3.2); cam.rotation_euler = (math.radians(65), 0, math.radians(35))
-    scn.camera = cam
-    for i, f in enumerate((f0, (f0 + f1) // 2, f1)):
-        scn.frame_set(f); scn.render.filepath = argv[1].replace(".png", f"_{i}.png")
-        bpy.ops.render.render(write_still=True)
+# ------------------------------------------------------------------ cara amable
+if C.count(body, "Abuelo_Ojos") == 0:
+    skin = [body.matrix_world @ body.data.vertices[vi].co for f in C.faces(body) if f.mat == "Abuelo_Piel" and f.dom == "Cabeza"
+            for vi in body.data.polygons[f.index].vertices]
 
-for ob in bpy.data.objects:
-    ob.select_set(True)
-bpy.context.view_layer.objects.active = arm
-bpy.ops.export_scene.fbx(filepath=out, use_selection=True, object_types={'ARMATURE', 'MESH'},
-                         apply_unit_scale=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',
-                         mesh_smooth_type='FACE', add_leaf_bones=False, bake_anim=True, bake_anim_use_all_actions=False,
-                         bake_anim_use_nla_strips=False, bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.5,
-                         path_mode='STRIP', embed_textures=False, primary_bone_axis='Y', secondary_bone_axis='X')
-json.dump({"frames": f1 - f0 + 1, "first": f0, "take": "Scene"}, open(out + ".json", "w"))
-print("EXPORTED", out, f0, f1)
+    def surf(x, z, off=0.012):
+        near = [p.y for p in skin if abs(p.x - x) < 0.035 and abs(p.z - z) < 0.035]
+        return (max(near) if near else 0.3) + off
+
+    def on_face(pts, off=0.012):
+        return [Vector((x, surf(x, z, off), z)) for x, z in pts]
+    geo = C.Geo()
+    # alturas medidas en la cara del equipo: cuencas ~2.64, base de la nariz ~2.53, boca ~2.42, barba desde 2.32
+    for s in (1, -1):
+        # ojos cerrados en arco (la sonrisa de los ojos), metidos en las cuencas
+        eye = on_face([(s * 0.06, 2.626), (s * 0.09, 2.643), (s * 0.125, 2.646), (s * 0.155, 2.628)], off=0.006)
+        geo.ribbon(eye, [0.016, 0.02, 0.02, 0.016], "Abuelo_Ojos", thick=0.012, up=(0, 1, 0))
+        # cejas blancas, tupidas y caídas hacia afuera
+        brow = on_face([(s * 0.04, 2.695), (s * 0.10, 2.712), (s * 0.16, 2.70), (s * 0.21, 2.665)], off=0.018)
+        geo.ribbon(brow, [0.03, 0.042, 0.036, 0.022], "Abuelo_Barba", thick=0.03, up=(0, 1, 0))
+        # bigote: nace bajo la nariz y cae por los costados de la boca hasta la barba
+        mus = on_face([(s * 0.015, 2.505), (s * 0.07, 2.485), (s * 0.12, 2.44), (s * 0.15, 2.37)], off=0.018)
+        geo.ribbon(mus, [0.036, 0.042, 0.034, 0.022], "Abuelo_Barba", thick=0.028, up=(0, 1, 0))
+        # mejillas: hexágono achatado apoyado en la cara
+        cx, cz = s * 0.18, 2.535
+        geo.face(geo.add_verts([Vector((cx + math.cos(a) * 0.036, surf(cx + math.cos(a) * 0.036, cz + math.sin(a) * 0.022, 0.013), cz + math.sin(a) * 0.022))
+                                for a in (math.pi * k / 3 for k in range(6))]), "Abuelo_Mejilla")
+    print("cara", C.attach(body, geo, ("bone", "Cabeza")), "tris")
+
+    # moño de la faja, atrás (el abuelo da la espalda en el secuestro)
+    sash = [body.matrix_world @ body.data.vertices[vi].co for f in C.faces(body) if f.mat == "Abuelo_Faja"
+            for vi in body.data.polygons[f.index].vertices]
+    yb = min(p.y for p in sash if abs(p.x) < 0.12) - 0.02
+    geo = C.Geo()
+    geo.prism((0, yb + 0.03, 1.43), (0, yb - 0.07, 1.43), 0.07, 0.06, "Abuelo_Faja", seg=6, up=(0, 0, 1), sy=0.8)
+    for sx in (-1, 1):
+        geo.ribbon([(sx * 0.03, yb - 0.04, 1.40), (sx * 0.06, yb - 0.05, 1.28), (sx * 0.075, yb - 0.04, 1.16)],
+                   [0.07, 0.065, 0.055], "Abuelo_Faja", thick=0.02, up=(0, -1, 0))
+    print("moño", C.attach(body, geo, ("nearest_each", None), near_mat="Abuelo_Faja"), "tris")
+
+# la exportación original quedó parada en el último frame (la pose por defecto del FBX es el final del
+# secuestro): se exporta desde el mismo frame para no cambiarla
+scn.frame_set(f1)
+# bind_tol: Blender reconstruye el giro de los huesos de los pies (casi paralelos a -Y) con 0.07° de error;
+# las poses animadas dan exactamente igual (compare_poses) y a esa escala es menos de 0.001 u en el pie
+C.finish(arm, src, REL, o, export_kw=GRANDPA, anim_offset=0.0, poses=poses, bind_tol=0.1)
