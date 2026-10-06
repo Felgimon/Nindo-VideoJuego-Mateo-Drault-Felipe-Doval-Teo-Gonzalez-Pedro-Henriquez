@@ -453,8 +453,6 @@ def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True, ground
 def place_landmarks():
     for pid, x, z, yaw, sc in W.LANDMARKS:
         y = None
-        if pid == "shrine_small" and x > 180:
-            y = W.WATER_LAKE + 1.0
         if pid == "lily_pads":
             y = W.WATER_STREAM + 0.02
         place(pid, x, z, yaw, sc, y=y, ground=(y is None))

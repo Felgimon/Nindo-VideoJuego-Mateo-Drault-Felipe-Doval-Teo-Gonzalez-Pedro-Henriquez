@@ -481,6 +481,8 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 988f0c6802626a45c3832565088ec7fd, type: 3}
   - id: dojo_main
     model: {fileID: 919132149155446097, guid: 78e4a0fe9f07334178b72b199db40849, type: 3}
+  - id: falls_shrine_gate
+    model: {fileID: 919132149155446097, guid: 24585920c71c4370316b72257cc80cdc, type: 3}
   - id: fence_bamboo
     model: {fileID: 919132149155446097, guid: 8d88e15b6b7febdb173b2d5276f74ee0, type: 3}
   - id: fence_wood
@@ -519,6 +521,8 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: d28c8eb55bf39afe27ad96868b62f9f5, type: 3}
   - id: key_seal_mountain
     model: {fileID: 919132149155446097, guid: c97ee7ca20fc084c7316df8c6b0d08db, type: 3}
+  - id: kohan_falls_cliff
+    model: {fileID: 919132149155446097, guid: 234d42d3ce3dff6b3449932b33c510e6, type: 3}
   - id: lake_arena_platform
     model: {fileID: 919132149155446097, guid: 209214373332efff2e169efff4f6f16e, type: 3}
   - id: lantern_hanging
@@ -545,6 +549,8 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 78c08e4d5ad882cfab8124be20adf9cb, type: 3}
   - id: pavilion_azumaya
     model: {fileID: 919132149155446097, guid: f7eb13a8321b90dfc20bae40b962df9c, type: 3}
+  - id: pine_falls_lip
+    model: {fileID: 919132149155446097, guid: 0009fe6b55a0be6e0c45a0f0fd6361f3, type: 3}
   - id: portal_ring
     model: {fileID: 919132149155446097, guid: 64d8685881e056fed42599674f973aa1, type: 3}
   - id: pottery_jars
@@ -794,6 +800,25 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 1
+  - key: falls_gust
+    clips:
+    - {fileID: 8300000, guid: c06504025a4a6721b4b43d1f7b2d6abe, type: 3}
+    - {fileID: 8300000, guid: 8170dc0788ad559dfcb9007ef6bc7c53, type: 3}
+    volume: 0.7
+    pitchVariance: 0.06
+    spatial: 1
+  - key: falls_roar
+    clips:
+    - {fileID: 8300000, guid: d1786d651dd29eea0ae003132a7d724b, type: 3}
+    volume: 0.8
+    pitchVariance: 0.06
+    spatial: 1
+  - key: falls_spray
+    clips:
+    - {fileID: 8300000, guid: 46aa19fc4a39a2d5a8a156c8a4eb6177, type: 3}
+    volume: 0.5
+    pitchVariance: 0.06
+    spatial: 1
   - key: finisher_hit
     clips:
     - {fileID: 8300000, guid: 20ad7977e4c6d6c45af26c677a05531b, type: 3}
@@ -1016,6 +1041,14 @@ MonoBehaviour:
     volume: 1.0
     pitchVariance: 0.06
     spatial: 0
+  - key: water_splash
+    clips:
+    - {fileID: 8300000, guid: fd10c1eb65c74f6c86e42c7abd1e13af, type: 3}
+    - {fileID: 8300000, guid: 5ed0cc706e3ea30b18627a7c9818852f, type: 3}
+    - {fileID: 8300000, guid: 97fc81c3c9eaa509a9f1b13f129964d6, type: 3}
+    volume: 0.9
+    pitchVariance: 0.06
+    spatial: 1
   - key: wave
     clips:
     - {fileID: 8300000, guid: 811701bd674c64672da32085fb85084e, type: 3}

@@ -791,6 +791,8 @@ def props_manifest():
             e = {"id": pid, "collider": m.get("collider"), "tags": m.get("tags", []), "size": m.get("size")}
             if "light_offset" in m:
                 e["light_offset"] = m["light_offset"]
+            if "falls" in m:
+                e["falls"] = m["falls"]     # cascada (Tools/Blender/world/falls_layout.py): la arma FX/KohanFalls.cs
             out["props"].append(e)
     os.makedirs(P_DATA, exist_ok=True)
     p = os.path.join(P_DATA, "PropsManifest.json")
@@ -826,7 +828,9 @@ def audio_entries():
         sfx[k] = sorted(set(sfx[k] + v)) if k not in ("step",) else sorted(v)
     # mezcla por niveles (con el volumen de cada llamada): avisos y parry 1.0, golpes ~0.85, silbidos de los enemigos
     # ~0.6, cortes de Kaito ~0.5, pasos ~0.35 (AudioManager.Tier decide además pitch, voces y 2D/3D)
-    vols = {"swing": 0.8, "enemy_swing": 0.85, "enemy_swing_heavy": 0.85, "hurt": 0.9, "ui_select": 0.6, "clang": 0.85}
+    vols = {"swing": 0.8, "enemy_swing": 0.85, "enemy_swing_heavy": 0.85, "hurt": 0.9, "ui_select": 0.6, "clang": 0.85,
+            # cascada Kohan: loops 3D largos, por debajo de los avisos de combate
+            "falls_roar": 0.8, "falls_spray": 0.5, "falls_gust": 0.7, "water_splash": 0.9}
     entries = []
     for k in sorted(sfx):
         clips = [g(p) for p in sfx[k] if g(p)]

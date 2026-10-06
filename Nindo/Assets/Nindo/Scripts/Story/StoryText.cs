@@ -80,6 +80,13 @@ namespace Nindo
                     z.music = "explore_lake"; z.ambience = "water";
                     z.fogColor = new Color(0.06f, 0.12f, 0.16f); z.fogDensity = 0.012f; z.ambientSky = new Color(0.22f, 0.32f, 0.45f);
                     break;
+                case "lago_cascada":
+                    // arena de Mizuchi: cámara más baja y algo más lejos, si no la cascada queda arriba del cuadro
+                    z.title = "Cascada Kohan"; z.subtitle = "Donde los koi se vuelven dragones";
+                    z.music = "explore_lake"; z.ambience = "water";
+                    z.fogColor = new Color(0.06f, 0.12f, 0.16f); z.fogDensity = 0.012f; z.ambientSky = new Color(0.22f, 0.32f, 0.45f);
+                    z.cameraPitchOffset = -4f; z.cameraDistanceOffset = 1f;
+                    break;
                 case "bambu":
                     z.title = "Bosque de Bambú"; z.subtitle = "El susurro del viento";
                     z.music = "explore_forest"; z.ambience = "bamboo";

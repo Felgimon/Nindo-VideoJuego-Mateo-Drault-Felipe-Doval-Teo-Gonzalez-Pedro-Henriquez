@@ -188,5 +188,43 @@ for name, pts, width, ph in W.PATHS:
                 seen.add(key)
                 problems.append(f"Camino {name}: cruza agua sin puente en ({x:.1f}, {z:.1f})")
 
+# Cascada Kohan: el agua cae fuera de la plataforma (> 12 m del centro de la arena, si no las cortinas pasan por
+# encima de la baranda) y lejos de la pasarela; ninguna columna del acantilado toca la plataforma ni la pasarela
+import falls_layout as FALLS
+arena = next(((x, z) for pid, x, z, yaw, sc in W.LANDMARKS if pid == "lake_arena_platform"), None)
+walk = next((pts for name, pts, width, ph in W.PATHS if name == "pasarela_lago"), [])
+
+
+def walk_dist(x, z):
+    best = 1e9
+    for (ax, az), (bx, bz) in zip(walk[:-1], walk[1:]):
+        vx, vz = bx - ax, bz - az
+        t = max(0.0, min(1.0, ((x - ax) * vx + (z - az) * vz) / (vx * vx + vz * vz)))
+        px, pz = ax + vx * t, az + vz * t
+        if arena is None or math.hypot(px - arena[0], pz - arena[1]) > FALLS.DECK_R:   # los tablones terminan en la baranda
+            best = min(best, math.hypot(x - px, z - pz))
+    return best
+
+
+if arena is not None:
+    for e, n in FALLS.plunge_points(1.0):
+        x, z = FALLS.game_xz(e, n)
+        d = math.hypot(x - arena[0], z - arena[1])
+        if d < 12.0:
+            problems.append(f"Cascada: el agua cae a {d:.1f} m del centro de la arena en ({x:.1f}, {z:.1f}) (mínimo 12)")
+        if walk_dist(x, z) < 6.0:
+            problems.append(f"Cascada: el agua cae a {walk_dist(x, z):.1f} m de la pasarela en ({x:.1f}, {z:.1f})")
+    for c in FALLS.columns():
+        for ce, cn in c.corners():
+            x, z = FALLS.game_xz(ce, cn)
+            if math.hypot(x - arena[0], z - arena[1]) < FALLS.DECK_R + 0.6:
+                problems.append(f"Cascada: columna '{c.kind}' en ({x:.1f}, {z:.1f}) toca la plataforma de la arena")
+                break
+            if walk_dist(x, z) < 2.5:
+                problems.append(f"Cascada: columna '{c.kind}' en ({x:.1f}, {z:.1f}) a menos de 2.5 m de la pasarela")
+                break
+    if not any(pid.startswith("kohan_falls_cliff") for pid, *_ in W.LANDMARKS):
+        problems.append("Cascada: falta el landmark kohan_falls_cliff")
+
 print("\n".join(problems) if problems else "OK: sin problemas")
 print(f"{len(problems)} problemas")

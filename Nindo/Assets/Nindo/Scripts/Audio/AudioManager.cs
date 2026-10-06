@@ -255,7 +255,9 @@ namespace Nindo
                 return Tier.Cue;
             if (key.StartsWith("hit") || key == "hurt" || key == "kill" || key == "death" || key.StartsWith("finisher") || key == "slam" || key == "boss_roar" || key == "perfect_dodge")
                 return Tier.Impact;
-            if (key.StartsWith("step") || key.StartsWith("ui_") || key == "dialogue" || key == "lock" || key == "denied")
+            // el ambiente del mundo (cascada, braseros) nunca le saca una voz a un golpe o a un aviso
+            if (key.StartsWith("step") || key.StartsWith("ui_") || key == "dialogue" || key == "lock" || key == "denied" ||
+                key.StartsWith("falls_") || key.StartsWith("brazier"))
                 return Tier.Ambient;
             return Tier.Body;
         }

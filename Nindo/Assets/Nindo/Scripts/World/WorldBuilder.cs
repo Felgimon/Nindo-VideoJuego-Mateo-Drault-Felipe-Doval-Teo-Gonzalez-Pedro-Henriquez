@@ -314,6 +314,8 @@ namespace Nindo
                         var s = FXFactory.Smoke(go.transform, 0.6f);
                         s.transform.localPosition = spec.light_offset != null ? V(spec.light_offset, Vector3.up) : Vector3.up;
                         break;
+                    // cascada (Kohan): el agua se arma en runtime fuera del lote estático (anima su malla y partículas)
+                    case "waterfall": KohanFalls.Attach(go, WorldRoot); break;
                 }
             }
             // lo que también tapa la pelea aunque el manifest no lo marque (acantilados, campana, bambú joven)
