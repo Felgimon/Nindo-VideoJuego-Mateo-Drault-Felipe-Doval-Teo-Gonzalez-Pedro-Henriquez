@@ -156,10 +156,14 @@ LANDMARKS = [
     ("stairs_stone_large@4", 0, 108, 180, 1.0),      # 4 -> 8 m (sufijo @altura = altura fija)
     ("dojo_gate@8", 0, 113, 180, 1.0),
     ("dojo_main", 0, 160, 180, 1.0),
-    ("banner_nobori", -12, 118, 180, 1.0), ("banner_nobori", 12, 118, 180, 1.0),
-    ("torch_brazier", -14, 128, 0, 1.0), ("torch_brazier", 14, 128, 0, 1.0),
-    ("torch_brazier", -14, 146, 0, 1.0), ("torch_brazier", 14, 146, 0, 1.0),
-    ("lantern_stone_tall", -8, 148, 180, 1.0), ("lantern_stone_tall", 8, 148, 180, 1.0),
+    # arena de Kokuyō: piso de losas claras (la sombra violeta del jefe se lee sobre él), estandartes del clan,
+    # 8 braseros en anillo (r 16.5, a 22.5° + k·45°: el fuego lo enciende FX/Braziers) y el poste del abuelo
+    ("dojo_courtyard_floor@8", 0, 132, 180, 1.0),     # yaw 180: +X local = este, +Y local = norte (el dojo)
+    ("banner_kurokage", -12, 118, 180, 1.0), ("banner_kurokage", 12, 118, 180, 1.0),
+    *[("brazier_kage", round(16.5 * math.sin(math.radians(22.5 + 45 * k)), 2), round(132 + 16.5 * math.cos(math.radians(22.5 + 45 * k)), 2),
+       (202.5 + 45 * k) % 360, 1.0) for k in range(8)],
+    ("binding_post", 0, 151.0, 180, 1.0),            # el abuelo queda atado delante, en (0, 150.5)
+    ("lantern_stone_tall", -8, 148, 180, 1.0), ("lantern_stone_tall", 8, 148, 180, 1.0),   # nunca se apagan (Acto 3)
     ("tree_pine_a", -24, 150, 0, 1.2), ("tree_pine_b", 24, 152, 0, 1.2),
     # ---------------- Montaña
     ("torii_stone", -96, 50, 292, 1.0),   # perpendicular al camino_oeste (rumbo -68°)
@@ -218,7 +222,7 @@ CHECKPOINTS = [
     ("cp_lake", 90, 28, 200),
     ("cp_lake_docks", 112, 16, 220),
     ("cp_bamboo", 72, 108, 200),
-    ("cp_dojo", 10, 140, 180),
+    ("cp_dojo", 8, 114.5, 0),     # junto al portón, fuera de la barrera de Kokuyō (r 18): antes en (10, 140), adentro
 ]
 
 # zonas (id, x, z, radio, prioridad)
@@ -250,7 +254,7 @@ BOSSES = [
     ("goro", -200, 122, 15, -204, 128, 150),
     ("mizuchi", 184, 72, 9.5, 186, 74, 225),
     ("ozeki", 124, 162, 15, 126, 166, 215),
-    ("kage", 0, 132, 18, 0, 140, 180),
+    ("kage", 0, 132, 18, 0, 145.5, 180),       # Kokuyō espera arrodillado al pie de las escaleras del dojo
 ]
 
 # portales de vuelta al dojo (aparecen al vencer al jefe): (id, x, z, yaw, flag)
@@ -286,5 +290,22 @@ BARRIERS = [
     ("enc_sumo", 58, 96, 35, 6.5),         # camino al bambú
 ]
 
-NPCS = [("grandpa", "dojo", 0, 150, 180)]
+NPCS = [("grandpa", "dojo", 0, 150.5, 180)]   # atado al binding_post (0, 151)
+
+# patio del dojo (props_dojo.dojo_courtyard_floor en (0, 132), yaw 180): círculo de losas con su cordón, explanada
+# hasta las escaleras del dojo y el corte detrás del portón. build_world no siembra pasto ni piedras encima y apoya
+# los marcadores sobre las losas (COURTYARD_TOP sobre el terreno del patio)
+COURTYARD_C = (0.0, 132.0)
+COURTYARD_R = 18.95
+COURTYARD_APRON = (-9.0, 9.0, 144.0, 152.3)
+COURTYARD_SOUTH = 116.0
+COURTYARD_TOP = 0.05
+
+
+def on_courtyard(x, z, pad=0.0):
+    cx, cz = COURTYARD_C
+    x0, x1, z0, z1 = COURTYARD_APRON
+    if z < COURTYARD_SOUTH - pad:
+        return False
+    return math.hypot(x - cx, z - cz) <= COURTYARD_R + pad or (x0 - pad <= x <= x1 + pad and z0 - pad <= z <= z1 + pad)
 FIREFLIES = [(30, 70, 24, 18), (-40, 40, 20, 20), (20, -8, 30, 10), (6, -62, 16, 16), (100, 130, 20, 20), (-30, -170, 16, 16)]

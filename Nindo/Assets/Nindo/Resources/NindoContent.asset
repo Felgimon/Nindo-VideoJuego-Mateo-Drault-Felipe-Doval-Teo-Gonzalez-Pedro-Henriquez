@@ -193,6 +193,8 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 44ae746e3537c0438b160246a712912f, type: 3}
   - id: bamboo_young
     model: {fileID: 919132149155446097, guid: f07ac502a59ffea85622fd4103c911fe, type: 3}
+  - id: banner_kurokage
+    model: {fileID: 919132149155446097, guid: 42e867a64f6d1bab4f78ff5eccb9c37f, type: 3}
   - id: banner_nobori
     model: {fileID: 919132149155446097, guid: 94eb5168c09b4e5d20ad2a8433105e29, type: 3}
   - id: barrel
@@ -201,10 +203,14 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: a1d077188c10ddfa65158ed8fac7f954, type: 3}
   - id: bench_wood
     model: {fileID: 919132149155446097, guid: 8f4a07ee44990249a3da8c1eb1234b4b, type: 3}
+  - id: binding_post
+    model: {fileID: 919132149155446097, guid: 43a0eb3daa168982fe9027a83c90e702, type: 3}
   - id: boardwalk_segment
     model: {fileID: 919132149155446097, guid: 20e3899968403edef64add08c6dad3f2, type: 3}
   - id: boat_small
     model: {fileID: 919132149155446097, guid: 64b3710552530ede757df4da15fe33b5, type: 3}
+  - id: brazier_kage
+    model: {fileID: 919132149155446097, guid: 468a51ce59ab3cd30476c17083ed1c87, type: 3}
   - id: bridge_arch
     model: {fileID: 919132149155446097, guid: 368eb7e4fcfd967b67f186b55454958a, type: 3}
   - id: bridge_plank
@@ -239,6 +245,8 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 4e6375fde662544357c4b80d18df94d2, type: 3}
   - id: dock_segment
     model: {fileID: 919132149155446097, guid: f720290723a17f6b464fcb7c714042a1, type: 3}
+  - id: dojo_courtyard_floor
+    model: {fileID: 919132149155446097, guid: b656d6ea627cecc0275529f5c5a78b9e, type: 3}
   - id: dojo_gate
     model: {fileID: 919132149155446097, guid: 3ad9660348972ce4e632ffa17e2a02e2, type: 3}
   - id: dojo_gate_door
@@ -305,6 +313,12 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 73598b611e701212410d72f511a5e62c, type: 3}
   - id: net_rack
     model: {fileID: 919132149155446097, guid: 29f778be5a2d0fc420e60800a328717c, type: 3}
+  - id: obsidian_shard_l
+    model: {fileID: 919132149155446097, guid: b91d3139c788bef61894a5819a2c7a44, type: 3}
+  - id: obsidian_shard_m
+    model: {fileID: 919132149155446097, guid: 68b74863faa02bb6653b3c30cc592790, type: 3}
+  - id: obsidian_shard_s
+    model: {fileID: 919132149155446097, guid: 61e185ec82e1af0430d51ace12aba9f0, type: 3}
   - id: pagoda_small
     model: {fileID: 919132149155446097, guid: 78c08e4d5ad882cfab8124be20adf9cb, type: 3}
   - id: pavilion_azumaya

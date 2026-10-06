@@ -1,6 +1,119 @@
 {
  "props": [
   {
+   "id": "banner_kurokage",
+   "collider": {
+    "center": [
+     0,
+     2.0,
+     0
+    ],
+    "height": 4.0,
+    "radius": 0.15,
+    "type": "capsule"
+   },
+   "tags": [],
+   "size": [
+    0.9094330668449402,
+    4.209490776062012,
+    0.3787408769130707
+   ]
+  },
+  {
+   "id": "binding_post",
+   "collider": {
+    "center": [
+     0,
+     1.45,
+     0
+    ],
+    "height": 2.9,
+    "radius": 0.32,
+    "type": "capsule"
+   },
+   "tags": [],
+   "size": [
+    1.4390780925750732,
+    3.0999999046325684,
+    1.0321173667907715
+   ]
+  },
+  {
+   "id": "brazier_kage",
+   "collider": {
+    "center": [
+     0,
+     0.6,
+     0
+    ],
+    "height": 1.2,
+    "radius": 0.55,
+    "type": "capsule"
+   },
+   "tags": [],
+   "size": [
+    1.5818748474121094,
+    1.1699999570846558,
+    1.2368735074996948
+   ]
+  },
+  {
+   "id": "dojo_courtyard_floor",
+   "collider": {
+    "type": "mesh"
+   },
+   "tags": [
+    "walkable"
+   ],
+   "size": [
+    37.89849090576172,
+    0.5252397060394287,
+    39.24322509765625
+   ]
+  },
+  {
+   "id": "obsidian_shard_l",
+   "collider": {
+    "type": "none"
+   },
+   "tags": [
+    "nonstatic"
+   ],
+   "size": [
+    1.005843997001648,
+    1.4199999570846558,
+    0.6816327571868896
+   ]
+  },
+  {
+   "id": "obsidian_shard_m",
+   "collider": {
+    "type": "none"
+   },
+   "tags": [
+    "nonstatic"
+   ],
+   "size": [
+    0.718459963798523,
+    1.0199999809265137,
+    0.4868805408477783
+   ]
+  },
+  {
+   "id": "obsidian_shard_s",
+   "collider": {
+    "type": "none"
+   },
+   "tags": [
+    "nonstatic"
+   ],
+   "size": [
+    0.40720367431640625,
+    0.6200000047683716,
+    0.292128324508667
+   ]
+  },
+  {
    "id": "banner_nobori",
    "collider": {
     "center": [
