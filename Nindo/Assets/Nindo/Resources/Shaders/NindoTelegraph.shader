@@ -10,7 +10,7 @@
 // _Outcome: 1 desviado (el anillo se parte en 8 y sale volando), 2 cortado (la tinta se deshace), 3 golpe (se apaga).
 // Alfa premultiplicado: la tinta oscurece el suelo y el trazo lo cubre con color HDR (bloom). Sin texto ni kanji.
 // Segunda pasada "rayos X" (ZTest Greater): donde un cuerpo o una roca tapa el anillo (enemigo pegado a Kaito,
-// atacante detrás de un poste) el trazo se sigue viendo al _XRay de intensidad, sin halo de tinta encima de los cuerpos.
+// atacante detrás de un poste) el trazo se sigue viendo al _XRay de intensidad (0.3: más tiñe al atacante), sin halo de tinta encima de los cuerpos.
 Shader "Nindo/Telegraph"
 {
     Properties
@@ -31,7 +31,7 @@ Shader "Nindo/Telegraph"
         _OutT ("Avance del final (0..1)", Range(0, 1)) = 0
         _Seed ("Semilla del pincel", Float) = 0
         _Ink ("Tinta", Color) = (0.07, 0.04, 0.047, 1)
-        _XRay ("Intensidad detrás de los cuerpos", Range(0, 1)) = 0.45
+        _XRay ("Intensidad detrás de los cuerpos", Range(0, 1)) = 0.3
     }
 
     SubShader
