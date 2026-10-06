@@ -19,7 +19,7 @@ namespace Nindo
         public Image cursorImage;
         public TextMeshProUGUI label;
         public Vector2 cursorPos;
-        public float gap = 48f;              // del centro del kunai al comienzo del texto
+        public float gap = 64f;              // del centro del kunai al comienzo del texto (la punta queda a ~20 px)
         // los no elegidos bien apagados: sin la cinta, el contraste de la letra es lo que separa al elegido
         public Color labelNormal = new Color(0.62f, 0.59f, 0.53f, 1f);
         public Color labelSelected = UIFactory.Paper;
