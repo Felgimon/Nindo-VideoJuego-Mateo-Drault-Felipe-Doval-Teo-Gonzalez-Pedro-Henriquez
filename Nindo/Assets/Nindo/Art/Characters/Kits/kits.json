@@ -63,7 +63,7 @@
   "tris": 1312
  },
  "ninja_lake": {
-  "bytes": 247836,
+  "bytes": 252092,
   "chains": [
    "Flap",
    "Float"
@@ -71,10 +71,10 @@
   "character": "ninja",
   "colliders": 5,
   "groups": 17,
-  "tris": 2022
+  "tris": 2150
  },
  "ninja_lake_elite": {
-  "bytes": 266076,
+  "bytes": 266156,
   "chains": [
    "Flap",
    "Float"
@@ -117,7 +117,7 @@
   "tris": 2840
  },
  "ozeki": {
-  "bytes": 380764,
+  "bytes": 307036,
   "chains": [
    "Shide00",
    "Shide01",
@@ -128,7 +128,7 @@
   "character": "sumo",
   "colliders": 4,
   "groups": 23,
-  "tris": 5588
+  "tris": 3788
  },
  "sumo_bamboo": {
   "bytes": 239324,
@@ -167,7 +167,7 @@
   "tris": 3428
  },
  "sumo_mountain": {
-  "bytes": 269884,
+  "bytes": 261388,
   "chains": [
    "TasselL",
    "TasselR",
@@ -177,6 +177,6 @@
   "character": "sumo",
   "colliders": 4,
   "groups": 21,
-  "tris": 2472
+  "tris": 2448
  }
 }

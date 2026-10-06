@@ -18,12 +18,14 @@ del juego con una silueta, un bloque de color y algo que se mueva:
                  dicen para dónde mira desde arriba) y vendas de brazo.
   montaña:      capa de paja (mino) en tres hileras con nieve arriba, cuello de piel, cinturón de soga con
                  shide, polainas con soga cruzada y sandalias de paja. Se mueve la capa (pesada).
-  lago:         sombrero de paja ancho (el disco se ve desde arriba), red de pescar sobre los hombros con
+  lago:         sombrero de paja (el disco se ve desde arriba; medido para no tapar el filo en el aviso de
+                 parry), red de pescar sobre los hombros con
                  flotadores, faja turquesa con un faldón cortado en ola, flotador de vidrio que brilla
                  (identifica al lago de noche) y un arpón cruzado en la espalda.
   bambú:        armadura de cañas (peto, hombreras, faldones), máscara de hojas y moño con dos hojas largas.
   élite:        el kit de su zona más una máscara oni roja y hombreras laqueadas rojas: "rojo = élite" en
-                 todas las zonas (en el bambú las hojas de la máscara pasan a arce rojo).
+                 todas las zonas (en el bambú las hojas de la máscara pasan a arce rojo; en el lago, la copa del
+                 sombrero va laqueada en rojo).
   sumo:         lo mismo en grande; Ōzeki (jefe del bambú) lleva el ōichō dorado en hoja de ginkgo, la tsuna
                  blanca con shide y el delantal violeta con el emblema de bambú (sin kanji).
 Los nombres: 'Acc_' adelante y nunca Katana/Isan/Cylinder/Martillo/Arma/Cube (Enemy, PlayerController y NPC
@@ -367,22 +369,49 @@ def ninja_mountain_elite(k):
 
 
 # ---------------------------------------------------------------------------- lago (Kohan)
-def kasa(k, band=None):
-    """Sombrero cónico de paja (sugegasa): el disco ancho es lo que se ve del ninja del lago desde arriba."""
+def kasa(k, band="water_deep", elite=False, R=0.56, z0=2.70, tilt=12.0, height=0.38):
+    """Sombrero cónico de paja (sugegasa): el disco es lo que se ve del ninja del lago desde arriba.
+    Medido con el filo encendido desde la cámara de combate (barrido de sombreros de la revisión): en la carga de
+    los golpes el filo pasa rozando la coronilla y detrás de la nuca, y el sombrero de antes (ala 0.80) dejaba ver
+    el 64 % del filo del sablazo de arriba (Atack3) justo en el aviso de parry. Este, con el ala de 1.5 cabezas y
+    echado atrás (tilt > 0: la frente y los ojos al aire, el ala de atrás por debajo del filo), deja ver el 91 %
+    (Atack 94 %, Atack2 88 %) y no lo atraviesa la cabeza (holgura de 0.05 en la nuca, unidades del archivo).
+    Élite: la copa laqueada en rojo con remate dorado (un bloque de color entero: con cintas rojas finas el disco se
+    leía como una diana y desde la cámara del juego la cinta no se distinguía)."""
     g = k.geo
-    M = frame((0.02, -0.02, 2.70), (1, 0, 0.10), (-0.10, 0, 1))      # un poco caído hacia adelante
-    prof = [(0.00, 0.80), (0.035, 0.79), (0.13, 0.58), (0.25, 0.33), (0.33, 0.14)]
-    woven = lambda a, j: ("straw", "thatch_light")[j % 2] if a > 0 else "thatch"
-    g.apex_cone(M, prof, 0.38, "straw", sides=16, colors=woven).rigid("Cabeza")
-    # cara de abajo (oscura) y una vincha interior
-    under = [M @ V(math.cos(2 * math.pi * j / 16) * 0.79, math.sin(2 * math.pi * j / 16) * 0.79, 0.0) for j in range(16)]
+    t = math.radians(tilt)
+    M = frame((0.02, -0.02, z0), (math.cos(t), 0, math.sin(t)), (-math.sin(t), 0, math.cos(t)))
+    hz = height / 0.38
+    prof = [(0.00, R), (0.035 * hz, 0.9875 * R), (0.13 * hz, 0.725 * R), (0.25 * hz, 0.4125 * R), (0.33 * hz, 0.175 * R)]
+
+    def radius_at(z):
+        for (za, ra), (zb, rb) in zip(prof, prof[1:]):
+            if za <= z <= zb:
+                return lerp(ra, rb, (z - za) / (zb - za))
+        return prof[-1][1]
+
+    def woven(a, j):
+        if a == 0:
+            return "thatch"                                          # el canto del ala
+        if elite and a >= 2:
+            return ("wood_red", "cloth_red")[j % 2]                  # copa laqueada
+        return ("straw", "thatch_light")[j % 2]
+    g.apex_cone(M, prof, 0.38 * hz, "straw", sides=16, colors=woven).rigid("Cabeza")
+    # cara de abajo (oscura)
+    under = [M @ V(math.cos(2 * math.pi * j / 16) * (R - 0.01), math.sin(2 * math.pi * j / 16) * (R - 0.01), 0.0) for j in range(16)]
     g.poly(list(reversed(under)), "thatch_dark").rigid("Cabeza")
-    if band:
-        g.band(M @ Matrix.Translation((0, 0, 0.10)), 0.645, 0.645, 0.11, 0.02, band, seg=16, rx2=0.525, ry2=0.525).rigid("Cabeza")
-    g.cone(M @ Matrix.Translation((0, 0, 0.33)), 0.06, 0.03, 0.08, "wood", sides=6).rigid("Cabeza")
+    if not elite:
+        # cinta sobre la paja (apenas afuera del cono: metida adentro, como antes, no se veía)
+        za, zb = 0.15 * hz, 0.22 * hz
+        g.band(M @ Matrix.Translation((0, 0, (za + zb) / 2)), radius_at(za) + 0.015, radius_at(za) + 0.015, zb - za, 0.02, band,
+               seg=16, rx2=radius_at(zb) + 0.015, ry2=radius_at(zb) + 0.015).rigid("Cabeza")
+    # ribete del ala: el borde del disco se dibuja limpio contra el suelo
+    rim = [M @ V(math.cos(2 * math.pi * j / 16) * R, math.sin(2 * math.pi * j / 16) * R, 0.012) for j in range(17)]
+    g.tube(rim, 0.026, "thatch_dark", sides=4, cap0=False, cap1=False).rigid("Cabeza")
+    g.cone(M @ Matrix.Translation((0, 0, 0.33 * hz)), 0.06, 0.03, 0.08, "gold" if elite else "wood", sides=6).rigid("Cabeza")
     # barbijo: dos cordones bajo el mentón
     for s in (-1, 1):
-        g.ribbon([M @ V(0.12, s * 0.30, 0.0), V(0.20, -0.02 + s * 0.27, 2.40), V(0.30, -0.02 + s * 0.12, 2.18), V(0.33, -0.02, 2.13)],
+        g.ribbon([M @ V(0.10, s * 0.27, 0.0), V(0.20, -0.02 + s * 0.27, 2.40), V(0.30, -0.02 + s * 0.12, 2.18), V(0.33, -0.02, 2.13)],
                  0.035, 0.012, "wood_dark", up=(1, 0, 0)).rigid("Cabeza")
 
 
@@ -454,7 +483,7 @@ def harpoon(k, base_pt, tip_pt, bone="EspaldaAlta"):
 
 
 def ninja_lake_parts(k, elite=False):
-    kasa(k, band="cloth_red" if elite else "water_deep")
+    kasa(k, elite=elite)
     net_shawl(k)
     lake_obi(k)
     ukidama(k, (-0.24, -0.38, 1.30), "EspaldaBaja")        # cadera izquierda atrás: lejos del kunai y de la mano
@@ -690,7 +719,7 @@ def belt_pt(k, a, z, r, rx=1.30, ry=1.16):
 
 
 def laid_rope(k, path, R, colors=("cloth_white", "plaster", "plaster_shade"), strands=3, pitch=0.6, per_turn=6, sides=5,
-              closed=True):
+              closed=True, core_sides=6):
     """Soga torcida de verdad: 'strands' cordones que se enroscan alrededor del eje sobre un alma oscura (los surcos).
     Un tubo con caras pintadas se leía como un flotador; con cordones la diagonal de la soga se ve hasta de lejos.
     colors: los cordones alternan los dos primeros; el tercero es el alma (la sombra entre cordones)."""
@@ -710,7 +739,7 @@ def laid_rope(k, path, R, colors=("cloth_white", "plaster", "plaster_shade"), st
                 t = min(1.0, d / max(ln, 1e-9))
                 return path[i].lerp(path[i + 1], t), (path[i + 1] - path[i]).normalized()
             d -= ln
-    parts = [g.tube(path, R * 0.6, colors[2], sides=6, cap0=not closed, cap1=not closed)]
+    parts = [g.tube(path, R * 0.6, colors[2], sides=core_sides, cap0=not closed, cap1=not closed)]
     for st in range(strands):
         pts = []
         for i in range(n + 1):
@@ -727,62 +756,102 @@ def laid_rope(k, path, R, colors=("cloth_white", "plaster", "plaster_shade"), st
 
 
 def sumo_tsuna(k, z, rx, ry, r, seg=28):
-    """Tsuna del yokozuna: soga blanca de tres cordones que se apoya en el mawashi (sin aire entre soga y cuerpo)."""
+    """Tsuna del yokozuna: soga blanca de tres cordones que se apoya en el mawashi (sin aire entre soga y cuerpo).
+    Cordones de 3 caras y 4 puntos por vuelta: en la cámara del juego cada cordón mide ~4 px y lo que se lee es la
+    diagonal de la torsión, no la sección (con 5 caras y 6 puntos la soga sola eran ~2.7k triángulos)."""
     pts = [k.char.hug(SC, 360 * i / seg, z, r * 0.75, (ell(SC, rx, ry, 360 * i / seg, z) - V(SC[0], SC[1], z)).length)
            for i in range(seg)]
-    return laid_rope(k, pts, r, pitch=0.62)
+    return laid_rope(k, pts, r, pitch=0.62, per_turn=4, sides=3, core_sides=5)
 
 
-# piel de abrigo: blancos cálidos (bajo la luna fría los azulados se leían hielo), la sombra en gris cálido,
-# el revés de cuero oscuro y la nieve solo en las caras que miran arriba
+# piel de abrigo (los mechones del cuello del ninja de la montaña): blancos cálidos (bajo la luna fría los
+# azulados se leían hielo) y la sombra en gris cálido
 FUR = ("cloth_white", "plaster", "cloth_white", "plaster_shade")
 
 
-def tuft(g, p, out, rnd, length, radius, colors=FUR, n=3):
-    """Mechón de piel: n conos finos que salen de p hacia afuera y abajo, abiertos en abanico (silueta peluda)."""
-    up = V(0, 0, 1)
-    side = out.cross(up)
-    if side.length < 1e-4:
-        side = out.orthogonal()
-    side.normalize()
-    parts = []
-    for j in range(n):
-        spread = (j - (n - 1) / 2) * 0.55 + rnd.uniform(-0.15, 0.15)
-        d = (out * 0.75 - up * (0.65 + rnd.uniform(-0.15, 0.25)) + side * spread).normalized()
-        ln = length * rnd.uniform(0.75, 1.15)
-        col = colors[(j + rnd.randint(0, 3)) % len(colors)]
-        parts.append(g.cone(frame(p, d.orthogonal(), d), radius * rnd.uniform(0.8, 1.1), 0.0, ln, col, sides=4, cap1=False))
-    return K.Part(g, [i for q in parts for i in q.idx])
-
-
-def fur_mantle(k, c, z_top, z_bot, r_top, r_bot, clumps=26, seed=21):
-    """Manto de piel sobre hombros y espalda: una base gruesa y encima mechones de conos finos apoyados en la piel,
-    abierto adelante para que se vea el pecho; el borde de abajo cuelga en flecos."""
+def fur_tier(k, c, a0, a1, rows, locks, colors, thick=0.06, hem=0.18, flute=0.05, side_lift=(0.0, 0.0), seed=5,
+             allow=None):
+    """Hilera del manto de piel (como las tejas de un techo): tira abierta adelante que baja del cuello y termina
+    en mechones en punta, cada uno con un lomo hacia afuera. Bloques grandes que se leen a 150 px: los conos finos
+    se leían esquirlas de hielo y los mechones en bola, piedras.
+    rows: (z, rx, ry) de arriba hacia abajo (radios desde c); locks: cantidad de mechones; colors(fila, mechón,
+    normal) -> color de la cara de afuera. side_lift (arriba, abajo): cuánto sube la tira a los costados, para
+    pasar sobre el hombro en vez de cortar el brazo en pose T. Ningún punto queda bajo la piel."""
     g = k.geo
     ch = k.char
+    rnd = random.Random(seed)
+    cols = locks * 2
+    nr = len(rows)
+    tip = [hem * rnd.uniform(0.8, 1.2) if j % 2 else hem * 0.1 for j in range(cols + 1)]
+    outer, inner = [], []
+    for i, (z, rx, ry) in enumerate(rows):
+        u = i / (nr - 1)
+        ro, ri = [], []
+        for j in range(cols + 1):
+            a = lerp(a0, a1, j / cols)
+            side = abs(math.cos(math.radians(a))) ** 2
+            zz = z + lerp(side_lift[0], side_lift[1], u) * side - tip[j] * smoothstep(0.45, 1.0, u)
+            bulge = flute * (1.0 if j % 2 else -0.4) * (0.4 + 0.6 * u)
+            p = ell(c, rx + bulge, ry + bulge, a, zz)
+            q = ch.surface(p, thick + 0.03)
+            if V(q.x - c[0], q.y - c[1], 0).length > V(p.x - c[0], p.y - c[1], 0).length:
+                p = V(q.x, q.y, zz)
+            out = V(p.x - c[0], p.y - c[1], 0).normalized()
+            ro.append(p)
+            ri.append(p - out * thick + V(0, 0, thick * 0.4))
+        outer.append(ro); inner.append(ri)
+    oid = [g.add(r) for r in outer]
+    iid = [g.add(r) for r in inner]
+    for i in range(nr - 1):
+        for j in range(cols):
+            a_, b_, c_, d_ = oid[i][j], oid[i][j + 1], oid[i + 1][j + 1], oid[i + 1][j]
+            n = (g.v[d_] - g.v[a_]).cross(g.v[b_] - g.v[a_]).normalized()
+            g.face((a_, d_, c_, b_), colors(i, j // 2, n))
+            # el revés también es piel en sombra: donde la tira se dobla sobre el hombro el revés queda a la vista
+            # y en cuero oscuro se leían manchas de vaca
+            g.face((iid[i][j], iid[i][j + 1], iid[i + 1][j + 1], iid[i + 1][j]), "plaster_dirty")
+    last = nr - 1
+    for j in range(cols):
+        g.face((oid[last][j], oid[last][j + 1], iid[last][j + 1], iid[last][j]), "plaster_dirty")
+        g.face((oid[0][j + 1], oid[0][j], iid[0][j], iid[0][j + 1]), colors(0, j // 2, V(0, 0, 1)))
+    for j in (0, cols):
+        for i in range(nr - 1):
+            quad = (oid[i][j], oid[i + 1][j], iid[i + 1][j], iid[i][j])
+            g.face(quad if j == 0 else tuple(reversed(quad)), "plaster_dirty")
+    allow = allow or {"Torso", "Hombro.L", "Hombro.R"}
+    return K.Part(g, [i for r in oid + iid for i in r]).body(allow)
+
+
+def fur_mantle(k, c, seed=21):
+    """Manto de piel sobre hombros y espalda (concept: el abrigo blanco del sumo de la montaña): un rollo grueso
+    alrededor del cuello, una hilera de mechones que cae sobre los hombros y otra más baja y más en sombra sobre
+    la espalda (dos capas que se leen desde arriba), abierto adelante para que se vea el pecho."""
+    g = k.geo
     allow = {"Torso", "Hombro.L", "Hombro.R"}
     rnd = random.Random(seed)
-    M = frame((c[0], c[1], (z_top + z_bot) / 2), (1, 0, 0), (0, 0, 1))
-    h = z_top - z_bot
-    # perfil de la banda: afuera, arriba (nieve), adentro (cuero), abajo
-    fur = lambda a, j: ("cloth_white", "snow", "trunk", "plaster_shade")[a]
-    # base: herradura abierta adelante (el frente es +Y = 90°: el arco va de 125° a 415° = 55°)
-    g.band(M, r_bot[0], r_bot[1], h, 0.30, "cloth_white", seg=16, rx2=r_top[0], ry2=r_top[1], a0=125, a1=415, jitter=0.07,
-           seed=seed, colors=fur).body(allow)
-    for i in range(clumps):
-        a = 125 + 290 * (i + rnd.uniform(0.1, 0.9)) / clumps
-        zz = lerp(z_bot + 0.10, z_top + 0.02, rnd.random())
-        u = (zz - z_bot) / h
-        p = ell(c, lerp(r_bot[0], r_top[0], u) + 0.05, lerp(r_bot[1], r_top[1], u) + 0.05, a, zz)
-        p = ch.surface(p, 0.12)
-        out = (p - V(c[0], c[1], p.z)).normalized()
-        tuft(g, p, out, rnd, 0.42, 0.13).body(allow)
-    # flecos colgando del borde
-    for i in range(18):
-        a = 128 + 284 * (i + 0.5) / 18
-        p = ch.surface(ell(c, r_bot[0], r_bot[1], a, z_bot + 0.04), 0.10)
-        out = (p - V(c[0], c[1], p.z)).normalized()
-        tuft(g, p, out, rnd, 0.34, 0.11, n=2).body(allow)
+
+    def fur_col(light, mid, dark):
+        # arriba el blanco que agarra la luna; los mechones alternan dos blancos cálidos; lo que mira abajo, sombra
+        def f(i, lock, n):
+            if n.z > 0.55:
+                return light
+            if n.z < -0.2:
+                return dark
+            return (light, mid)[(lock + i) % 2] if i == 0 else (mid, light)[(lock + rnd.randint(0, 1)) % 2]
+        return f
+    # hilera de abajo (espalda): solo atrás, lejos de los brazos
+    fur_tier(k, c, 196, 344, [(3.56, 0.82, 0.80), (3.26, 1.02, 0.96), (2.98, 1.08, 1.02)], 7,
+             fur_col("plaster", "plaster_shade", "plaster_dirty"), hem=0.26, flute=0.07, seed=seed + 1, allow=allow)
+    # hilera de arriba: del cuello sobre los hombros hasta la punta del deltoide, abierta adelante (el frente es
+    # +Y = 90°). A los costados pasa por encima del brazo (en pose T) y copia sus pesos: al bajar el brazo el
+    # mechón cae con él sobre el deltoide, como una hombrera de piel
+    fur_tier(k, c, 108, 432, [(3.96, 0.62, 0.58), (3.70, 0.94, 0.88), (3.44, 1.16, 1.08)], 16,
+             fur_col("cloth_white", "plaster", "plaster_shade"), thick=0.07, hem=0.24, flute=0.07, side_lift=(0.0, 0.26),
+             seed=seed, allow=allow | {"Brazo.L", "Brazo.R"})
+    # rollo del cuello sobre el borde de arriba: tubo grueso en herradura con las caras alternadas (piel apelotonada)
+    pts = [ell((c[0], c[1] - 0.02), 0.62, 0.57, a, 3.97 + 0.03 * math.sin(math.radians(a * 3))) for a in range(104, 437, 18)]
+    cols = lambda r, j: ("cloth_white", "plaster", "cloth_white", "plaster_shade", "plaster", "cloth_white")[(r + j) % 6]
+    g.tube(pts, [0.16 + 0.03 * math.sin(i * 1.7) for i in range(len(pts))], "cloth_white", sides=6, colors=cols).body(allow)
 
 
 def sumo_default_parts(k, ribbon="cloth_red", tape="cloth_white"):
@@ -800,7 +869,7 @@ def sumo_default(k):
 @kit("sumo_mountain", "sumo")
 def sumo_mountain(k):
     g = k.geo
-    fur_mantle(k, (0.0, -0.20), 3.86, 3.15, (0.66, 0.62), (1.14, 1.08))
+    fur_mantle(k, (0.0, -0.20))
     # soga de paja gruesa sobre el mawashi, nudo grande adelante y dos borlas con mechón blanco (se mueven)
     rope_ring(k, SC, 1.30, 1.16, 2.30, 0.12, seg=24, hug=True).body({"Root", "Torso"})
     front = belt_pt(k, 90, 2.30, 0.12)
@@ -976,19 +1045,34 @@ def ginkgo_oicho(k, color="gold", dark="gold_dark"):
     g.band(frame(base + V(0, -0.04, -0.01), (1, 0, 0), fwd), 0.085, 0.085, 0.06, 0.03, "cloth_white", seg=8).rigid("Cabeza")
 
 
-def bamboo_crest(g, c, nrm, r, color="gold", bone="Root", chain=None):
-    """Emblema del delantal: anillo y tres hojas de bambú con tallo (sin letras)."""
+def bamboo_crest(g, c, nrm, r, color="gold", dark="gold_dark", bone="Root", chain=None):
+    """Emblema del delantal (concept): anillo y una rama de bambú. Caña recta en cuatro tramos con un anillo en
+    cada nudo, una hoja en la punta y un par de hojas anchas por nudo, abiertas hacia arriba. Las hojas salen de
+    nudos distintos: cinco hojas finas desde un mismo punto se leían como una hoja de cannabis. Sin letras."""
     nrm = V(nrm).normalized()
     side = V(0, 0, 1).cross(nrm).normalized()
     up = nrm.cross(side).normalized()
     M = frame(c, side, nrm)
+    lift = nrm * 0.012
     parts = [g.band(M, r, r, 0.03, 0.05, color, seg=16)]
-    parts.append(g.tube([c - up * r * 0.85 + nrm * 0.01, c + up * r * 0.55 + nrm * 0.01], 0.025, color, sides=4))
-    for s, ang, ln in ((0, 0, 0.62), (-1, 50, 0.55), (1, 50, 0.55), (-1, 100, 0.45), (1, 100, 0.45)):
+    nodes = [-0.86, -0.50, -0.16, 0.18, 0.40]                    # alturas en radios del anillo (la última, la punta)
+    for i in range(len(nodes) - 1):
+        a = c + up * r * (nodes[i] + 0.02) + lift
+        b = c + up * r * (nodes[i + 1] - 0.02) + lift
+        rr = r * (0.066 - 0.010 * i)
+        parts.append(g.tube([a, b], [rr, rr * 0.85], color, sides=4))
+        if i > 0:                                                   # nudo: anillo oscuro más ancho que la caña
+            parts.append(g.tube([a - up * r * 0.05, a + up * r * 0.01], rr * 1.5, dark, sides=4))
+    # (nudo, grados desde la vertical, largo, ancho máximo) en radios: hojas largas en hoja de cuchillo (ancho ~0.35
+    # del largo), las de abajo más abiertas, como una rama de bambú; no hojitas redondas de olivo o de espiga
+    leaves = [(0.40, 0.0, 0.40, 0.14)]
+    for y, ang, ln, w in ((0.18, 34.0, 0.50, 0.17), (-0.16, 52.0, 0.64, 0.22), (-0.50, 68.0, 0.56, 0.20)):
+        leaves += [(y, ang, ln, w), (y, -ang, ln, w)]
+    for n, (y, ang, ln, w) in enumerate(leaves):
         a = math.radians(ang)
-        dvec = up * math.cos(a) + side * s * math.sin(a)
-        base = c + up * r * (0.05 if s == 0 else -0.15) + nrm * 0.015
-        parts.append(leaf(g, base, dvec, r * ln, r * 0.22, color, normal=nrm, mid="gold_dark"))
+        d = up * math.cos(a) + side * math.sin(a)
+        base = c + up * r * y + side * (0.04 * r if ang > 0 else -0.04 * r if ang < 0 else 0) + nrm * (0.018 + 0.003 * (n % 3))
+        parts.append(leaf(g, base, d, r * ln, r * w, color, normal=nrm, mid=dark))
     p = K.Part(g, [i for q in parts for i in q.idx])
     return p.chain(chain) if chain else p.rigid(bone)
 
@@ -1004,7 +1088,7 @@ def ozeki(k):
         c = back + V(s * 0.36, -0.06, 0.04)
         loop = [c + V(s * math.cos(t) * 0.34, -0.10 * math.sin(t) ** 2, math.sin(t) * 0.24)
                 for t in (2 * math.pi * i / 10 + math.pi for i in range(10))]
-        laid_rope(k, loop, 0.11, pitch=0.42, per_turn=5, sides=4).rigid("Root")
+        laid_rope(k, loop, 0.11, pitch=0.42, per_turn=3, sides=3, core_sides=4).rigid("Root")
     g.ico(frame(back, (1, 0, 0), (0, 0, 1)), (0.20, 0.16, 0.20), "cloth_white", subdiv=1, jitter=0.06).rigid("Root")
     # shide grandes colgando de la tsuna sobre los bordes del delantal (enmarcan el emblema, como en el concept)
     for i, sx in enumerate((-1, 1)):
