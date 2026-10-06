@@ -75,7 +75,7 @@
      "legs": 0.0
     },
     "plant_drift_cm": 0.0,
-    "loop_seam_deg": 0.056,
+    "loop_seam_deg": 0.04,
     "stance_drift_cm": 0.02,
     "ground_speed_mps": 1.2,
     "min_z_cm": -0.1
@@ -153,7 +153,7 @@
      "legs": 0.0
     },
     "plant_drift_cm": 0.0,
-    "loop_seam_deg": 0.0,
+    "loop_seam_deg": 0.056,
     "stance_drift_cm": 0.79,
     "ground_speed_mps": 6.2,
     "min_z_cm": 0.1
@@ -714,6 +714,49 @@
      "legs": 0.0
     },
     "plant_drift_cm": 1.07,
+    "min_z_cm": -0.0
+   }
+  },
+  "Pray": {
+   "first": 647,
+   "last": 687,
+   "frames": 40,
+   "seconds": 1.3333,
+   "loop": false,
+   "timing": {
+    "kneel": 10,
+    "rise": 30
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "reza arrodillado con la katana apoyada adelante (1.33 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 1.83,
+    "min_z_cm": -0.0
+   }
+  },
+  "Interact": {
+   "first": 697,
+   "last": 717,
+   "frames": 20,
+   "seconds": 0.6667,
+   "loop": false,
+   "timing": {
+    "grab": 10
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "se agacha a juntar algo con la mano izquierda (0.67 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.3,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.51,
     "min_z_cm": -0.0
    }
   }

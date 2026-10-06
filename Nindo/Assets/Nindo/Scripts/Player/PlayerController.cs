@@ -172,6 +172,16 @@ namespace Nindo
 
         void TickLocomotion(InputReader input, float dt)
         {
+            // gesto de exploración (rezar en el santuario, juntar una llave): quieto hasta que termina el clip; el stick
+            // o una acción de combate lo cortan (y cualquier otro Play, p. ej. una cinemática que lo pone en Locomotion)
+            if (Time.time < gestureUntil && anim.Current == gestureState && MoveInput.sqrMagnitude < 0.04f)
+            {
+                velocity = Vector3.zero;
+                anim.SetLocomotion(0f, dt);
+                if (input != null && !Game.InCutscene) TryCombatActions(input, allowAttack: true);
+                return;
+            }
+            gestureUntil = 0f;
             Vector3 wish = InputToWorld(MoveInput) * config.runSpeed;
             velocity = Vector3.MoveTowards(velocity, wish, config.acceleration * dt);
             float speed01 = velocity.magnitude / config.runSpeed;
@@ -586,6 +596,8 @@ namespace Nindo
 
         // =============================================================== interacción
         Interactable nearInteractable;
+        float gestureUntil;
+        string gestureState;
 
         void TryInteract(InputReader input)
         {
@@ -597,7 +609,15 @@ namespace Nindo
                 if (FinisherCandidate() != null) return;
                 input.Consume(Act.Interact);
                 input.Consume(Act.Finisher);
-                nearInteractable.Interact(this);
+                var it = nearInteractable;
+                it.Interact(this);
+                string gesture = it is Checkpoint ? "Pray" : it is KeyPickup ? "Interact" : null;
+                if (gesture != null && State == PlayerState.Locomotion && !Game.InCutscene && anim.HasState(gesture))
+                {
+                    anim.Play(gesture, 0.12f);
+                    gestureState = gesture;
+                    gestureUntil = Time.time + anim.Length(gesture);
+                }
             }
         }
 

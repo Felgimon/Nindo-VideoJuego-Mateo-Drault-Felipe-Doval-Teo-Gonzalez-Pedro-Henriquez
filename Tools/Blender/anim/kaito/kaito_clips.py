@@ -605,3 +605,23 @@ add("Whirlwind", 30, [
     (24, _wh_land, "in2"), (30, READY, "sine")],
     timing={"phases": {"coil": [0, 3.6], "spin": [3.6, 22.2], "end": 29.7}, "slide_ok": True},
     notes="enrosque, trompo en el aire con la hoja afuera a su derecha (el código gira el modelo 720°), cae agachado")
+
+# =========================================================================== gestos de exploración
+# Rezar en el santuario (Checkpoint): rodilla izquierda al piso, las dos manos en la empuñadura y la punta de la
+# katana apoyada adelante, la cabeza baja; respira y se para. Moverse lo corta (PlayerController.TickLocomotion)
+_pray = feet(mod(READY, hips=(0.0, 0.1, -0.34), hips_rot=(4.0, 0.0, 0.0), spine=(6.0, 0.0, 0.0), head=(22.0, 0.0, 0.0),
+                 grip=(-0.06, -0.42, 0.95), blade=(0.0, -0.82, -0.57), edge=(0.0, -0.57, 0.82), elbow_r=(-0.6, 0.0, -0.8),
+                 grip_l=1.0, elbow_l=(0.6, 0.0, -0.8), fingers_l=1.0, knee_l=(0.2, -0.6, -0.8)),
+             r=flat("R", -0.22, -0.3, 6.0), l=KR.foot_on("L", 0.26, 0.46, 70.0, 10.0, "toe"))
+_pray_b = mod(_pray, breath=1.0, hips=(0.0, 0.1, -0.35), head=(25.0, 0.0, 0.0))
+add("Pray", 40, [(0, READY, "sine"), (10, _pray, "inout"), (20, _pray_b, "sine"), (30, _pray, "sine"), (40, READY, "inout")],
+    timing={"kneel": 10, "rise": 30},
+    notes="reza arrodillado con la katana apoyada adelante (1.33 s)")
+# Juntar algo (la mitad de la llave): se agacha, la mano izquierda baja, la cierra y se para
+_reach = feet(mod(READY, hips=(0.0, 0.06, -0.26), hips_rot=(18.0, 0.0, 6.0), spine=(22.0, 0.0, 4.0), head=(16.0, 0.0, -4.0),
+                  arm_space=0.0, hand_l=(0.26, -0.5, 0.42), hand_l_dir=(0.0, -0.6, -0.8), hand_l_up=(1.0, 0.0, 0.0),
+                  elbow_l=(0.8, 0.2, -0.4), fingers_l=0.0),
+              r=flat("R", *R_FOOT), l=toe("L", *L_FOOT, 20.0))
+add("Interact", 20, [(0, READY, "sine"), (7, _reach, "inout"), (10, mod(_reach, fingers_l=1.0, hand_l=(0.26, -0.48, 0.44)), "out"),
+                     (20, READY, "inout")],
+    timing={"grab": 10}, notes="se agacha a juntar algo con la mano izquierda (0.67 s)")
