@@ -125,7 +125,8 @@ class Review:
                 tiles[k].append({"img": p, "label": lab})
         self.restore()
         lay = {"out": os.path.join(self.out, f"kaito_{clip.name}.png"), "width": 1280, "tile_h": 190, "delete": True,
-               "title": f"Kaito {clip.name}: {clip.frames} cuadros ({clip.frames / 30.0:.2f} s){'  loop' if clip.loop else ''}  "
+               "title": f"Kaito {clip.name}: {clip.frames} cuadros ({clip.frames / 30.0 / clip.timing.get('time_scale', 1.0):.2f} s)"
+                        f"{'  loop' if clip.loop else ''}  "
                         f"{report.get('summary', '')}",
                "rows": [{"label": k, "tiles": v} for k, v in tiles.items()]}
         jp = os.path.join(self.out, f"_{clip.name}_layout.json")

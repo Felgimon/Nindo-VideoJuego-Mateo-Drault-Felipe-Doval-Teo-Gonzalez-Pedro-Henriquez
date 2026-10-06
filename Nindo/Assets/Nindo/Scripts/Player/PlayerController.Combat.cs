@@ -19,7 +19,9 @@ namespace Nindo
         Vector3 lungeVelocity, carry; // avance del corte e inercia de la carrera (se suman)
         float cutStartedAt = -1f;     // tiempo real en que la hoja empezó a cortar (-1 = todavía no)
 
-        void StartAttack(int index)
+        /// <param name="startNorm">desde dónde arranca el clip (y su línea de tiempo): el contraataque sale de la carga
+        /// del Corte 1 (config.riposteStartNorm), que es la pose en que terminan los clips del desvío</param>
+        void StartAttack(int index, float startNorm = 0f)
         {
             var defs = config.combo;
             if (defs == null || defs.Length == 0) return;
@@ -27,7 +29,7 @@ namespace Nindo
             comboIndex = Mathf.Clamp(index, 0, defs.Length - 1);
             currentAttack = defs[comboIndex];
             attackLen = anim.Length(currentAttack.state, 0.45f) / Mathf.Max(0.05f, currentAttack.speed);
-            attackNorm = 0f;
+            attackNorm = startNorm;
             lungeDone = 0f;
             hitThisSwing.Clear();
             swingSoundPlayed = false;
@@ -42,7 +44,8 @@ namespace Nindo
             carry = transform.forward * Mathf.Max(0f, Vector3.Dot(run, transform.forward)) * config.attackMomentum;
             lungeVelocity = Vector3.zero;
             velocity = carry;
-            anim.Play(currentAttack.state, comboIndex == 0 ? 0.05f : 0.03f);
+            // el contraataque funde un poco más largo: puede salir desde el desvío (0.06 s), no solo desde la carga
+            anim.Play(currentAttack.state, startNorm > 0f ? 0.08f : comboIndex == 0 ? 0.05f : 0.03f, startNorm);
             Game.UI?.HideInteractPrompt();
         }
 
@@ -383,7 +386,7 @@ namespace Nindo
             if (input != null && stateTime > 0.06f)
             {
                 // contraataque inmediato o nuevo parry
-                if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0); return; }
+                if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0, config.riposteStartNorm); return; }
                 if (input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
                 if (input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return; }
                 if (input.Buffered(Act.Finisher, 0.12f) && TryFinisher()) { input.Consume(Act.Finisher); return; }
@@ -506,7 +509,9 @@ namespace Nindo
         // corto: clip x2.8 con cámara lenta 0.6 hasta el tajo → tajo a 0.75 s y control de vuelta a 1.0 s reales
         // (el cinemático: tajo a 1.85 s, fin a 2.5 s)
         const float CinematicFinisherSpeed = 1.7f, ShortFinisherSpeed = 2.8f;
-        const float FinisherStrikeAt = 0.68f, ShortFinisherEnd = 0.85f;
+        // ShortFinisherEnd = f72/80 del clip (kaitooo.fbx.json, Finisher 'short_end'): ya volvió a la guardia y el fundido
+        // a Locomotion no arrastra los pies
+        const float FinisherStrikeAt = 0.68f, ShortFinisherEnd = 0.9f;
         // después del remate: los que estaban cerca salen despedidos y esperan antes de atacar; Kaito queda
         // invulnerable un instante (el control volvía en medio del golpe de otro)
         const float FinisherRoomRadius = 4f, FinisherPush = 1.5f, FinisherAttackDelay = 0.8f, FinisherGrace = 0.6f;

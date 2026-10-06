@@ -12,8 +12,12 @@
 Orden con export_kaito.py (malla, materiales y katana del pulido B2): primero export_kaito.py, después este.
 
 Falla (código 1) si un chequeo no pasa: alcance de manos y pies, deriva de los pies apoyados (< 2 cm en el
-juego), costura de los loops (< 1°), velocidad de los ciclos contra la autorada, el impacto dentro de la
-ventana que pega, nada bajo el piso, y la re-importación del FBX igual a lo horneado.
+juego), suelas que rozan el piso y se corren (< 2 cm por cuadro del juego y < 3 cm por tramo, con el avance y el
+giro del modelo que pone el código, entre cuadros en los ciclos, y también con el avance del corte cortado por el
+imán), pies en el aire donde el juego mueve el cuerpo ('airborne'), empalmes de los crossfades cortos
+(kaito_clips.CHAINS), costura de los loops (< 1°), velocidad de los ciclos contra la autorada, el impacto dentro de
+la ventana que pega, nada bajo el piso, y la re-importación del FBX igual a lo horneado.
+    --detail A,B      imprime, muestra por muestra, la altura y el corrimiento de las suelas de esos clips
 """
 import sys, os, json, math, time, shutil, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -45,6 +49,7 @@ RENDERS = opt("--renders")
 ONLY = opt("--only")
 REPORT = opt("--report")
 BLEND = opt("--blend")
+DETAIL = (opt("--detail") or "").split(",")     # clips cuyos pies se imprimen muestra por muestra (para iterar)
 GAP = 10
 M = KR.M_PER_U
 failures, warnings = [], []
@@ -60,6 +65,120 @@ def check(ok, msg, warn=False):
 def sole_pivots():
     """{hueso del pie: [punta, talón, bola]} de la suela en reposo (espacio C)."""
     return {fb: list(KR.sole_points(S)) for S, fb in (("R", "Pie.R"), ("L", "Pie.L"))}
+
+
+# ------------------------------------------------------------------------------- pies que rozan el piso
+# plant_report solo mira apoyos que ya están casi quietos: un pie que toca el piso y SE MUEVE (la punta de atrás
+# arrastrada en un tajo, la punta que roza al despegar en el trote) no lo ve. Acá cuenta cualquier punto de la
+# suela a menos de CONTACT del piso en dos muestras seguidas, con el avance del juego aplicado
+CONTACT_U = 0.012 * KR.U_PER_M
+SKATE_STEP_CM, SKATE_RUN_CM = 2.0, 3.0      # por cuadro del juego / acumulado en un tramo
+SKATE_NOISE_CM = 0.5                        # cm por cuadro del juego (15 cm/s) que no se ven: no suman
+
+
+def sole_grid(S):
+    """9 puntos de la suela en reposo (espacio C): punta, bola y talón por adentro, al medio y por afuera."""
+    toe, heel, ball = KR.sole_points(S)
+    xs = sorted({round(c.x, 4) for c in KR.sole_corners(S)} | {round(toe.x, 4)})
+    return [Vector((x, y, 0.0)) for x in xs for y in (toe.y, ball.y, heel.y)]
+
+
+def chain_of(rig, n):
+    out = []
+    while n:
+        out.append(n)
+        n = rig.parent[n]
+    return out[::-1]
+
+
+def interp_world(rig, Wa, Wb, t, chain):
+    """Pose del último hueso de 'chain' entre dos cuadros horneados como la arma Unity: cada hueso interpola su
+    transform local (posición lineal, giro por slerp) y la cadena se recompone. Entre claves a 30 fps un pie
+    clavado en el mundo describe un arco: eso es lo que patina entre cuadros aunque cada cuadro esté quieto."""
+    W = None
+    for n in chain:
+        p = rig.parent[n]
+        la = (Wa[p].inverted() @ Wa[n]) if p else Wa[n]
+        lb = (Wb[p].inverted() @ Wb[n]) if p else Wb[n]
+        L = NA.compose(la.translation.lerp(lb.translation, t), la.to_quaternion().slerp(lb.to_quaternion(), t).to_matrix())
+        W = L if W is None else W @ L
+    return W
+
+
+def spin_deg(spin, f):
+    """Giro del MODELO que aplica el código (timing 'spin' = [desde, hasta, grados], con la curva EaseOut de
+    PlayerController.TickWhirlwind); afuera del tramo, 0 (el código lo devuelve a la base: 720° = 0°)."""
+    if not spin:
+        return 0.0
+    a, b, deg = spin
+    if f < a or f > b:
+        return 0.0
+    u = (f - a) / (b - a)
+    return deg * (1.0 - (1.0 - u) ** 2)
+
+
+def foot_samples(rig, frames, roots, fb, S, sub, use_roots, spin=None):
+    loc = [rig.rest_inv[fb] @ p for p in sole_grid(S)]
+    chain = chain_of(rig, fb)
+    out = []
+    n = len(frames) - 1
+    for f in range(n + 1):
+        for k in range(sub if f < n else 1):
+            t = k / sub
+            W = frames[f][fb] if k == 0 else interp_world(rig, frames[f], frames[f + 1], t, chain)
+            r = (roots[f].lerp(roots[f + 1], t) if k else roots[f]) if use_roots else Vector()
+            Rz = Matrix.Rotation(math.radians(spin_deg(spin, f + t)), 3, 'Z')
+            out.append((f + t, [Rz @ (W @ p) + r for p in loc]))
+    return out
+
+
+def skate_report(rig, frames, roots, sub=1, use_roots=True, skid=(), detail=False, time_scale=1.0, spin=None):
+    """{pie: [[desde, hasta, cm acumulados, cm/cuadro del juego máx], ...]} de los tramos en que la suela roza el
+    piso y se corre (el punto que menos se mueve: rodar sobre la punta o el talón no cuenta). 'skid' = tramos de
+    cuadros donde patinar es a propósito (no cuentan). time_scale: cuadros del clip por cuadro del juego."""
+    out = {}
+    for S, fb in (("R", "Pie.R"), ("L", "Pie.L")):
+        smp = foot_samples(rig, frames, roots, fb, S, sub, use_roots, spin)
+        runs, cur = [], None
+        for (ta, pa), (tb, pb) in zip(smp, smp[1:]):
+            idx = [i for i in range(len(pa)) if pa[i].z < CONTACT_U and pb[i].z < CONTACT_U]
+            ok = any(a <= ta and tb <= b for a, b in skid)
+            if detail:
+                zl = min(p.z for p in pa) * M * 100
+                dd = min((Vector((pb[i].x - pa[i].x, pb[i].y - pa[i].y)).length for i in idx), default=0.0) * M * 100
+                print(f"    {fb} t{ta:5.2f} z {zl:5.1f} cm  {'roza' if idx else '    '} {dd:5.2f} cm")
+            if idx and not ok:
+                d = min(Vector((pb[i].x - pa[i].x, pb[i].y - pa[i].y)).length for i in idx) * M * 100
+                rate = d / ((tb - ta) / time_scale)
+                if cur is None:
+                    cur = [ta, tb, 0.0, 0.0, []]
+                cur[1] = tb
+                cur[2] += d if rate > SKATE_NOISE_CM else 0.0
+                cur[4].append((ta / time_scale, d, (tb - ta) / time_scale))
+            elif cur is not None:
+                runs.append(cur)
+                cur = None
+        if cur is not None:
+            runs.append(cur)
+        # velocidad en ventanas de medio cuadro del juego (lo que se ve a 60 fps), o de una muestra si están más
+        # separadas: una muestra de 1/8 de cuadro en el instante en que la punta toca no es un patinazo
+        for r in runs:
+            ds = r.pop()
+            w = max(0.5, max(dt for _, _, dt in ds))
+            r[3] = max(sum(d for t, d, _ in ds if t0 <= t < t0 + w) / w for t0, _, _ in ds)
+        out[fb] = [[round(r[0], 2), round(r[1], 2), round(r[2], 2), round(r[3], 2)] for r in runs if r[2] > 0.3]
+    return out
+
+
+def touching(rig, frames, roots, a, b):
+    """Cuadros de [a, b] en que algún pie toca el piso (para los tramos en que el juego mueve el cuerpo solo)."""
+    hit = []
+    for S, fb in (("R", "Pie.R"), ("L", "Pie.L")):
+        loc = [rig.rest_inv[fb] @ p for p in sole_grid(S)]
+        for f in range(a, b + 1):
+            if min((frames[f][fb] @ p).z for p in loc) < CONTACT_U:
+                hit.append((fb, f))
+    return hit
 
 
 def lint_clip(rig, clip, frames, ctrls, roots, misses):
@@ -87,6 +206,28 @@ def lint_clip(rig, clip, frames, ctrls, roots, misses):
     rep["plant_drift_cm"] = round(worst, 2)
     wseg = [(k, p["frames"]) for k, v in plants.items() for p in v if p["drift_cm"] * M >= worst - 1e-6]
     check(worst <= 2.0 or t.get("slide_ok"), f"{clip.name}: pies apoyados quietos (deriva máx. {worst:.2f} cm en el juego {wseg[:2]})")
+    # suela que roza el piso y se corre: en los ciclos también entre cuadros (4 muestras por cuadro, como interpola
+    # Unity: ahí el pie clavado recorre 10-20 cm por cuadro en el espacio del cuerpo); en el resto, cuadro a cuadro.
+    # 'skid' = tramos en que se corre a propósito (un corte de cámara o un teletransporte del código); 'spin' = el
+    # giro del modelo que pone el código (un pie apoyado mientras el modelo gira dibuja un círculo en el piso)
+    skid = [tuple(s) for s in t.get("skid", ())]
+    sk = skate_report(rig, frames, roots, 4 if clip.loop else 1, True, skid, clip.name in DETAIL, t.get("time_scale", 1.0),
+                      t.get("spin"))
+    rep["skate"] = sk
+    bad = [(fb, r) for fb, v in sk.items() for r in v if r[2] > SKATE_RUN_CM or r[3] > SKATE_STEP_CM]
+    rep["skate_cm"] = round(max([r[2] for v in sk.values() for r in v] or [0.0]), 2)
+    check(not bad, f"{clip.name}: ninguna suela patina rozando el piso (peor {bad[:3]})")
+    # el imán del ataque corta el avance contra un enemigo pegado: un pie clavado en el mundo mientras el clip
+    # descuenta el avance patina hacia atrás. Mientras el juego mueve el cuerpo, los pies van en el aire
+    if not clip.loop and any((roots[i + 1] - roots[i]).length > 1e-6 for i in range(n)):
+        sk0 = skate_report(rig, frames, roots, 1, False, skid)
+        rep["skate_no_lunge"] = sk0
+        bad0 = [(fb, r) for fb, v in sk0.items() for r in v if r[2] > SKATE_RUN_CM or r[3] > SKATE_STEP_CM]
+        check(not bad0, f"{clip.name}: con el avance cortado por el imán tampoco patina (peor {bad0[:3]})")
+    if "airborne" in t:
+        a, b = t["airborne"]
+        hits = touching(rig, frames, roots, a, b)
+        check(not hits, f"{clip.name}: en el aire mientras el juego lo mueve (f{a}-f{b}; tocan {hits[:4]})")
     if clip.loop:
         seam, step = NA.loop_seam_deg(rig, frames)
         rep["loop_seam_deg"] = seam
@@ -138,6 +279,35 @@ def lint_clip(rig, clip, frames, ctrls, roots, misses):
         s = t["strike"]
         rep["strike_n"] = round(s / n, 4)
     return rep
+
+
+def chain_report(rig, baked):
+    """Empalmes que el código hace con crossfades cortos (kaito_clips.CHAINS): el giro local más grande entre
+    el cuadro que termina y el que arranca, y cuánto se corre un pie. Un empalme de combo tiene que dar 0; uno
+    que vuelve a la guardia con 0.12-0.2 s de fundido aguanta poco, pero un brazo que da media vuelta salta."""
+    import kaito_clips as KC
+    by = {c.name: fr for c, fr in baked}
+    skip = set(KR.LEGACY)
+    out = {}
+    for a, fa, b, fb_, lim in KC.CHAINS:
+        if a not in by or b not in by:
+            continue
+        Wa = by[a][fa if fa >= 0 else len(by[a]) - 1]
+        Wb = by[b][fb_]
+        la, lb = rig.to_local(Wa), rig.to_local(Wb)
+        worst = sorted(((NA.quat_angle_deg(la[n][1], lb[n][1]), n) for n in rig.names if n not in skip), reverse=True)
+        ang, bone = worst[0]
+        foot = max((Wa[f].translation - Wb[f].translation).length for f in ("Pie.R", "Pie.L")) * M * 100
+        # lo que se ve: cuánto se corren en el mundo los codos, las rodillas, las manos y la punta de la katana
+        # (con brazos de 30 cm el antebrazo gira mucho para un hombro que baja unos centímetros)
+        joint = max(((Wa[n].translation - Wb[n].translation).length * M * 100, n)
+                    for n in ("Antebrazo.R", "Antebrazo.L", "Mando.R", "Mando.L", "Tibia.R", "Tibia.L", "cabeza", "KatanaBone"))
+        key = f"{a}{'@' + str(fa) if fa >= 0 else ''}->{b}{'@' + str(fb_) if fb_ else ''}"
+        out[key] = [round(ang, 1), bone, round(foot, 1), round(joint[0], 1), joint[1]]
+        check(ang <= lim and foot <= 4.0, f"empalme {key}: {ang:.1f}° en {bone} (tope {lim}°), pies {foot:.1f} cm, "
+                                          f"articulaciones {joint[0]:.1f} cm ({joint[1]})"
+                                          + ("" if ang <= lim else f"; siguen {[(n, round(d)) for d, n in worst[1:4]]}"))
+    return out
 
 
 def mesh_floor(meshes, rng):
@@ -220,6 +390,7 @@ def main():
         reports[clip.name] = lint_clip(rig, clip, frames, ctrls, roots, misses)
         baked.append((clip, frames))
         rootsd[clip.name] = roots
+    reports["_chains"] = chain_report(rig, baked)
     act, ranges = NA.write_pack(arm, rig, baked, start=1, gap=GAP, name="KaitoB3")
     last = max(b for a, b in ranges.values())
     # nada atraviesa el piso (la armadura en el espacio C para medir; el FBX se exporta con la original)
@@ -366,8 +537,10 @@ def write_sidecar(baked, ranges, reports, fbx_summary):
         if "lunge" in t:
             norm["lunge"] = [round(t["lunge"][0] / n, 4), round(t["lunge"][1] / n, 4), t["lunge"][2]]
         rep = reports[clip.name]
+        # 'seconds' es lo que dura EN EL JUEGO: los ciclos horneados densos se tocan a x time_scale (kaito_gait)
         clipd[clip.name] = {
-            "first": a, "last": b, "frames": clip.frames, "seconds": round(clip.frames / NA.FPS, 4), "loop": clip.loop,
+            "first": a, "last": b, "frames": clip.frames, "loop": clip.loop,
+            "seconds": round(clip.frames / NA.FPS / t.get("time_scale", 1.0), 4), "time_scale": t.get("time_scale", 1.0),
             "timing": t, "normalized": norm,
             "events": [{"frame": e["frame"], "t": round(e["frame"] / n, 4), "fn": e["fn"]} for e in clip.events],
             "notes": clip.notes,
@@ -376,7 +549,7 @@ def write_sidecar(baked, ranges, reports, fbx_summary):
     info = {"fps": NA.FPS, "take": "Scene", "units_per_meter": round(KR.U_PER_M, 4),
             "facing": "frente +Y de la armadura (Blender +X): modelYaw 90 en NindoContent, como siempre",
             "skeleton": "de juego: Mando bajo Antebrazo, Pie bajo Tibia; Target*/Pole* quedan sin pesos y quietos (kits)",
-            "clips": clipd}
+            "chains": reports.get("_chains", {}), "clips": clipd}
     with open(FBX + ".json", "w", encoding="utf-8", newline="\n") as fh:
         json.dump(info, fh, indent=1, ensure_ascii=False)
 

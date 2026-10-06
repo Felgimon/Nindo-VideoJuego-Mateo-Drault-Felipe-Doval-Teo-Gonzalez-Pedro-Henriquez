@@ -66,7 +66,7 @@ ModelImporter:
       takeName: Scene
       internalID: 666089287557789372
       firstFrame: 83
-      lastFrame: 101
+      lastFrame: 119
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -94,8 +94,8 @@ ModelImporter:
       name: Jog
       takeName: Scene
       internalID: 1152179762677359717
-      firstFrame: 111
-      lastFrame: 125
+      firstFrame: 129
+      lastFrame: 157
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -123,8 +123,8 @@ ModelImporter:
       name: Run
       takeName: Scene
       internalID: 458026098372214254
-      firstFrame: 135
-      lastFrame: 147
+      firstFrame: 167
+      lastFrame: 191
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -152,8 +152,8 @@ ModelImporter:
       name: Attack1
       takeName: Scene
       internalID: 1122382523369955420
-      firstFrame: 157
-      lastFrame: 170
+      firstFrame: 201
+      lastFrame: 214
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -181,8 +181,8 @@ ModelImporter:
       name: Attack2
       takeName: Scene
       internalID: 893138243650873282
-      firstFrame: 180
-      lastFrame: 191
+      firstFrame: 224
+      lastFrame: 235
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -210,8 +210,8 @@ ModelImporter:
       name: Attack3
       takeName: Scene
       internalID: 767866736945501684
-      firstFrame: 201
-      lastFrame: 221
+      firstFrame: 245
+      lastFrame: 265
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -239,8 +239,8 @@ ModelImporter:
       name: Dash
       takeName: Scene
       internalID: 969967809226973285
-      firstFrame: 231
-      lastFrame: 245
+      firstFrame: 275
+      lastFrame: 289
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -268,8 +268,8 @@ ModelImporter:
       name: ParryStance
       takeName: Scene
       internalID: 937278376532646123
-      firstFrame: 255
-      lastFrame: 271
+      firstFrame: 299
+      lastFrame: 315
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -297,8 +297,8 @@ ModelImporter:
       name: ParrySuccessR
       takeName: Scene
       internalID: 990547191929535941
-      firstFrame: 281
-      lastFrame: 293
+      firstFrame: 325
+      lastFrame: 337
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -326,8 +326,8 @@ ModelImporter:
       name: ParrySuccessL
       takeName: Scene
       internalID: 44566386668440889
-      firstFrame: 303
-      lastFrame: 315
+      firstFrame: 347
+      lastFrame: 359
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -355,8 +355,8 @@ ModelImporter:
       name: PerfectParry
       takeName: Scene
       internalID: 681891866086169253
-      firstFrame: 325
-      lastFrame: 339
+      firstFrame: 369
+      lastFrame: 383
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -384,8 +384,8 @@ ModelImporter:
       name: Blocked
       takeName: Scene
       internalID: 990096911119647357
-      firstFrame: 349
-      lastFrame: 363
+      firstFrame: 393
+      lastFrame: 407
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -413,8 +413,8 @@ ModelImporter:
       name: Hit
       takeName: Scene
       internalID: 154163258270711849
-      firstFrame: 373
-      lastFrame: 384
+      firstFrame: 417
+      lastFrame: 428
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -442,8 +442,8 @@ ModelImporter:
       name: HitHeavy
       takeName: Scene
       internalID: 1133350280148602516
-      firstFrame: 394
-      lastFrame: 414
+      firstFrame: 438
+      lastFrame: 458
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -471,8 +471,8 @@ ModelImporter:
       name: Death
       takeName: Scene
       internalID: 507535662141767446
-      firstFrame: 424
-      lastFrame: 466
+      firstFrame: 468
+      lastFrame: 510
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -500,8 +500,8 @@ ModelImporter:
       name: Finisher
       takeName: Scene
       internalID: 1091725488457226934
-      firstFrame: 476
-      lastFrame: 556
+      firstFrame: 520
+      lastFrame: 600
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -529,8 +529,8 @@ ModelImporter:
       name: WindSlash
       takeName: Scene
       internalID: 847884437577968533
-      firstFrame: 566
-      lastFrame: 597
+      firstFrame: 610
+      lastFrame: 641
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -558,8 +558,8 @@ ModelImporter:
       name: Whirlwind
       takeName: Scene
       internalID: 460827034909205887
-      firstFrame: 607
-      lastFrame: 637
+      firstFrame: 651
+      lastFrame: 681
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -587,8 +587,8 @@ ModelImporter:
       name: Pray
       takeName: Scene
       internalID: 884414543542850232
-      firstFrame: 647
-      lastFrame: 687
+      firstFrame: 691
+      lastFrame: 731
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -616,8 +616,8 @@ ModelImporter:
       name: Interact
       takeName: Scene
       internalID: 311008360635144052
-      firstFrame: 697
-      lastFrame: 717
+      firstFrame: 741
+      lastFrame: 761
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

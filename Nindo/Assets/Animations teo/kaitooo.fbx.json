@@ -4,13 +4,156 @@
  "units_per_meter": 1.8887,
  "facing": "frente +Y de la armadura (Blender +X): modelYaw 90 en NindoContent, como siempre",
  "skeleton": "de juego: Mando bajo Antebrazo, Pie bajo Tibia; Target*/Pole* quedan sin pesos y quietos (kits)",
+ "chains": {
+  "Attack1->Attack2": [
+   0.0,
+   "tronco",
+   0.0,
+   0.0,
+   "Antebrazo.R"
+  ],
+  "Attack2->Attack3": [
+   0.0,
+   "Puntapulgar.R",
+   0.0,
+   0.0,
+   "Antebrazo.L"
+  ],
+  "Attack3->Attack1": [
+   0.1,
+   "Puntadedo1.L",
+   0.0,
+   0.0,
+   "Tibia.L"
+  ],
+  "Attack3->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "ParrySuccessR->Attack1@2": [
+   4.1,
+   "Brazo.L",
+   0.0,
+   1.2,
+   "cabeza"
+  ],
+  "ParrySuccessL->Attack1@2": [
+   4.1,
+   "Brazo.L",
+   0.0,
+   1.2,
+   "cabeza"
+  ],
+  "PerfectParry->Attack1@2": [
+   4.1,
+   "Brazo.L",
+   0.0,
+   1.2,
+   "cabeza"
+  ],
+  "ParryStance@2->ParrySuccessR": [
+   0.7,
+   "Brazo.R",
+   0.0,
+   0.1,
+   "Antebrazo.R"
+  ],
+  "Dash@11->Attack1": [
+   38.4,
+   "Antebrazo.L",
+   3.6,
+   8.7,
+   "cabeza"
+  ],
+  "Dash->Idle": [
+   11.5,
+   "Tibia.L",
+   0.0,
+   1.9,
+   "cabeza"
+  ],
+  "ParryStance->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Blocked->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Hit->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "HitHeavy->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Finisher@72->Idle": [
+   11.7,
+   "Antebrazo.L",
+   0.0,
+   3.7,
+   "Mando.L"
+  ],
+  "Finisher->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "WindSlash->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Whirlwind->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Pray->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ],
+  "Interact->Idle": [
+   0.4,
+   "Antebrazo.L",
+   0.0,
+   0.1,
+   "Mando.L"
+  ]
+ },
  "clips": {
   "Idle": {
    "first": 1,
    "last": 73,
    "frames": 72,
-   "seconds": 2.4,
    "loop": true,
+   "seconds": 2.4,
+   "time_scale": 1.0,
    "timing": {},
    "normalized": {},
    "events": [],
@@ -21,20 +164,27 @@
      "legs": 0.0
     },
     "plant_drift_cm": 0.0,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "loop_seam_deg": 0.056,
     "min_z_cm": -0.0
    }
   },
   "Walk": {
    "first": 83,
-   "last": 101,
-   "frames": 18,
-   "seconds": 0.6,
+   "last": 119,
+   "frames": 36,
    "loop": true,
+   "seconds": 0.6,
+   "time_scale": 2,
    "timing": {
     "ground_speed_mps": 1.2,
+    "time_scale": 2,
     "contact_l": 0,
-    "contact_r": 9,
+    "contact_r": 18,
     "stance_l": [
      0,
      1,
@@ -48,22 +198,44 @@
      9,
      10,
      11,
-     18
-    ],
-    "stance_r": [
-     0,
-     1,
-     2,
-     9,
-     10,
-     11,
      12,
      13,
      14,
      15,
      16,
      17,
-     18
+     18,
+     19,
+     20,
+     21,
+     22,
+     36
+    ],
+    "stance_r": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     33,
+     34,
+     35,
+     36
     ]
    },
    "normalized": {},
@@ -71,40 +243,69 @@
    "notes": "paso a 1.2 m/s: 18 cuadros, talón -> punta",
    "lint": {
     "reach_miss_cm": {
-     "hands": 1.4,
+     "hands": 1.5,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
-    "loop_seam_deg": 0.04,
+    "plant_drift_cm": 0.07,
+    "skate": {
+     "Pie.R": [
+      [
+       0.0,
+       4.25,
+       0.3,
+       0.63
+      ]
+     ],
+     "Pie.L": [
+      [
+       0.0,
+       22.25,
+       0.3,
+       0.63
+      ]
+     ]
+    },
+    "skate_cm": 0.3,
+    "loop_seam_deg": 0.056,
     "stance_drift_cm": 0.02,
     "ground_speed_mps": 1.2,
     "min_z_cm": -0.1
    }
   },
   "Jog": {
-   "first": 111,
-   "last": 125,
-   "frames": 14,
-   "seconds": 0.4667,
+   "first": 129,
+   "last": 157,
+   "frames": 28,
    "loop": true,
+   "seconds": 0.4667,
+   "time_scale": 2,
    "timing": {
     "ground_speed_mps": 3.4,
+    "time_scale": 2,
     "contact_l": 0,
-    "contact_r": 7,
+    "contact_r": 14,
     "stance_l": [
      0,
      1,
      2,
      3,
      4,
-     14
-    ],
-    "stance_r": [
+     5,
+     6,
      7,
      8,
-     9,
-     10,
-     11
+     28
+    ],
+    "stance_r": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22
     ]
    },
    "normalized": {},
@@ -115,7 +316,32 @@
      "hands": 1.9,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
+    "plant_drift_cm": 0.01,
+    "skate": {
+     "Pie.R": [
+      [
+       13.75,
+       22.5,
+       1.36,
+       1.17
+      ]
+     ],
+     "Pie.L": [
+      [
+       0.0,
+       8.5,
+       0.67,
+       1.15
+      ],
+      [
+       27.75,
+       28.0,
+       0.46,
+       0.92
+      ]
+     ]
+    },
+    "skate_cm": 1.36,
     "loop_seam_deg": 0.056,
     "stance_drift_cm": 0.01,
     "ground_speed_mps": 3.4,
@@ -123,25 +349,31 @@
    }
   },
   "Run": {
-   "first": 135,
-   "last": 147,
-   "frames": 12,
-   "seconds": 0.4,
+   "first": 167,
+   "last": 191,
+   "frames": 24,
    "loop": true,
+   "seconds": 0.4,
+   "time_scale": 2,
    "timing": {
     "ground_speed_mps": 6.2,
+    "time_scale": 2,
     "contact_l": 0,
-    "contact_r": 6,
+    "contact_r": 12,
     "stance_l": [
      0,
      1,
      2,
-     12
+     3,
+     4,
+     24
     ],
     "stance_r": [
-     6,
-     7,
-     8
+     12,
+     13,
+     14,
+     15,
+     16
     ]
    },
    "normalized": {},
@@ -153,18 +385,44 @@
      "legs": 0.0
     },
     "plant_drift_cm": 0.0,
-    "loop_seam_deg": 0.056,
-    "stance_drift_cm": 0.79,
+    "skate": {
+     "Pie.R": [
+      [
+       11.75,
+       16.25,
+       1.88,
+       1.56
+      ]
+     ],
+     "Pie.L": [
+      [
+       0.0,
+       4.25,
+       1.59,
+       1.83
+      ],
+      [
+       23.75,
+       24.0,
+       0.57,
+       1.15
+      ]
+     ]
+    },
+    "skate_cm": 1.88,
+    "loop_seam_deg": 0.04,
+    "stance_drift_cm": 0.8,
     "ground_speed_mps": 6.2,
     "min_z_cm": 0.1
    }
   },
   "Attack1": {
-   "first": 157,
-   "last": 170,
+   "first": 201,
+   "last": 214,
    "frames": 13,
-   "seconds": 0.4333,
    "loop": false,
+   "seconds": 0.4333,
+   "time_scale": 1.0,
    "timing": {
     "apex": 2,
     "contact": 4,
@@ -174,10 +432,11 @@
     ],
     "combo": 7,
     "lunge": [
-     1,
+     2,
      5,
      0.9
     ],
+    "riposte_from": 2,
     "chain_to": "A1_END"
    },
    "normalized": {
@@ -189,7 +448,7 @@
      0.5385
     ],
     "lunge": [
-     0.0769,
+     0.1538,
      0.3846,
      0.9
     ]
@@ -211,27 +470,37 @@
      "fn": "FootL"
     }
    ],
-   "notes": "tajo de derecha a izquierda con salto corto; el pie derecho apoya enseguida del impacto, termina envuelto a la izquierda",
+   "notes": "tajo de derecha a izquierda con salto corto (en el aire mientras avanza); el pie derecho apoya al terminar el avance",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
     "plant_drift_cm": 0.12,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
+    "skate_no_lunge": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
     "tip_peak": [
      4,
-     47.9
+     49.4
     ],
     "reach_m": 1.2,
     "min_z_cm": -0.0
    }
   },
   "Attack2": {
-   "first": 180,
-   "last": 191,
+   "first": 224,
+   "last": 235,
    "frames": 11,
-   "seconds": 0.3667,
    "loop": false,
+   "seconds": 0.3667,
+   "time_scale": 1.0,
    "timing": {
     "apex": 1,
     "contact": 3,
@@ -241,7 +510,7 @@
     ],
     "combo": 6,
     "lunge": [
-     0,
+     1,
      4,
      1.0
     ],
@@ -257,7 +526,7 @@
      0.5455
     ],
     "lunge": [
-     0.0,
+     0.0909,
      0.3636,
      1.0
     ]
@@ -279,27 +548,37 @@
      "fn": "FootR"
     }
    ],
-   "notes": "revés ascendente desde la izquierda baja; el pie izquierdo entra adelante al final del avance, la hoja termina alta a la derecha",
+   "notes": "revés ascendente con un salto; el pie izquierdo pasa adelante en el aire y apoya al terminar el avance",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.2,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
+    "plant_drift_cm": 0.03,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
+    "skate_no_lunge": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
     "tip_peak": [
      2,
-     50.7
+     53.3
     ],
     "reach_m": 1.18,
     "min_z_cm": -0.1
    }
   },
   "Attack3": {
-   "first": 201,
-   "last": 221,
+   "first": 245,
+   "last": 265,
    "frames": 20,
-   "seconds": 0.6667,
    "loop": false,
+   "seconds": 0.6667,
+   "time_scale": 1.0,
    "timing": {
     "apex": 3,
     "contact": 7,
@@ -351,10 +630,33 @@
    "notes": "salto con las dos manos, la hoja pasa por arriba y cruza en diagonal; cae con la hoja baja y queda quieto 3 cuadros",
    "lint": {
     "reach_miss_cm": {
-     "hands": 1.6,
+     "hands": 2.6,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.77,
+    "plant_drift_cm": 0.15,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": [
+      [
+       7.0,
+       15.0,
+       1.2,
+       0.65
+      ]
+     ]
+    },
+    "skate_cm": 1.2,
+    "skate_no_lunge": {
+     "Pie.R": [],
+     "Pie.L": [
+      [
+       7.0,
+       15.0,
+       1.2,
+       0.65
+      ]
+     ]
+    },
     "tip_peak": [
      7,
      54.6
@@ -364,37 +666,47 @@
    }
   },
   "Dash": {
-   "first": 231,
-   "last": 245,
+   "first": 275,
+   "last": 289,
    "frames": 14,
-   "seconds": 0.4667,
    "loop": false,
+   "seconds": 0.4667,
+   "time_scale": 1.0,
    "timing": {
     "travel_frames": [
      0,
      11
     ],
-    "slide_ok": true,
+    "airborne": [
+     0,
+     10
+    ],
     "play_speed": 1.4
    },
    "normalized": {},
    "events": [],
-   "notes": "se toca a 1.4x: f0-f11 viaja (0.26 s), f11-f14 frena con el pie izquierdo patinando",
+   "notes": "se toca a 1.4x: f0-f10 en el aire mientras viaja (0.26 s), cae en f11 en la guardia y frena (el juego lo desliza 0.6 m)",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
+    "plant_drift_cm": 0.33,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "ParryStance": {
-   "first": 255,
-   "last": 271,
+   "first": 299,
+   "last": 315,
    "frames": 16,
-   "seconds": 0.5333,
    "loop": false,
+   "seconds": 0.5333,
+   "time_scale": 1.0,
    "timing": {
     "guard": 2,
     "hold": [
@@ -424,15 +736,21 @@
      "legs": 0.0
     },
     "plant_drift_cm": 0.0,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "ParrySuccessR": {
-   "first": 281,
-   "last": 293,
+   "first": 325,
+   "last": 337,
    "frames": 12,
-   "seconds": 0.4,
    "loop": false,
+   "seconds": 0.4,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "hold": [
@@ -455,16 +773,22 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
+    "plant_drift_cm": 0.36,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "ParrySuccessL": {
-   "first": 303,
-   "last": 315,
+   "first": 347,
+   "last": 359,
    "frames": 12,
-   "seconds": 0.4,
    "loop": false,
+   "seconds": 0.4,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "hold": [
@@ -487,23 +811,30 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.0,
+    "plant_drift_cm": 0.36,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "PerfectParry": {
-   "first": 325,
-   "last": 339,
+   "first": 369,
+   "last": 383,
    "frames": 14,
-   "seconds": 0.4667,
    "loop": false,
+   "seconds": 0.4667,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "hold": [
      1,
      4
     ],
-    "counter_ready": 9
+    "counter_ready": 9,
+    "chain_to": "COUNTER"
    },
    "normalized": {
     "hold": [
@@ -512,44 +843,56 @@
     ]
    },
    "events": [],
-   "notes": "parry perfecto: la hoja salta arriba y la palma adelante (3 cuadros), baja girando a una guardia agazapada",
+   "notes": "parry perfecto: la hoja salta arriba y la palma adelante (3 cuadros), baja girando a una guardia agazapada y queda cargado como el Corte 1",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.22,
+    "plant_drift_cm": 0.31,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "Blocked": {
-   "first": 349,
-   "last": 363,
+   "first": 393,
+   "last": 407,
    "frames": 14,
-   "seconds": 0.4667,
    "loop": false,
+   "seconds": 0.4667,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "slide_ok": true
    },
    "normalized": {},
    "events": [],
-   "notes": "rebote contra la guardia: la hoja sale despedida arriba-atrás, saltito hacia atrás, cae agachado",
+   "notes": "rebote contra la guardia: la hoja sale despedida arriba-atrás, saltito hacia atrás, cae agachado en la guardia",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 3.35,
+    "plant_drift_cm": 0.01,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "Hit": {
-   "first": 373,
-   "last": 384,
+   "first": 417,
+   "last": 428,
    "frames": 11,
-   "seconds": 0.3667,
    "loop": false,
+   "seconds": 0.3667,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "slide_ok": true
@@ -562,16 +905,22 @@
      "hands": 0.3,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.69,
+    "plant_drift_cm": 0.22,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "HitHeavy": {
-   "first": 394,
-   "last": 414,
+   "first": 438,
+   "last": 458,
    "frames": 20,
-   "seconds": 0.6667,
    "loop": false,
+   "seconds": 0.6667,
+   "time_scale": 1.0,
    "timing": {
     "impact": 1,
     "slide_ok": true
@@ -584,16 +933,22 @@
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 1.67,
+    "plant_drift_cm": 0.01,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "Death": {
-   "first": 424,
-   "last": 466,
+   "first": 468,
+   "last": 510,
    "frames": 42,
-   "seconds": 1.4,
    "loop": false,
+   "seconds": 1.4,
+   "time_scale": 1.0,
    "timing": {
     "impact": 2,
     "knee": 18,
@@ -608,28 +963,49 @@
      "hands": 3.6,
      "legs": 0.0
     },
-    "plant_drift_cm": 2.9,
-    "min_z_cm": -0.3
+    "plant_drift_cm": 0.25,
+    "skate": {
+     "Pie.R": [
+      [
+       32.0,
+       42.0,
+       0.58,
+       0.58
+      ]
+     ],
+     "Pie.L": []
+    },
+    "skate_cm": 0.58,
+    "min_z_cm": -0.1
    }
   },
   "Finisher": {
-   "first": 476,
-   "last": 556,
+   "first": 520,
+   "last": 600,
    "frames": 80,
-   "seconds": 2.6667,
    "loop": false,
+   "seconds": 2.6667,
+   "time_scale": 1.0,
    "timing": {
     "strike": 54,
     "zanshin": [
      55,
-     62
+     61
     ],
     "chiburi": [
-     62,
-     68
+     61,
+     66
     ],
-    "short_end": 68,
-    "slide_ok": true
+    "short_end": 72,
+    "skid": [
+     [
+      54,
+      55
+     ]
+    ],
+    "cut": [
+     54.5
+    ]
    },
    "normalized": {
     "strike": 0.675
@@ -641,23 +1017,36 @@
      "fn": "Strike"
     }
    ],
-   "notes": "iai: cargado y temblando hasta f54, en f55 (FinisherStrikeAt 0.68) ya cortó y está del otro lado; chiburi y se para",
+   "notes": "iai: cargado y temblando hasta f54, en f55 (FinisherStrikeAt 0.68) ya cortó y está del otro lado; chiburi, un paso y en f72 (ShortFinisherEnd 0.9) está en la guardia",
    "lint": {
     "reach_miss_cm": {
-     "hands": 1.1,
+     "hands": 0.9,
      "legs": 1.3
     },
-    "plant_drift_cm": 1.61,
+    "plant_drift_cm": 0.4,
+    "skate": {
+     "Pie.R": [
+      [
+       8.0,
+       54.0,
+       2.4,
+       1.21
+      ]
+     ],
+     "Pie.L": []
+    },
+    "skate_cm": 2.4,
     "strike_n": 0.675,
     "min_z_cm": -1.5
    }
   },
   "WindSlash": {
-   "first": 566,
-   "last": 597,
+   "first": 610,
+   "last": 641,
    "frames": 31,
-   "seconds": 1.0333,
    "loop": false,
+   "seconds": 1.0333,
+   "time_scale": 1.0,
    "timing": {
     "phases": {
      "prep": [
@@ -671,26 +1060,35 @@
      "slashes": 16.2,
      "end": 31
     },
-    "slide_ok": true
+    "airborne": [
+     10,
+     14
+    ]
    },
    "normalized": {},
    "events": [],
-   "notes": "prepara (iai) 0.32 s, viaja 0.16 s en la pose del dash, llega de espaldas con la hoja afuera; chiburi y guardia",
+   "notes": "prepara (iai) 0.32 s, viaja 0.16 s en el aire en la pose del dash, llega de espaldas con la hoja afuera; chiburi, un paso y guardia",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.6,
-     "legs": 0.8
+     "legs": 0.0
     },
-    "plant_drift_cm": 1.4,
-    "min_z_cm": -1.1
+    "plant_drift_cm": 0.77,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
+    "min_z_cm": -0.9
    }
   },
   "Whirlwind": {
-   "first": 607,
-   "last": 637,
+   "first": 651,
+   "last": 681,
    "frames": 30,
-   "seconds": 1.0,
    "loop": false,
+   "seconds": 1.0,
+   "time_scale": 1.0,
    "timing": {
     "phases": {
      "coil": [
@@ -703,48 +1101,75 @@
      ],
      "end": 29.7
     },
-    "slide_ok": true
+    "spin": [
+     3.6,
+     22.2,
+     -720.0
+    ],
+    "airborne": [
+     4,
+     22
+    ]
    },
    "normalized": {},
    "events": [],
-   "notes": "enrosque, trompo en el aire con la hoja afuera a su derecha (el código gira el modelo 720°), cae agachado",
+   "notes": "enrosque en puntas, trompo en el aire con la hoja afuera a su derecha (el código gira el modelo 720°), cae agachado en la guardia",
    "lint": {
     "reach_miss_cm": {
      "hands": 1.1,
      "legs": 0.0
     },
-    "plant_drift_cm": 1.07,
+    "plant_drift_cm": 0.1,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": [
+      [
+       0.0,
+       3.0,
+       1.76,
+       0.99
+      ]
+     ]
+    },
+    "skate_cm": 1.76,
     "min_z_cm": -0.0
    }
   },
   "Pray": {
-   "first": 647,
-   "last": 687,
+   "first": 691,
+   "last": 731,
    "frames": 40,
-   "seconds": 1.3333,
    "loop": false,
+   "seconds": 1.3333,
+   "time_scale": 1.0,
    "timing": {
     "kneel": 10,
     "rise": 30
    },
    "normalized": {},
    "events": [],
-   "notes": "reza arrodillado con la katana apoyada adelante (1.33 s)",
+   "notes": "paso atrás y rodilla al piso, la katana ofrecida hacia adelante y arriba con las dos manos (1.33 s)",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "plant_drift_cm": 1.83,
+    "plant_drift_cm": 0.0,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   },
   "Interact": {
-   "first": 697,
-   "last": 717,
+   "first": 741,
+   "last": 761,
    "frames": 20,
-   "seconds": 0.6667,
    "loop": false,
+   "seconds": 0.6667,
+   "time_scale": 1.0,
    "timing": {
     "grab": 10
    },
@@ -756,7 +1181,12 @@
      "hands": 0.3,
      "legs": 0.0
     },
-    "plant_drift_cm": 0.51,
+    "plant_drift_cm": 0.01,
+    "skate": {
+     "Pie.R": [],
+     "Pie.L": []
+    },
+    "skate_cm": 0.0,
     "min_z_cm": -0.0
    }
   }

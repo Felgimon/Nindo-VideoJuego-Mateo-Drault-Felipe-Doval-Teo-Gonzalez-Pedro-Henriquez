@@ -407,21 +407,26 @@ def fbx_clip_lengths(path):
 
 
 def controller(path, name, states, locomotion, loco_thresholds=None):
-    """states: {stateName: motionRef(str) | (motionRef, duración)}; locomotion: (idle, run) or None
-    (o más clips con sus umbrales de Speed en loco_thresholds, p. ej. Kokuyō: quieto, camina, acecha).
+    """states: {stateName: motionRef(str) | (motionRef, duración) | (motionRef, duración, velocidad)}; locomotion:
+    (idle, run) or None (o más clips con sus umbrales de Speed en loco_thresholds, p. ej. Kokuyō: quieto, camina,
+    acecha). La velocidad (Kaito: ciclos horneados con el doble de cuadros) va al estado y al hijo del blend tree.
     Devuelve (guid, {stateName: duración del clip}) para la tabla de NindoContent."""
     sm_id = stable_id(name, "sm")
     objs = []
     child_states = []
     state_ids = {}
     lengths = {}
+    speeds = {}
     states = dict(states)
     for sname, motion in list(states.items()):
         if isinstance(motion, tuple):
-            states[sname], ln = motion
+            states[sname], ln = motion[:2]
             if ln:
                 lengths[sname] = ln
+            if len(motion) > 2:
+                speeds[sname] = motion[2]
     if locomotion:
+        loco_scales = [m[2] if isinstance(m, tuple) and len(m) > 2 else 1 for m in locomotion]
         locomotion = [m[0] if isinstance(m, tuple) else m for m in locomotion]
         bt_id = stable_id(name, "bt")
         ths = loco_thresholds or (0, 1)
@@ -429,11 +434,11 @@ def controller(path, name, states, locomotion, loco_thresholds=None):
     m_Motion: {mot}
     m_Threshold: {th}
     m_Position: {{x: 0, y: 0}}
-    m_TimeScale: 1
+    m_TimeScale: {sc:g}
     m_CycleOffset: 0
     m_DirectBlendParameter: Speed
     m_Mirror: 0
-""" for mot, th in zip(locomotion, ths))
+""" for mot, th, sc in zip(locomotion, ths, loco_scales))
         objs.append(f"""--- !u!206 &{bt_id}
 BlendTree:
   m_ObjectHideFlags: 1
@@ -466,7 +471,7 @@ AnimatorState:
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
   m_Name: {sname}
-  m_Speed: 1
+  m_Speed: {speeds.get(sname, 1):g}
   m_CycleOffset: 0
   m_Transitions: []
   m_StateMachineBehaviours: []
@@ -616,7 +621,7 @@ def controllers():
         # los alias de los nombres que llama el código; la locomoción mezcla quieto / camina / trota / corre con
         # umbrales en Speed = velocidad real / runSpeed (cada ciclo autorado a su velocidad: los pies no patinan)
         g = ensure_guid(KAITO_FBX)
-        st = {n: (ref(g, stable_id("kaito", n), 3), round(r["seconds"], 4)) for n, r in ki["clips"].items()}
+        st = {n: (ref(g, stable_id("kaito", n), 3), round(r["seconds"], 4), r.get("time_scale", 1)) for n, r in ki["clips"].items()}
         st.update({a: st[t] for a, t in KAITO_ALIASES.items() if t in st})
         ths = [0] + [round(ki["clips"][n]["timing"]["ground_speed_mps"] / KAITO_RUN_SPEED, 4) for n in KAITO_LOCO[1:]]
         c["kaito"] = controller(os.path.join(P_ANIM, "Kaito.controller"), "Kaito", st, [st[n] for n in KAITO_LOCO], ths)

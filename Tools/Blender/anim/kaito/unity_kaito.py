@@ -15,7 +15,7 @@ G.kaito_assets()
 info = G.kaito_info()
 assert info, "falta kaitooo.fbx.json (correr build_kaito.py --export)"
 g = G.ensure_guid(G.KAITO_FBX)
-st = {n: (G.ref(g, G.stable_id("kaito", n), 3), round(r["seconds"], 4)) for n, r in info["clips"].items()}
+st = {n: (G.ref(g, G.stable_id("kaito", n), 3), round(r["seconds"], 4), r.get("time_scale", 1)) for n, r in info["clips"].items()}
 st.update({a: st[t] for a, t in G.KAITO_ALIASES.items() if t in st})
 ths = [0] + [round(info["clips"][n]["timing"]["ground_speed_mps"] / G.KAITO_RUN_SPEED, 4) for n in G.KAITO_LOCO[1:]]
 cg, lens = G.controller(os.path.join(G.P_ANIM, "Kaito.controller"), "Kaito", st, [st[n] for n in G.KAITO_LOCO], ths)

@@ -7,6 +7,15 @@ tienen la velocidad del apoyo: el pie despega y aterriza sin tirones (no "pisa f
 llegar). Con eso la velocidad que se autora es exacta: Unity mezcla los ciclos por Speed = v / runSpeed
 y en cada umbral los pies no patinan.
 
+DENSIDAD. A 30 fps el pie de la carrera avanza 21 cm por cuadro en el espacio del cuerpo: Unity interpola el
+giro de cada hueso entre claves y el pie clavado describe un arco (patinaba 6-8 cm por apoyo y se hundía 2 cm
+entre cuadros). Los ciclos se hornean con el doble de cuadros (DENSITY) y el blend tree los toca a x2
+(timing 'time_scale', que generate_assets.py pone en el m_TimeScale del hijo y en la velocidad del estado).
+
+DESPEGUE Y LLEGADA. En el vuelo la suela sube enseguida (clearance(): 3 cm en UP_FRAMES cuadros del juego en
+todos los ciclos, 5 cm en el medio) y baja recién al final, casi vertical: la punta que despegaba rozando el piso
+a 8 mm se arrastraba 30 cm en el trote.
+
 Kaito es chibi: piernas de 0.32 m para correr a 6.2 m/s. No hay zancada humana que llegue: corre como un
 dibujo animado, con un apoyo de 2 cuadros por pie, mucho vuelo, la cadera que se hunde en el apoyo y el
 cuerpo muy inclinado; el cuerpo y la katana cuentan la velocidad desde arriba.
@@ -17,6 +26,10 @@ import nindo_anim as NA
 import kaito_rig as KR
 
 TAU = 2.0 * math.pi
+DENSITY = 2                 # cuadros horneados por cuadro del juego (ver arriba)
+FLOOR_U = 0.015             # luz mínima de la suela en el vuelo (u)
+CLEAR_U = (0.057, 0.095)    # luz (u) al despegar del todo y en el medio del vuelo: 3 y 5 cm
+UP_FRAMES = 0.6             # cuadros del juego en que la punta llega a la primera luz
 
 
 def hermite(p0, m0, p1, m1, t, dt):
@@ -92,11 +105,12 @@ class FootCycle:
                 t = max(0.0, min(1.0, (s - ta) / dt))
                 P = hermite(pts[i][1], pts[i][2], pts[i + 1][1], pts[i + 1][2], t, dt)
                 pit = hermite(pts[i][3], pts[i][4], pts[i + 1][3], pts[i + 1][4], t, dt)
-                return self.clear_floor(P, pit), (pit, 0.0, self.yaw)
+                s_up = min(0.3, UP_FRAMES / (sw * self.T * NA.FPS))
+                return self.clear_floor(P, pit, clearance(s / sw, s_up)), (pit, 0.0, self.yaw)
         return Vector(a0), r0
 
 
-    def clear_floor(self, ankle, pitch, floor=0.015):
+    def clear_floor(self, ankle, pitch, floor=FLOOR_U):
         """En el vuelo ningún borde de la suela baja del piso: si la punta o el talón quedarían abajo, el
         tobillo sube lo justo."""
         A = KR.ankle_rest(self.side)
@@ -111,18 +125,32 @@ class FootCycle:
         return [f for f in range(frames + 1) if ((f / frames + offset) % 1.0) <= self.d + 1e-6]
 
 
+def clearance(s, s_up=0.12):
+    """Luz mínima de la suela (u) en la fracción s del vuelo: la punta se despega del piso de entrada (la rampa
+    arranca con pendiente: con una suave la punta seguía rozando medio cuadro mientras el pie ya iba adelante),
+    se mantiene y cae casi vertical en el último 8 % (el pie se planta, no entra patinando)."""
+    def smooth(a, b, x):
+        k = max(0.0, min(1.0, (x - a) / (b - a)))
+        return k * k * (3.0 - 2.0 * k)
+    up = (FLOOR_U + (CLEAR_U[0] - FLOOR_U) * math.sin(0.5 * math.pi * min(1.0, s / s_up))
+          + (CLEAR_U[1] - CLEAR_U[0]) * smooth(s_up, 0.45, s))
+    return FLOOR_U + (up - FLOOR_U) * (1.0 - smooth(0.92, 1.0, s))
+
+
 class Gait:
-    """Un ciclo de locomoción completo (pie izquierdo apoya en la fase 0, el derecho en 0.5)."""
+    """Un ciclo de locomoción completo (pie izquierdo apoya en la fase 0, el derecho en 0.5). 'frames' son cuadros
+    del juego (30 fps); el clip horneado tiene frames * DENSITY."""
 
     def __init__(self, name, speed_mps, frames, feet, body, notes=""):
         self.name, self.speed_mps, self.frames = name, speed_mps, frames
+        self.n = frames * DENSITY
         self.v = speed_mps * KR.U_PER_M
         self.feet = feet                # {"l": FootCycle, "r": FootCycle}
         self.body = body                # body(phase) -> dict de controles del cuerpo y los brazos
         self.notes = notes
 
     def controls(self, f):
-        ph = (f / self.frames) % 1.0
+        ph = (f / self.n) % 1.0
         c = dict(self.body(ph))
         al, rl = self.feet["l"].at(ph)
         ar, rr = self.feet["r"].at(ph + 0.5)
@@ -131,11 +159,12 @@ class Gait:
         return c
 
     def clip(self, timing=None, sheet_frames=None):
-        tm = {"ground_speed_mps": self.speed_mps, "contact_l": 0, "contact_r": self.frames // 2,
-              "stance_l": self.feet["l"].stance_frames(self.frames, 0.0), "stance_r": self.feet["r"].stance_frames(self.frames, 0.5)}
+        # el clip se toca a x DENSITY: en un segundo del clip el cuerpo avanza v / DENSITY
+        tm = {"ground_speed_mps": self.speed_mps, "time_scale": DENSITY, "contact_l": 0, "contact_r": self.n // 2,
+              "stance_l": self.feet["l"].stance_frames(self.n, 0.0), "stance_r": self.feet["r"].stance_frames(self.n, 0.5)}
         tm.update(timing or {})
-        c = NA.ProcClip(self.name, self.frames, self.controls, loop=True, timing=tm, notes=self.notes,
-                        root_vel=(0.0, -self.v, 0.0), sheet_frames=sheet_frames)
+        c = NA.ProcClip(self.name, self.n, self.controls, loop=True, timing=tm, notes=self.notes,
+                        root_vel=(0.0, -self.v / DENSITY, 0.0), sheet_frames=sheet_frames)
         c.gait = self
         return c
 
