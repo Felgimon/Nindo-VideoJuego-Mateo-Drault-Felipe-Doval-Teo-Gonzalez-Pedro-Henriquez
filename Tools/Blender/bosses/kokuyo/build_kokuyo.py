@@ -7,6 +7,7 @@ Un solo comando, determinista:
     --only A,B          solo esos clips (para iterar; no exporta)
     --model-only        sin animaciones (iterar el modelado)
     --blend PATH        guarda el .blend resultante (para mirar a mano)
+    --lineup            con --renders: solo la hoja del elenco (Kaito, ninja, sumo, Gorō, Kokuyō)
 Falla (código 1) si un chequeo no pasa: frente, apoyo en el piso, presupuesto de triángulos,
 altura máxima de la silueta (5.8 m), alcance de manos y pies, deriva de los pies apoyados,
 costura de los loops, quietud del apex y punta del arma rápida fuera del golpe.
@@ -79,11 +80,6 @@ def lint_clip(rig, clip, frames, roots, misses):
         # pivotes posibles: punta y talón (un pie apoyado en punta o en talón tiene uno quieto)
         piv[fb] = [rig.rest_inv[fb] @ Vector((x, -0.46, 0.06)), rig.rest_inv[fb] @ Vector((x, 0.2, 0.02))]
     plants = NA.plant_report(rig, frames, roots, list(gp), gp, pivots=piv)
-    if os.environ.get("KOKUYO_DEBUG_FEET") == clip.name:
-        for i, (W, r) in enumerate(zip(frames, roots)):
-            pr = W["Foot_R"] @ gp["Foot_R"] + r
-            pl = W["Foot_L"] @ gp["Foot_L"] + r
-            print("FEET", i, tuple(round(x, 3) for x in pr), tuple(round(x, 3) for x in pl), round(r.y, 3))
     worst = max([p["drift_cm"] for v in plants.values() for p in v] or [0.0])
     rep["plants"] = {k: v for k, v in plants.items()}
     wseg = [(k, p["frames"]) for k, v in plants.items() for p in v if p["drift_cm"] == worst]
@@ -205,8 +201,11 @@ def main():
         reports[clip.name] = lint_clip(rig, clip, frames, roots, misses)
         baked.append((clip, frames))
         rootsd[clip.name] = roots
-    if os.environ.get("KOKUYO_REPORT"):
-        json.dump(reports, open(os.environ["KOKUYO_REPORT"], "w"), indent=0)
+    if RENDERS:
+        # el detalle de las mediciones (velocidad de la punta por cuadro, apoyos) para revisar a mano
+        os.makedirs(RENDERS, exist_ok=True)
+        with open(os.path.join(RENDERS, "lint_report.json"), "w", encoding="utf-8", newline=chr(10)) as fh:
+            json.dump(reports, fh, indent=0)
     act, ranges = NA.write_pack(arm, rig, baked, start=1, gap=GAP)
     last = max(b for a, b in ranges.values())
     # altura de la silueta en TODOS los cuadros (mallas evaluadas, con la espada)
@@ -255,7 +254,8 @@ def main():
                              "hidden_at_spawn": ["Sode_R_Broken"],
                              "notes": "Sode_R_Broken queda adentro de Sode_R (se ve al apagar Sode_R). "
                                       "Kokuyo_MaskCrack es del mismo rojo que la máscara: se ve solo al subirle la emisión."}
-            json.dump(info, open(FBX + ".json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+            with open(FBX + ".json", "w", encoding="utf-8", newline=chr(10)) as fh:
+                json.dump(info, fh, indent=1, ensure_ascii=False)
             print("EXPORTADO", FBX, "cuadros 1 ..", last, f"{os.path.getsize(FBX) / 1e6:.1f} MB")
 
     # ---------------------------------------------------------------- renders
@@ -263,10 +263,16 @@ def main():
         rv = RV.Review(arm, body, rigid, RENDERS)
         if not ONLY:
             print(rv.model_sheet())
+        if "--lineup" in argv:
+            print(rv.lineup_sheet(ranges["Idle"][0]))
+            finish(t0)
+            return
         for clip, frames in baked:
             a, b = ranges[clip.name]
             fs = sheet_frames(clip)
             rv.clip_sheet(clip, a, rootsd[clip.name], fs, [frame_label(clip, f) for f in fs], reports[clip.name])
+        if not ONLY:
+            print(rv.lineup_sheet(ranges["Idle"][0]))
     finish(t0)
 
 

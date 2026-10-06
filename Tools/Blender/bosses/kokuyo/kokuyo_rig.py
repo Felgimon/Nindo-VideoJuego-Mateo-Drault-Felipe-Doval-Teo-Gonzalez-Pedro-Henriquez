@@ -234,7 +234,7 @@ class Solver:
             out = -sg                                         # signo de x hacia afuera
             abd = math.atan2(r1.x * out, -r1.z) - math.atan2(r0.x * out, -r0.z)
             flex = math.atan2(-r1.y, -r1.z) - math.atan2(-r0.y, -r0.z)
-            abd_l = max(0.0, min(abd * 0.75, math.radians(60.0)))
+            abd_l = max(0.0, min(abd * 0.7, math.radians(42.0)))
             flex_l = max(-math.radians(35.0), min(flex * 0.45, math.radians(45.0)))
             if abd_l > 1e-4 or abs(flex_l) > 1e-4:
                 q = (Matrix.Rotation(sg * abd_l, 3, 'Y') @ Matrix.Rotation(-flex_l, 3, 'X'))

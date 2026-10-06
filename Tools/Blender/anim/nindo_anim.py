@@ -30,8 +30,6 @@ import bpy, math, json, os, subprocess, sys
 from mathutils import Vector, Matrix, Quaternion, Euler
 
 FPS = 30
-FWD = Vector((0.0, -1.0, 0.0))     # frente del personaje en Blender
-UP = Vector((0.0, 0.0, 1.0))
 
 
 # =============================================================================== curvas de aceleración
@@ -211,9 +209,6 @@ class Rig:
     def head_rest(self, n):
         return self.rest[n].translation.copy()
 
-    def tail_rest(self, n):
-        return self.rest[n] @ Vector((0.0, self.length[n], 0.0))
-
     def to_local(self, W):
         """{hueso: matriz en espacio de la armadura} -> {hueso: (location, quaternion)} de pose."""
         out = {}
@@ -254,9 +249,6 @@ class Pose:
 
     def tail(self, n):
         return self.get(n) @ Vector((0.0, self.rig.length[n], 0.0))
-
-    def axis(self, n, i):
-        return rot3(self.get(n)).col[i].copy()
 
     def place(self, n, M):
         self.W[n] = M.copy()
@@ -693,12 +685,6 @@ def export_fbx(path, arm, meshes, frame_start, frame_end):
 
 
 # =============================================================================== mediciones
-def world_point(W, rig, bone, local_pt, root):
-    """Punto fijo en el espacio de un hueso -> mundo (incluye el avance de la raíz)."""
-    M = W[bone] @ rig.rest_inv[bone]
-    return M @ (rig.rest[bone] @ V(local_pt)) + root
-
-
 def tip_speeds(rig, frames, roots, bone, local_tip):
     """Velocidad (m/s) de un punto del arma por cuadro (índice i = tramo i-1 -> i)."""
     pts = [W[bone] @ V(local_tip) + r for W, r in zip(frames, roots)]

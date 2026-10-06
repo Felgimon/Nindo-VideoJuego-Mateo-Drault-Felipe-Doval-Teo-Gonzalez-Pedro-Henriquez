@@ -66,7 +66,9 @@ def springs(rig):
     back = [("Chest", local("Chest", (0.0, -0.12, 2.76)), 0.78), ("Spine", local("Spine", (0.0, -0.12, 2.36)), 0.7)]
     front = [("Hips", local("Hips", (0.0, -0.05, 1.95)), 0.8),
              ("Thigh_R", local("Thigh_R", (-0.41, -0.04, 1.36)), 0.46), ("Thigh_L", local("Thigh_L", (0.41, -0.04, 1.36)), 0.46)]
-    sp = [Spring([f"Mane_{c}_1", f"Mane_{c}_2", f"Mane_{c}_3"], k=150.0, damp=0.2, grav=5.0, max_deg=40.0, floor=0.08, hang=0.3,
+    # la melena va apoyada sobre la espalda: sigue la orientación del pecho (no de la cabeza) y solo se
+    # mece un poco; suelta, en un tajo que frena de golpe se abría como un abanico
+    sp = [Spring([f"Mane_{c}_1", f"Mane_{c}_2", f"Mane_{c}_3"], k=260.0, damp=0.25, grav=2.0, max_deg=16.0, floor=0.08,
                  colliders=back, follow="Chest") for c in "CRL"]
     sp += [Spring([f"Sash_{s}_1", f"Sash_{s}_2"], k=120.0, damp=0.14, grav=6.0, max_deg=60.0, floor=0.06, hang=0.6,
                   colliders=front) for s in "RL"]
@@ -133,7 +135,7 @@ _k_rec_a = mod(_k_over, hips=(0.05, -0.08, -0.42), hips_rot=(0.0, 0.0, 18.0), sp
                grip=(0.4, -0.84, 1.56), blade=(0.66, -0.4, -0.62))
 _low_l_w = at_travel(LOW_L, 1.2)
 _k_step = feet(mod(_low_l_w, hips=(0.05, -0.08, -0.38)), r=toe(-0.62, -0.58, -30.0, 6.0))
-KESA = add("Kesagiri", 36, [
+add("Kesagiri", 36, [
     (0, READY, "sine"), (8, _k_dip, "sine"), (14, HIGH_R, "inout"), (16, _k_settle, "sine"), (17, _k_mid, "expo_in"),
     (18, _k_impact, "lin"), (21, _k_over, "expo_out", {"foot_r": "snap", "foot_r_rot": "snap"}), (25, _k_rec_a, "sine"), (30, _k_step, "inout"), (36, _low_l_w, "inout")],
     timing={"tell": [0, 14], "apex": 14, "hold": [14, 16], "contact": 18, "active": [18, 21], "recover": [21, 36],

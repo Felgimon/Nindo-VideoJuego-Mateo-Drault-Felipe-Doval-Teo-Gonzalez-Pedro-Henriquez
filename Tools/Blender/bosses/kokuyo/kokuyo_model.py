@@ -19,7 +19,6 @@ import math
 import bpy, bmesh
 from mathutils import Vector, Matrix
 import nindo_lib as L
-import nindo_palette as P
 import kokuyo_rig as KR
 
 # --------------------------------------------------------------------------- materiales propios
@@ -45,11 +44,6 @@ class Kit(L.MeshBuilder):
         super().__init__(name, seed)
         self.bone = bone
         self.weights = weights      # función(co) -> {hueso: peso} para piezas que doblan (mangas)
-
-    def apply(self, part, M):
-        for v in part.verts:
-            v.co = M @ v.co
-        return part
 
     def tag(self, faces, color, slot=None):
         self._tag(faces, color, slot, None)
@@ -159,7 +153,7 @@ class Kit(L.MeshBuilder):
                 self.tag([f], color)
         return part
 
-    def strip(self, pts, widths, normal_hint, color, thick=0.03, side_color=None):
+    def strip(self, pts, widths, normal_hint, color, thick=0.03):
         """Cinta con espesor a lo largo de una polilínea (cuerdas, colas de tela)."""
         pts = [Vector(p) for p in pts]
         rings = []
@@ -171,11 +165,7 @@ class Kit(L.MeshBuilder):
             w = widths[i] * 0.5
             rings.append([p + wv * w + nv * thick * 0.5, p - wv * w + nv * thick * 0.5,
                           p - wv * w - nv * thick * 0.5, p + wv * w - nv * thick * 0.5])
-        part = self.loft(rings, color, cap_start=True, cap_end=True)
-        if side_color:
-            for f in part.faces:
-                f.normal_update()
-        return part
+        return self.loft(rings, color, cap_start=True, cap_end=True)
 
 
 def finish_kit(kit, extra_mats):
@@ -530,7 +520,7 @@ def build_arm_r(kits):
     k.tube([E + tip * 0.14, E + tip * 0.26], [0.16, 0.06], 6, C["gold2"], phase=math.pi / 6)
     # guante enorme, puño cerrado: la empuñadura pasa por el centro del puño
     k = kits["Hand_R"] = Kit("part_Hand_R", "Hand_R")
-    hb = KR.Vector(KR.WRIST)
+    hb = Vector(KR.WRIST)
     hdir = (KR.GRIP - KR.WRIST).normalized()
     across = (KR.BLADE_REST - hdir * KR.BLADE_REST.dot(hdir)).normalized()
     thick = hdir.cross(across).normalized()
@@ -607,7 +597,7 @@ def build_head(kits):
                 kb = KR_BONES[bn]
                 h, t = kb.head, kb.tail
                 d = (t - h) * (ln if seg == 3 else 1.0)
-                fan = 1.0 + 0.35 * seg                      # se abren hacia abajo
+                fan = 1.0 + 0.18 * seg                      # se abren apenas hacia abajo
                 a = h - (t - h) * 0.1 + Vector((ox * (fan - 0.35), 0.0, 0.0))
                 m = h + d * 0.55 + Vector((ox * (fan - 0.15), 0.02, 0.0))
                 b = h + d + Vector((ox * fan, 0.0, -dz if seg == 3 else 0.0))
@@ -711,7 +701,8 @@ def build_mask(rigid):
     for x, z, dz in ((-0.07, 3.585, -0.09), (0.07, 3.585, -0.09), (-0.15, 3.52, 0.08), (0.15, 3.52, 0.08)):
         k.tube([(x, -0.455, z), (x, -0.46, z + dz)], [0.034, 0.004], 3, C["white"], ups=[(0, -1, 0)] * 2, phase=math.pi / 2)
     for x, z1, w0, col in ((0.0, 3.13, 0.075, C["white"]), (-0.09, 3.27, 0.06, C["white2"]), (0.09, 3.27, 0.06, C["white2"])):
-        k.tube([(x, -0.42, 3.5), (x * 1.15, -0.455, 3.38), (x * 1.3, -0.43, z1)], [(w0, 0.04), (w0 * 0.75, 0.035), (0.01, 0.01)],
+        # la barba cae pegada a la garganta: con la cabeza agachada no sobresale como púas
+        k.tube([(x, -0.42, 3.5), (x * 1.15, -0.44, 3.37), (x * 1.3, -0.37, z1 + 0.03)], [(w0, 0.04), (w0 * 0.75, 0.035), (0.01, 0.01)],
                4, col, ups=[(0, -1, 0)] * 3, phase=math.pi / 4, cap0=False)
     for s in (-1.0, 1.0):     # bigote que cae a los costados de la boca
         k.tube([(0.05 * s, -0.47, 3.6), (0.15 * s, -0.47, 3.55), (0.2 * s, -0.44, 3.44)], [(0.035, 0.025), (0.03, 0.02), (0.006, 0.006)],
@@ -726,44 +717,57 @@ def build_mask(rigid):
 
 
 def build_face(rigid):
-    """El rostro bajo la máscara (se ve recién en el final): viejo guerrero curtido, cejas blancas,
-    cicatriz sobre el ojo izquierdo, barba corta gris."""
+    """El rostro bajo la máscara (se ve recién en el final): viejo guerrero curtido de ceño pesado,
+    ojos cerrados hundidos, pómulos marcados, cicatriz sobre el ojo izquierdo y barba corta blanca.
+    Queda 3-4 cm detrás de la máscara y bajo la visera del casco."""
     k = rigid["Face"] = Kit("Face", "Head")
-    xs = [-0.22, -0.14, -0.06, 0.06, 0.14, 0.22]
-    rows = [3.86, 3.78, 3.71, 3.64, 3.57, 3.5]
+    xs = [-0.22, -0.15, -0.075, 0.0, 0.075, 0.15, 0.22]
+    rows = [3.74, 3.68, 3.63, 3.565, 3.5, 3.43, 3.37]
 
     def depth(x, z):
         ax = abs(x)
-        y = -0.32 + 0.6 * ax * ax
-        if abs(z - 3.64) < 0.01 and ax < 0.07:
-            y -= 0.04
-        if abs(z - 3.78) < 0.01:
-            y -= 0.012
+        y = -0.33 + 0.75 * ax * ax
+        if abs(z - 3.68) < 0.01:
+            y -= 0.022                               # ceño
+        if abs(z - 3.63) < 0.01 and 0.04 < ax < 0.18:
+            y += 0.02                                # cuencas de los ojos
+        if abs(z - 3.565) < 0.01:
+            y -= 0.05 if ax < 0.04 else (0.018 if ax < 0.17 else 0.0)   # nariz y pómulos
+        if z <= 3.43:
+            y += 0.03 + 0.25 * ax * ax               # mentón más angosto
         return y
-    grid = [[Vector((x, depth(x, z), z)) for x in xs] for z in rows]
+    grid = [[Vector((x * (0.86 if z <= 3.43 else 1.0), depth(x, z), z)) for x in xs] for z in rows]
     vf = [[k.bm.verts.new(p) for p in row] for row in grid]
     faces = {}
     for r in range(len(rows) - 1):
         for c in range(len(xs) - 1):
             faces[(r, c)] = k.bm.faces.new((vf[r][c], vf[r][c + 1], vf[r + 1][c + 1], vf[r + 1][c]))
     k._new([v for row in vf for v in row], C["skin"], None, None)
-    # costados hacia atrás (cierra el volumen dentro del casco)
+    # costados hacia atrás: cierra el volumen dentro del casco
     for r in range(len(rows) - 1):
         for c in (0, len(xs) - 1):
             a, b = vf[r][c], vf[r + 1][c]
-            pa, pb = a.co + Vector((0, 0.18, 0)), b.co + Vector((0, 0.18, 0))
-            va, vb = k.bm.verts.new(pa), k.bm.verts.new(pb)
-            f = k.bm.faces.new((a, b, vb, va))
+            va = k.bm.verts.new(a.co + Vector((0, 0.2, 0)))
+            vb = k.bm.verts.new(b.co + Vector((0, 0.2, 0)))
+            k.bm.faces.new((a, b, vb, va))
             k._new([va, vb], C["skin"], None, None)
-    for c in (0, 1, 3, 4):
-        k.obox((xs[c] * 0.5 + xs[c + 1] * 0.5, depth(xs[c], 3.78) - 0.02, 3.79), (0.1, 0.03, 0.035), (1, 0, 0.25 if c < 2 else -0.25), (0, 1, 0), C["white2"])
-    for c in (1, 3):
-        k.obox((xs[c] * 0.5 + xs[c + 1] * 0.5, depth(xs[c], 3.71) - 0.012, 3.735), (0.08, 0.02, 0.018), (1, 0, 0), (0, 1, 0), C["plate"])
-    k.obox((0.1, -0.345, 3.75), (0.025, 0.02, 0.2), (1, 0, 0.3), (0, 1, 0), C["mask2"])        # cicatriz
-    k.obox((0, -0.31, 3.55), (0.12, 0.02, 0.02), (1, 0, 0), (0, 1, 0), C["mask2"])             # boca
+    # sombras de modelado: cuencas y surcos en madera clara (la piel de base es wood_pale)
+    for c in (1, 4):
+        k.tag([faces[(1, c)]], "wood_light")
+    for c in (0, 5):
+        k.tag([faces[(3, c)]], "wood_light")
+    k.tag([faces[(4, 2)], faces[(4, 3)]], C["mask2"])                    # boca
+    # cejas blancas pesadas, ojos cerrados, cicatriz que cruza el ojo izquierdo
     for s in (-1.0, 1.0):
-        k.tube([(0.03 * s, -0.345, 3.585), (0.1 * s, -0.33, 3.53)], [0.025, 0.008], 4, C["white2"], ups=[(0, -1, 0)] * 2)
-    k.tube([(0, -0.31, 3.51), (0, -0.33, 3.43)], [(0.1, 0.04), (0.03, 0.02)], 4, C["white2"], ups=[(0, -1, 0)] * 2, phase=math.pi / 4)
+        k.obox((0.11 * s, depth(0.11, 3.68) - 0.03, 3.69), (0.13, 0.035, 0.04), (1, 0, -0.22 * s), (0, 1, 0), C["white2"])
+        k.obox((0.105 * s, depth(0.105, 3.63) - 0.008, 3.635), (0.085, 0.02, 0.016), (1, 0, 0.12 * s), (0, 1, 0), C["plate"])
+    k.obox((0.105, depth(0.105, 3.63) - 0.022, 3.64), (0.022, 0.02, 0.22), (1, 0, 0.35), (0, 1, 0), C["mask2"])
+    # bigote caído y barba corta
+    for s in (-1.0, 1.0):
+        k.tube([(0.03 * s, depth(0.03, 3.52) - 0.03, 3.53), (0.11 * s, depth(0.11, 3.48) - 0.02, 3.46)], [0.024, 0.008], 4,
+               C["white2"], ups=[(0, -1, 0)] * 2, cap0=False)
+    k.tube([(0, depth(0, 3.43) - 0.015, 3.44), (0, depth(0, 3.37) - 0.03, 3.31)], [(0.09, 0.035), (0.025, 0.015)], 4,
+           C["white2"], ups=[(0, -1, 0)] * 2, phase=math.pi / 4, cap0=False)
 
 
 # --------------------------------------------------------------------------- nodachi (espacio local)
@@ -800,29 +804,30 @@ def build_sword(rigid):
     tip = Vector((0, 0.27 + LB + 0.2, 0.12 + 0.02))
     vr = [[k.bm.verts.new(p) for p in r] for r in rings]
     vt = k.bm.verts.new(tip)
-    edge_f, flat_f, spine_f = [], [], []
+    # caras: 0 y 5 = lomo (hierro oscuro, contrasta con el filo), 1 y 4 = caras planas, 2 y 3 = biseles del filo
+    edge_f, spine_f = [], []
     for a, b in zip(vr[:-1], vr[1:]):
         for i in range(6):
             j = (i + 1) % 6
             f = k.bm.faces.new((a[i], a[j], b[j], b[i]))
-            (edge_f if i in (2, 3) else spine_f if i in (0, 5) and False else flat_f).append(f)
+            if i in (2, 3):
+                edge_f.append(f)
+            elif i in (0, 5):
+                spine_f.append(f)
     for i in range(6):
         j = (i + 1) % 6
         f = k.bm.faces.new((vr[-1][i], vr[-1][j], vt))
-        (edge_f if i in (2, 3) else flat_f).append(f)
+        if i in (2, 3):
+            edge_f.append(f)
     k.bm.faces.new(list(reversed(vr[0])))
     k._new([v for r in vr for v in r] + [vt], C["steel"], None, None)
+    k.tag(spine_f, C["iron"])
     k.tag(edge_f, "white", SLOT_EDGE)
-    for f in flat_f:
-        f.normal_update()
-    # lomo y caras: el lomo en hierro oscuro (contraste con el filo que brilla)
-    for a, b in zip(vr[:-1], vr[1:]):
-        pass
 
 
 # --------------------------------------------------------------------------- grietas del pecho
-CRACK_ORIGIN = (0.12, 2.95)    # punto de impacto, apenas a la izquierda del esternón
-CRACKS = [   # (x, z) desde el impacto hacia afuera; se encienden de 1 a 5, una por punto de desequilibrio
+CRACKS = [   # (x, z) desde el punto de impacto (0.12, 2.95), apenas a la izquierda del esternón, hacia afuera;
+             # se encienden de 1 a 5, una por punto de desequilibrio
     [(0.12, 2.95), (0.02, 3.0), (-0.06, 2.98), (-0.17, 3.07), (-0.3, 3.1), (-0.42, 3.19)],
     [(0.12, 2.95), (0.2, 3.04), (0.27, 3.03), (0.36, 3.13), (0.48, 3.16)],
     [(0.12, 2.95), (0.1, 2.85), (0.15, 2.77), (0.11, 2.68), (0.14, 2.58)],
