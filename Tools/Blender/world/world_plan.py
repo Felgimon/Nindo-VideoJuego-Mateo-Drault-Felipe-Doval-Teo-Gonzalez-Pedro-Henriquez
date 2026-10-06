@@ -231,6 +231,9 @@ ZONES = [
     ("hogar", -30, -165, 32, 1), ("campos", 10, -115, 50, 0), ("bosque", 4, -62, 24, 1),
     ("muralla", 0, -32, 16, 2), ("jardin", 0, 35, 75, 0), ("dojo", 0, 135, 42, 1),
     ("montana", -160, 85, 80, 1), ("lago", 140, 30, 75, 1), ("bambu", 100, 135, 50, 1),
+    # sub-zona de la arena de Mizuchi: cámara 4° más baja y 1 m más lejos (StoryText.ConfigureZone) para que la
+    # cascada entre en cuadro desde el juego
+    ("lago_cascada", 184, 74, 22, 3),
 ]
 
 # encuentros: (id, x, z, radio_activación, cerrar_área, [(arquetipo, x, z, yaw)])

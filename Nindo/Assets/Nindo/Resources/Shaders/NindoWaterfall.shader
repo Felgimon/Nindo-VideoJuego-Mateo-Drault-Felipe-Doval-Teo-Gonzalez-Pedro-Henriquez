@@ -9,8 +9,10 @@
 // espuma pasa del 15 % en el labio al 75 % abajo (el agua se airea al caer). Labio vidrioso con una línea de luna,
 // borde lateral roto en tinta, facetas que agarran la luna (normal por ddx/ddy) y destellos. La espuma tiene
 // un poco de luz propia para que la cortina se lea de noche contra el basalto.
-// _Intensity (1 fase 1, 1.4 crecida) acelera las vetas, sube la espuma y la turbulencia; _Corrupt tiñe de
-// violeta la parte alta (el sello del clan en la transición de fase).
+// _FlowPhase = segundos de flujo acumulados en C# (dt * caudal): con _Time.y * velocidad, cada cambio de caudal
+// saltaba la fase Time.time * delta y las vetas corrían cientos de veces más rápido (o hacia arriba) un instante.
+// _Intensity (1 fase 1, 1.4 crecida) sube la espuma y la turbulencia; _Corrupt tiñe de violeta la parte alta
+// (el sello del clan en la transición de fase).
 Shader "Nindo/Waterfall"
 {
     Properties
@@ -21,7 +23,7 @@ Shader "Nindo/Waterfall"
         _GlowColor ("Luz propia de la espuma", Color) = (0.812, 0.902, 1, 1)
         _InkColor ("Tinta del borde", Color) = (0.07, 0.12, 0.16, 1)
         _CorruptTint ("Tinte del sello", Color) = (0.55, 0.25, 0.75, 1)
-        _FlowSpeed ("Velocidad de las vetas", Range(0, 3)) = 1
+        _FlowPhase ("Fase del flujo (s)", Float) = 0
         _Turbulence ("Turbulencia", Range(0, 2)) = 1
         _Intensity ("Intensidad (crecida)", Range(0.5, 2)) = 1
         _Corrupt ("Corrupción", Range(0, 1)) = 0
@@ -60,7 +62,7 @@ Shader "Nindo/Waterfall"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _DeepColor, _MidColor, _FoamColor, _GlowColor, _InkColor, _CorruptTint;
-                float _FlowSpeed, _Turbulence, _Intensity, _Corrupt, _FoamLip, _FoamBase, _StreakDensity, _Sway;
+                float _FlowPhase, _Turbulence, _Intensity, _Corrupt, _FoamLip, _FoamBase, _StreakDensity, _Sway;
                 half _Gloss, _SpecStrength, _Alpha;
             CBUFFER_END
 
@@ -107,7 +109,7 @@ Shader "Nindo/Waterfall"
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
                 float3 n = TransformObjectToWorldNormal(input.normalOS);
                 // la lámina "respira": bultos que bajan con el agua, más grandes abajo
-                float bulge = sin(input.uv.y * 9.0 - t * _FlowSpeed * 6.0 + rnd * 6.2832) * lerp(0.05, 0.4, prog);
+                float bulge = sin(input.uv.y * 9.0 - _FlowPhase * 6.0 + rnd * 6.2832) * lerp(0.05, 0.4, prog);
                 positionWS += n * bulge * _Turbulence * lerp(1.0, 1.35, saturate(_Intensity - 1.0));
                 // vaivén del viento que sale del pozo (crece hacia abajo; más fuerte en las ráfagas)
                 float sway = _Sway * prog * (0.6 + 0.4 * sin(t * 0.9 + rnd * 3.0)) * (1.0 + 0.5 * _NindoFallsWind.w);
@@ -127,7 +129,7 @@ Shader "Nindo/Waterfall"
             {
                 float prog = input.data.x, edge = input.data.y, rnd = input.data.z, layer = input.data.w;
                 float2 uv = input.uv;
-                float t = _Time.y * _FlowSpeed;
+                float t = _FlowPhase;
                 float surge = saturate(_Intensity - 1.0);
 
                 // ---- vetas: columnas de ~0.4 m con fase propia; corren con el agua (uv.y = segundos de vuelo)

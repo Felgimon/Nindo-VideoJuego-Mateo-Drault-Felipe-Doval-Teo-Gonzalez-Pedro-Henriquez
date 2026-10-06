@@ -11,8 +11,9 @@ namespace Nindo
     /// el prop escribe en el manifest ("falls": labios de cada cortina, línea de caída, rocas del pozo, cintas
     /// del desagüe). WorldBuilder lo engancha a los props con la etiqueta 'waterfall'.
     ///
-    /// Con la cámara de combate (pitch 43-47, FOV 30) el borde de arriba de la imagen toca el agua ~12 m más allá
-    /// de Kaito: desde el juego se ven el pie de las cortinas, el pozo y el rocío. Por eso la caída se vende con lo
+    /// Con la cámara de combate (pitch 43-47, FOV 30) el borde de arriba de la imagen toca el agua ~12-15 m más allá
+    /// de Kaito; la sub-zona 'lago_cascada' baja la cámara 4° y la aleja 1 m (StoryText.ConfigureZone), y aun así
+    /// desde el juego se ven sobre todo el pie de las cortinas, el pozo y el rocío. Por eso la caída se vende con lo
     /// que queda en cuadro: hervor, coronas de gotas, la nube de rocío que cruza la baranda norte, cola de gallo,
     /// llovizna con viento sobre la plataforma, niebla que corre hacia la arena, luz fría de relleno desde el
     /// pozo y el rugido 3D que crece por toda la pasarela. La altura entera (42 m) se ve en las tomas de jefe,
@@ -51,6 +52,8 @@ namespace Nindo
 
         const float G = 9.81f;
         const float LodDistance = 110f;
+        const float FillIntensity = 48f;
+        const float RoarMax = 140f;
         static readonly Color MistColor = new Color(0.725f, 0.78f, 0.847f);   // snow_shade
         static readonly Color FillColor = new Color(0.663f, 0.831f, 0.902f);  // ice
 
@@ -85,6 +88,9 @@ namespace Nindo
         /// <summary>Vuelve todo al estado de la fase 1 (reintento después de morir).</summary>
         public void ResetFight()
         {
+            // con Mizuchi vencido la cascada queda como la deje la secuencia de después (B3): morir en otra zona
+            // no tiene que devolverla a la pelea
+            if (Game.Save != null && Game.Save.HasFlag(Flags.Boss("mizuchi"))) return;
             intensityTarget = 1f; surgeEnd = 0f; corruptTarget = 0f; MoonbowBoost = 1f;
             Flood?.Drain(0f);
         }
@@ -132,10 +138,12 @@ namespace Nindo
 
         float intensityTarget = 1f, intensity = 1f, surgeMult = 1f, surgeStart, surgeEnd;
         float corruptTarget, corrupt;
+        float flowPhase;        // segundos de flujo acumulados (dt * caudal): fase de las vetas, el hervor y las cintas
+        bool audioPaused;
         bool lowQuality;
         float qualityTimer, volumeTimer, volumeTarget, gustTimer, gust, gustDur, gustAngle;
 
-        Material curtainMat, poolMat, ribbonMat, sprayMat, moonbowMat;
+        Material curtainMat, poolMat, ribbonMat, sprayMat, cloudMat, moonbowMat;
         Material[] mistMats;
         Transform[] mistSheets;
         Vector2[] mistScroll;
@@ -150,7 +158,7 @@ namespace Nindo
         readonly List<ParticleSystem> systems = new List<ParticleSystem>();
         float aClump, aBoil, aCloud, aRooster, aGlint, aRolling, aColumn;
 
-        static readonly int IdFlow = Shader.PropertyToID("_FlowSpeed"), IdIntensity = Shader.PropertyToID("_Intensity"),
+        static readonly int IdFlowPhase = Shader.PropertyToID("_FlowPhase"), IdIntensity = Shader.PropertyToID("_Intensity"),
             IdTurb = Shader.PropertyToID("_Turbulence"), IdCorrupt = Shader.PropertyToID("_Corrupt"), IdPoolFlow = Shader.PropertyToID("_Flow"),
             IdScroll = Shader.PropertyToID("_Scroll"), IdAlphaStep = Shader.PropertyToID("_AlphaStep"), IdBaseColor = Shader.PropertyToID("_BaseColor"),
             IdColor = Shader.PropertyToID("_Color"), IdPlayer = Shader.PropertyToID("_NindoPlayerPos"), IdBoss = Shader.PropertyToID("_NindoBossPos"),
@@ -508,6 +516,17 @@ namespace Nindo
             if (sh == null || !sh.isSupported) return null;     // sin espuma: queda el lago de siempre
             var m = new Material(sh) { name = name };
             m.SetFloat("_Mode", mode);
+            // las olas tienen que ser las del lago (mismo criterio que FloatingBob): sin agua animada el lago es
+            // plano y la espuma no puede subir y bajar 26 cm sobre él
+            var c = Game.Content;
+            var water = c != null ? c.waterAnimatedMaterial : null;
+            if (c == null || !c.useAnimatedWater || water == null || water.shader == null || !water.shader.isSupported)
+                m.SetFloat("_WaveHeight", 0f);
+            else
+            {
+                if (water.HasProperty("_WaveHeight")) m.SetFloat("_WaveHeight", water.GetFloat("_WaveHeight"));
+                if (water.HasProperty("_WaveSpeed")) m.SetFloat("_WaveSpeed", water.GetFloat("_WaveSpeed"));
+            }
             materials.Add(m);
             return m;
         }
@@ -619,9 +638,17 @@ namespace Nindo
             // 3) nube de rocío: la banda blanca que asoma detrás de la baranda norte desde el juego. Columnas que
             //    suben pegadas a la caída: con bloques de 5 m que avanzaban sobre la plataforma la vista previa
             //    mostraba un muro gris tapando la pelea y el pie de las cortinas
-            cloud = System("SprayCloud", meshFx ? sprayMat : FXMaterials.Alpha, 40, meshFx ? FallsAssets.Blob : null);
+            //    Más chicas, más seguidas y medio tramadas desde que nacen: opacas y de 2.6 m se leían como piedras
+            //    nevadas sobre la baranda; con más luz propia se ven como rocío iluminado desde atrás
+            if (meshFx)
+            {
+                cloudMat = new Material(sprayMat) { name = "KohanSprayCloud" };
+                cloudMat.SetFloat("_Glow", 0.45f);
+                materials.Add(cloudMat);
+            }
+            cloud = System("SprayCloud", meshFx ? cloudMat : FXMaterials.Alpha, 60, meshFx ? FallsAssets.Blob : null);
             SizeOverLife(cloud, 0.6f, 1.5f);
-            Fade(cloud, 0.95f, 0.75f, 0f);
+            Fade(cloud, 0.6f, 0.45f, 0f);
             // 4) cola de gallo: gotas estiradas que salen disparadas del pie, la mayoría hacia la arena
             rooster = System("RoosterTail", FXMaterials.Alpha, 220, null, gravity: 0.9f);
             Stretch(rooster, 0.035f, 1.3f);
@@ -763,16 +790,27 @@ namespace Nindo
             AddRenderer("Moonbow", mesh, moonbowMat);
         }
 
+        /// <summary>Luz fría desde el norte: un foco alto delante de la caída que apunta a la plataforma. Un punto de
+        /// luz cerca del pozo daba ~1 % en el centro de la arena (caída 1/d² de URP) o, subido, quemaba la baranda
+        /// norte y la cortina; el foco alto aplana la caída (centro ~0.17, baranda ~0.3) y deja la cortina, que
+        /// queda detrás del cono, sin manchas. Ilumina por detrás a Kaito y al koi vistos desde la cámara, el
+        /// rocío y el pie de las cortinas.</summary>
         void BuildLight()
         {
             var go = new GameObject("FallsFill");
             go.transform.SetParent(transform, false);
-            go.transform.position = PlungeCenter + Vector3.up * 8.5f + windDir * 2f;
+            Vector3 pos = PlungeCenter + windDir * 3f + Vector3.up * 14f;
+            Vector3 aim = new Vector3(ArenaCenter.x, DeckY + 1f, ArenaCenter.z);
+            go.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(aim - pos, Vector3.up));
             fill = go.AddComponent<Light>();
-            fill.type = LightType.Point;
+            fill.type = LightType.Spot;
+            // cono pleno hasta 50° del eje: la plataforma entera; el rocío del pie (~56°) recibe la mitad y la
+            // cortina a media altura (~67°) casi nada
+            fill.spotAngle = 140f;
+            fill.innerSpotAngle = 100f;
             fill.color = FillColor;
-            fill.range = 28f;
-            fill.intensity = 2.5f;
+            fill.range = 32f;
+            fill.intensity = FillIntensity;
             fill.shadows = LightShadows.None;
         }
 
@@ -781,7 +819,12 @@ namespace Nindo
             var c = Game.LoadContent();
             roarEntry = c.Sfx("falls_roar");
             hissEntry = c.Sfx("falls_spray");
-            roar = Loop("FallsRoar", roarEntry, 18f, 140f, AudioRolloffMode.Logarithmic);
+            roar = Loop("FallsRoar", roarEntry, 18f, RoarMax, AudioRolloffMode.Custom);
+            if (roar != null)
+                // como la logarítmica (pleno hasta 18 m, la mitad hacia los 40) pero llega a 0 en RoarMax: la
+                // logarítmica de Unity se queda en 18/140 (-18 dB) más allá del máximo y la cascada se oía en todo el mapa
+                roar.SetCustomCurve(AudioSourceCurveType.CustomRolloff, new AnimationCurve(
+                    new Keyframe(0f, 1f), new Keyframe(18f / RoarMax, 1f), new Keyframe(0.4f, 0.35f), new Keyframe(1f, 0f)));
             hiss = Loop("FallsSpray", hissEntry, 4f, 26f, AudioRolloffMode.Linear);
         }
 
@@ -829,13 +872,14 @@ namespace Nindo
             UpdateGust(dt, k);
             UpdateMaterials(k, dt);
             UpdateAudio(k);
+            UpdateAudioPause(player);
             if (!Active) return;
 
             Shader.SetGlobalVector(IdPlayer, new Vector4(player.x, player.y, player.z, 1f));
             Transform boss = BossFocus != null ? BossFocus : (Game.Combat != null && Game.Combat.ActiveBoss != null ? Game.Combat.ActiveBoss.transform : null);
             Shader.SetGlobalVector(IdBoss, boss != null ? new Vector4(boss.position.x, boss.position.y, boss.position.z, 1f) : Vector4.zero);
             if (fill != null)
-                fill.intensity = 2.5f * (0.9f + 0.1f * k) * (0.9f + 0.2f * Mathf.PerlinNoise(Time.time * 2.5f, 0.37f));
+                fill.intensity = FillIntensity * (0.9f + 0.1f * k) * (0.9f + 0.2f * Mathf.PerlinNoise(Time.time * 2.5f, 0.37f));
             Emit(dt, k);
         }
 
@@ -872,7 +916,14 @@ namespace Nindo
                 gustAngle = UnityEngine.Random.Range(-25f, 25f);
                 if (Active && Game.Player != null)
                 {
-                    Game.Audio?.Play("falls_gust", Game.Player.transform.position + windDir * -3f + Vector3.up * 2f, 0.8f);
+                    // el "fuuu" sale de la baranda norte y solo en la plataforma o cerca (en los muelles, a 100 m,
+                    // sonaba al lado de Kaito); en combate baja como los loops, para no tapar los avisos
+                    float near = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(25f, 45f, Vector3.Distance(Game.Player.transform.position, ArenaCenter)));
+                    if (near > 0f)
+                    {
+                        bool combat = Game.Combat != null && Game.Combat.InCombat;
+                        Game.Audio?.Play("falls_gust", Vector3.Lerp(PlungeCenter, ArenaCenter, 0.25f) + Vector3.up * 3f, 0.8f * near * (combat ? 0.55f : 1f));
+                    }
                     EmitGustSheet();
                 }
             }
@@ -905,21 +956,28 @@ namespace Nindo
 
         void UpdateMaterials(float k, float dt)
         {
+            // la fase se acumula acá: con _Time.y * caudal en el shader cada cambio de caudal saltaba la fase
+            // Time.time * delta y las vetas corrían cientos de veces más rápido, o hacia arriba, justo en el cambio de fase
+            flowPhase += dt * k;
             if (curtainMat != null)
             {
-                if (curtainMat.HasProperty(IdFlow))
+                if (curtainMat.HasProperty(IdFlowPhase))
                 {
-                    curtainMat.SetFloat(IdFlow, k);
+                    curtainMat.SetFloat(IdFlowPhase, flowPhase);
                     curtainMat.SetFloat(IdIntensity, k);
                     curtainMat.SetFloat(IdTurb, 1f + (k - 1f) * 0.8f);
                     curtainMat.SetFloat(IdCorrupt, corrupt);
                 }
                 else curtainMat.mainTextureOffset += new Vector2(0f, dt * 0.9f * k);   // respaldo sin shader
             }
-            if (poolMat != null) poolMat.SetFloat(IdPoolFlow, k);
-            if (ribbonMat != null) ribbonMat.SetFloat(IdPoolFlow, k);
+            if (poolMat != null) { poolMat.SetFloat(IdPoolFlow, k); poolMat.SetFloat(IdFlowPhase, flowPhase); }
+            if (ribbonMat != null) { ribbonMat.SetFloat(IdPoolFlow, k); ribbonMat.SetFloat(IdFlowPhase, flowPhase); }
             if (moonbowMat != null)
-                moonbowMat.SetColor(IdBaseColor, new Color(1f, 1f, 1f, Mathf.Clamp01(MoonbowBoost * (0.75f + 0.25f * Mathf.PerlinNoise(Time.time * 0.3f, 1.7f)))));
+            {
+                // es aditivo: el refuerzo va por el RGB (por el alfa se saturaba en 1 y x2 era apenas +14 %)
+                float b = MoonbowBoost;
+                moonbowMat.SetColor(IdBaseColor, new Color(b, b, b, 0.75f + 0.25f * Mathf.PerlinNoise(Time.time * 0.3f, 1.7f)));
+            }
         }
 
         void UpdateAudio(float k)
@@ -944,6 +1002,20 @@ namespace Nindo
             }
         }
 
+        /// <summary>Lejos de la cascada los loops se pausan (no ocupan voces); la curva ya los dejó en 0 antes.
+        /// Margen de 35 m: el oyente es la cámara, que va hasta ~30 m detrás de Kaito.</summary>
+        void UpdateAudioPause(Vector3 player)
+        {
+            bool far = (player - PlungeCenter).sqrMagnitude > (RoarMax + 35f) * (RoarMax + 35f);
+            if (far == audioPaused) return;
+            audioPaused = far;
+            foreach (var src in new[] { roar, hiss })
+            {
+                if (src == null) continue;
+                if (far) src.Pause(); else src.UnPause();
+            }
+        }
+
         // ------------------------------------------------------------------ emisión a mano
         void Emit(float dt, float k)
         {
@@ -951,7 +1023,7 @@ namespace Nindo
             float rate = k * q;
             for (int n = Take(ref aClump, 45f * rate * dt); n > 0; n--) EmitClump();
             for (int n = Take(ref aBoil, 80f * rate * dt); n > 0; n--) EmitBoil();
-            for (int n = Take(ref aCloud, 10f * rate * dt); n > 0; n--) EmitCloud();
+            for (int n = Take(ref aCloud, 15f * rate * dt); n > 0; n--) EmitCloud();
             for (int n = Take(ref aRooster, 100f * rate * dt); n > 0; n--) EmitRooster(rooster, false);
             for (int n = Take(ref aGlint, 10f * rate * dt); n > 0; n--) EmitRooster(glints, true);
             for (int n = Take(ref aRolling, 6f * q * dt); n > 0; n--) EmitRolling();
@@ -996,8 +1068,9 @@ namespace Nindo
             {
                 position = lip + dir * UnityEngine.Random.Range(0.1f, 0.5f) + Vector3.Cross(Vector3.up, dir) * side * 0.2f,
                 velocity = dir * (v0 + UnityEngine.Random.Range(-0.3f, 0.3f)),
-                // vive lo que tarda en caer: muere justo en el agua y la corona sale de ahí
-                startLifetime = fall * UnityEngine.Random.Range(0.98f, 1.02f),
+                // vive exactamente lo que tarda en caer (sale del labio sin velocidad vertical): muere en el agua y la
+                // corona sale de ahí. Un ±2 % acá eran ±1.7 m de altura a 29 m/s: coronas en el aire o bajo el agua
+                startLifetime = fall,
                 // finos y largos: con 1.8 de alto parecían diamantes de hielo quietos delante de la cortina
                 startSize3D = new Vector3(0.75f, 2.6f, 0.75f) * UnityEngine.Random.Range(0.3f, 0.75f),
                 rotation3D = new Vector3(0f, UnityEngine.Random.Range(0f, 360f), 0f),
@@ -1031,7 +1104,7 @@ namespace Nindo
                 // sube casi derecha; el viento del pozo apenas la arrima (queda detrás de la baranda)
                 velocity = Vector3.up * UnityEngine.Random.Range(1.2f, 2.6f) + windDir * UnityEngine.Random.Range(0.15f, 0.5f),
                 startLifetime = UnityEngine.Random.Range(2.4f, 3f),
-                startSize3D = new Vector3(1f, 0.8f, 1f) * UnityEngine.Random.Range(1.2f, 2.6f),
+                startSize3D = new Vector3(1f, 0.8f, 1f) * UnityEngine.Random.Range(0.8f, 1.8f),
                 rotation3D = new Vector3(UnityEngine.Random.Range(-10f, 10f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-10f, 10f)),
                 startColor = Color.white,
             };
@@ -1124,10 +1197,10 @@ namespace Nindo
     static class FallsAssets
     {
         static Mesh clump, ico, blob;
-        static Material spray;
+        static Material spray, splashSpray;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { clump = ico = blob = null; spray = null; }
+        static void Reset() { clump = ico = blob = null; spray = splashSpray = null; }
 
         /// <summary>Octaedro estirado en Y (8 caras): grumo de agua que cae.</summary>
         public static Mesh Clump => clump != null ? clump : (clump = Octahedron());
@@ -1149,6 +1222,21 @@ namespace Nindo
                     if (sh != null && sh.isSupported) spray = new Material(sh) { name = "NindoSpray" };
                 }
                 return spray;
+            }
+        }
+
+        /// <summary>El mismo rocío pero sin despejarse alrededor de Kaito y del jefe: para los salpicones que nacen
+        /// del cuerpo del jefe (con el despeje se borraba casi toda la espuma del varado).</summary>
+        public static Material SplashSpray
+        {
+            get
+            {
+                if (splashSpray == null && Spray != null)
+                {
+                    splashSpray = new Material(Spray) { name = "NindoSplashSpray" };
+                    splashSpray.SetFloat("_ClearAmount", 0f);
+                }
+                return splashSpray;
             }
         }
 

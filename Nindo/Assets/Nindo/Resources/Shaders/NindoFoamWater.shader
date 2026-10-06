@@ -9,6 +9,8 @@
 //  _Mode 2  cintas de espuma del desagüe que rodean la plataforma: uv.x = 0..1 de lado a lado, uv.y = metros.
 // color.a de cada vértice apaga los extremos (puntas del pozo, cola de las cintas).
 // Todo posterizado con cortes duros (espuma sí/no), como el agua del lago.
+// Lo que corre con el caudal usa _FlowPhase (segundos de flujo acumulados en C#), no _Time.y * _Flow: así un
+// cambio de caudal acelera el agua en vez de saltar la fase. _Flow solo decide cuánta espuma hay.
 Shader "Nindo/Foam Water"
 {
     Properties
@@ -19,6 +21,7 @@ Shader "Nindo/Foam Water"
         _SkyColor ("Reflejo del cielo", Color) = (0.2, 0.3, 0.48, 1)
         _Alpha ("Opacidad", Range(0, 1)) = 1
         _Flow ("Intensidad (crecida)", Range(0, 2)) = 1
+        _FlowPhase ("Fase del flujo (s)", Float) = 0
         _Level ("Crecida (0..1)", Range(0, 1)) = 0
         _Wet ("Película mojada (0..1)", Range(0, 1)) = 0
         _WaveHeight ("Altura de las olas del lago", Float) = 0.26
@@ -62,7 +65,7 @@ Shader "Nindo/Foam Water"
                 float _Mode;
                 half4 _WaterColor, _FoamColor, _SkyColor;
                 half _Alpha;
-                float _Flow, _Level, _Wet, _WaveHeight, _WaveSpeed;
+                float _Flow, _FlowPhase, _Level, _Wet, _WaveHeight, _WaveSpeed;
                 float4 _Rock0, _Rock1, _Rock2, _Rock3;
                 float4 _Ripple0, _Ripple1, _Ripple2, _Ripple3, _Ripple4, _Ripple5;
                 float4 _Spray;
@@ -131,6 +134,7 @@ Shader "Nindo/Foam Water"
             half4 frag(Varyings input) : SV_Target
             {
                 float t = _Time.y;
+                float ph = _FlowPhase;
                 float2 p = input.positionWS.xz;
                 float2 uv = input.uv;
                 half foam = 0.0h;
@@ -140,19 +144,20 @@ Shader "Nindo/Foam Water"
                 {
                     float d = uv.x;
                     // hervor: celdas que se dan vuelta rápido sobre la caída (y detrás, contra la roca)
-                    float boil = VNoise(p * 0.9 + float2(sin(t * 0.7), -t * 1.6) * _Flow);
-                    float boil2 = VNoise(p * 2.1 - float2(t * 0.9, t * 1.3) * _Flow);
+                    float boil = VNoise(p * 0.9 + float2(sin(t * 0.7), -ph * 1.6));
+                    float boil2 = VNoise(p * 2.1 - float2(ph * 0.9, ph * 1.3));
                     float bv = boil * 0.7 + boil2 * 0.3;
-                    foam = (half)step(0.3 + 0.45 * smoothstep(-0.5, 2.2, d), bv);
+                    // en la crecida el hervor cubre más (umbral más bajo)
+                    foam = (half)step(0.3 - 0.12 * saturate(_Flow - 1.0) + 0.45 * smoothstep(-0.5, 2.2, d), bv);
                     // anillos que se alejan, torcidos por el rumbo: espirales de espuma como en el arte conceptual
                     float wob = VNoise(p * 0.35 + 3.7) * 0.35;
-                    float band = frac(d * 0.19 - t * 0.3 * _Flow + uv.y * 0.022 + wob);
+                    float band = frac(d * 0.19 - ph * 0.3 + uv.y * 0.022 + wob);
                     float w = 0.2 * exp(-max(d, 0.0) / 6.5);
                     foam = max(foam, (half)(step(band, w) * step(0.38, VNoise(float2(uv.y * 0.45, d * 0.6) + 11.0)) * step(0.4, d)));
                     float rn = VNoise(p * 1.7 + t * 0.6);
                     foam = max(foam, (half)max(max(RockFoam(p, _Rock0, rn), RockFoam(p, _Rock1, rn)), max(RockFoam(p, _Rock2, rn), RockFoam(p, _Rock3, rn))));
                     water = (half)(0.42 * exp(-max(d, 0.0) / 3.2));
-                    chop = (half)step(0.56, VNoise(p * 1.3 + float2(t * 1.1, -t * 0.8) * _Flow)) * (half)saturate(water * 2.5);
+                    chop = (half)step(0.56, VNoise(p * 1.3 + float2(ph * 1.1, -ph * 0.8))) * (half)saturate(water * 2.5);
                     half fade = (half)(1.0 - smoothstep(8.0, 13.0, d));
                     foam *= fade;
                     water *= fade;
@@ -183,7 +188,7 @@ Shader "Nindo/Foam Water"
                 else
                 {
                     float across = abs(uv.x * 2.0 - 1.0);
-                    float n = VNoise(float2(uv.x * 5.0, (uv.y - t * 1.2 * _Flow) * 0.7));
+                    float n = VNoise(float2(uv.x * 5.0, (uv.y - ph * 1.2) * 0.7));
                     foam = (half)(step(0.56 + across * across * 0.4, n));
                     water = 0.0h;
                 }

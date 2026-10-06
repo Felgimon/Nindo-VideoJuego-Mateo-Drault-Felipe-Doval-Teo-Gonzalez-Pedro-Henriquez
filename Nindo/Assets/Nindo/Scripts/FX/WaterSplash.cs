@@ -109,7 +109,7 @@ namespace Nindo
             var r = drops.GetComponent<ParticleSystemRenderer>();
             r.renderMode = ParticleSystemRenderMode.Stretch; r.velocityScale = 0.045f; r.lengthScale = 1.3f;
             Fade(drops, 1f, 0f);
-            var spray = FallsAssets.Spray;
+            var spray = FallsAssets.SplashSpray;
             chunks = Make("SplashFoam", spray != null ? spray : FXMaterials.Alpha, 80, spray != null ? FallsAssets.Ico : null, 0.8f);
             Fade(chunks, 1f, 0f);
             var sz = chunks.sizeOverLifetime; sz.enabled = true;

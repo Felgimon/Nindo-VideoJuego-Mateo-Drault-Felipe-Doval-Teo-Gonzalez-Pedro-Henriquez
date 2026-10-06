@@ -4,7 +4,8 @@
 // encima de la arena costaba mucho más). Caras planas por ddx/ddy, luz de luna + ambiente + luces cercanas
 // (la luz fría del pozo las ilumina desde atrás) y un poco de luz propia para que se lean de noche.
 // Como la niebla, se deshacen alrededor de Kaito y del jefe (_NindoPlayerPos / _NindoBossPos): el rocío que
-// cruza la baranda norte nunca tapa a los que pelean.
+// cruza la baranda norte nunca tapa a los que pelean. _ClearAmount 0 lo apaga: los salpicones del cuerpo del
+// jefe (WaterSplash) nacen justo donde está él y se borrarían enteros.
 Shader "Nindo/Spray"
 {
     Properties
@@ -12,6 +13,7 @@ Shader "Nindo/Spray"
         _Color ("Color", Color) = (0.91, 0.957, 0.965, 1)
         _Shade ("Color en sombra", Color) = (0.7, 0.79, 0.87, 1)
         _Glow ("Luz propia", Range(0, 1)) = 0.32
+        _ClearAmount ("Despejar alrededor de los que pelean", Range(0, 1)) = 1
     }
 
     SubShader
@@ -38,6 +40,7 @@ Shader "Nindo/Spray"
             CBUFFER_START(UnityPerMaterial)
                 half4 _Color, _Shade;
                 half _Glow;
+                float _ClearAmount;
             CBUFFER_END
 
             float4 _NindoPlayerPos;
@@ -76,6 +79,7 @@ Shader "Nindo/Spray"
                 float2 p = input.positionWS.xz;
                 float clear = lerp(1.0, smoothstep(1.0, 2.4, distance(p, _NindoPlayerPos.xz)), saturate(_NindoPlayerPos.w));
                 clear *= lerp(1.0, smoothstep(1.6, 3.6, distance(p, _NindoBossPos.xz)), saturate(_NindoBossPos.w));
+                clear = lerp(1.0, clear, _ClearAmount);
                 clip(input.color.a * clear - (bayer[px.y * 4u + px.x] + 0.5) / 16.0);
 
                 float3 n = normalize(cross(ddy(input.positionWS), ddx(input.positionWS)));
