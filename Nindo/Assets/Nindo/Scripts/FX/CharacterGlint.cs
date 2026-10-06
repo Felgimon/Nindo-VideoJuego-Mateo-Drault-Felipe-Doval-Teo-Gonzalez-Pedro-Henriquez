@@ -8,16 +8,17 @@ namespace Nindo
     ///  - 'Glint': el filo de la katana, los zunchos del martillo de Gorō. El combate lo prende durante el
     ///    aviso del golpe (SetGlint: dorado = se puede desviar, rojo = imparable) para que el arma, que es lo
     ///    que el jugador mira, diga cuándo apretar parry.
-    ///  - cualquier slot por nombre (SetSlotColor / Pulse): la bandana de Kaito, tapada con el color del pelo
+    ///  - cualquier slot por nombre (CoverSlot / Pulse): la bandana de Kaito, tapada con el material del pelo
     ///    hasta que la recibe y con un destello al atársele sola (CharacterFactory.SetBandana).
-    /// Usa un MaterialPropertyBlock por (renderer, índice de material): el resto de los materiales sigue en el
-    /// SRP Batcher y, con todo apagado, el bloque se limpia. El Update se apaga solo cuando no hay un destello en curso.
+    /// Los destellos usan un MaterialPropertyBlock por (renderer, índice de material): el resto de los materiales
+    /// sigue en el SRP Batcher y, con todo apagado, el bloque se limpia. Tapar un slot cambia el material en
+    /// sharedMaterials (no un bloque): así HitFlash guarda y devuelve el material tapado y el cuerpo no sale del
+    /// batching durante todo el prólogo. El Update se apaga solo cuando no hay un destello en curso.
     /// CharacterFactory.BuildModel lo agrega y registra los slots al convertir los materiales a Nindo/CharacterLit.
     /// </summary>
     public class CharacterGlint : MonoBehaviour
     {
         public const string GlintSlot = "Glint";
-        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
 
         class Slot
@@ -26,8 +27,7 @@ namespace Nindo
             public int index;
             public string name;
             public Color baseEmission;       // la del material (ojos de Gorō): el destello se suma encima
-            public bool colorOverride;
-            public Color color;
+            public Material own;             // el material propio mientras el slot está tapado con otro
             public Color glow;               // emisión fija pedida por código
             public Color pulse; public float pulseStart, pulseLen;
         }
@@ -58,24 +58,29 @@ namespace Nindo
                 if (s.name == GlintSlot) { s.glow = c; Apply(s); }
         }
 
-        /// <summary>Tiñe un slot con otro color (null = vuelve al del material).</summary>
-        public void SetSlotColor(string slotName, Color? color)
-        {
-            foreach (var s in slots)
-                if (s.name == slotName) { s.colorOverride = color.HasValue; s.color = color ?? Color.white; Apply(s); }
-        }
-
-        /// <summary>Color base actual del material de un slot (p. ej. el del pelo para tapar la bandana).</summary>
-        public bool TryGetSlotColor(string slotName, out Color color)
+        /// <summary>Tapa un slot con el material que tiene ahora otro slot del mismo renderer (la bandana con
+        /// el pelo, ya levantado por LiftBlacks); withSlot null le devuelve su material propio.</summary>
+        public void CoverSlot(string slotName, string withSlot)
         {
             foreach (var s in slots)
             {
                 if (s.name != slotName || s.r == null) continue;
-                var m = s.index < s.r.sharedMaterials.Length ? s.r.sharedMaterials[s.index] : null;
-                if (m != null && m.HasProperty(BaseColorId)) { color = m.GetColor(BaseColorId); return true; }
+                var mats = s.r.sharedMaterials;
+                if (s.index >= mats.Length) continue;
+                Material m = s.own;
+                if (withSlot != null)
+                {
+                    var w = slots.Find(o => o.name == withSlot && o.r == s.r && o.index < mats.Length);
+                    if (w == null) continue;
+                    if (s.own == null) s.own = mats[s.index];
+                    m = mats[w.index];
+                }
+                else s.own = null;
+                if (m == null || mats[s.index] == m) continue;
+                mats[s.index] = m;
+                s.r.sharedMaterials = mats;
+                Apply(s);
             }
-            color = Color.white;
-            return false;
         }
 
         /// <summary>Destello que arranca en 'color' y se apaga solo en 'seconds' (tiempo real: va en cinemáticas lentas).</summary>
@@ -111,16 +116,15 @@ namespace Nindo
                 pulse = s.pulse * (k * k);
             }
             bool emissive = s.glow.maxColorComponent > 0.001f || pulse.maxColorComponent > 0.001f;
-            if (!s.colorOverride && !emissive)
+            if (!emissive)
             {
                 s.r.SetPropertyBlock(null, s.index);
                 return;
             }
             mpb ??= new MaterialPropertyBlock();
             mpb.Clear();
-            if (s.colorOverride) mpb.SetColor(BaseColorId, s.color);
-            // teñido = se hace pasar por otro material (la bandana tapada de pelo): sin su emisión propia
-            Color e = (s.colorOverride ? Color.black : s.baseEmission) + s.glow + pulse; e.a = 1f;
+            // tapado, el slot se hace pasar por otro material (la bandana de pelo): sin su emisión propia
+            Color e = (s.own != null ? Color.black : s.baseEmission) + s.glow + pulse; e.a = 1f;
             mpb.SetColor(EmissionId, e);
             s.r.SetPropertyBlock(mpb, s.index);
         }

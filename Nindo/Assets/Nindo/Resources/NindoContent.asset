@@ -145,7 +145,7 @@ MonoBehaviour:
   - id: sumo
     model: {fileID: 919132149155446097, guid: 6e6d595635ec9544d83855ca6d060fbb, type: 3}
     controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
-    height: 2.5
+    height: 2.6
     modelYaw: 180
     materialSwaps:
     - material: Pelo
@@ -179,7 +179,7 @@ MonoBehaviour:
   - id: goro
     model: {fileID: 919132149155446097, guid: dbac39bfe9be5fd41a31f29a324081f6, type: 3}
     controller: {fileID: 9100000, guid: 9670f8c607c12d6033d22ad74703b944, type: 2}
-    height: 3.2
+    height: 3.41
     materialSwaps:
     - material: RojoOjosMiniJefe
       color: {r: 1, g: 1, b: 1, a: 0}

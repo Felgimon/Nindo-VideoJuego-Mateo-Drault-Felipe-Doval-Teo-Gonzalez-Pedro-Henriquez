@@ -8,7 +8,7 @@ Cambios (audit_models MODEL-02/04/09/12/13):
     cabeza (42 % de su altura) era una mancha negra pegada al gi
   - ojos y cejas en 'Ojos' (antes compartían material con el gi) + brillos 'OjoBrillo' en cada ojo
   - gi índigo (opción A del audit): se separa de los ninjas negros; piel menos naranja
-  - bandana: ya tiene su slot 'AmarilloBandana'; CharacterFactory.SetBandana la tapa con el color del
+  - bandana: ya tiene su slot 'AmarilloBandana'; CharacterFactory.SetBandana la tapa con el material del
     pelo hasta que Kaito la recibe (MODEL-09)
   - katana 'Isan' reconstruida (260 tris en vez de 3054): hoja más ancha que se lee en pantalla,
     filo en el slot 'Glint' (CharacterGlint), mismo objeto, hueso y largo (KatanaRig y la estela no cambian)

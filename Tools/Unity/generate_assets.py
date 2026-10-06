@@ -735,11 +735,14 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
         defs = [
             # giro del modelo (frente medido en Unity con renders desde los 4 lados): los FBX del equipo
             # no salieron todos con el frente en +Z. Kaito y el ninja miran a -X, el sumo a -Z.
+            # La altura es la de la unión de bounds que mide NormalizeHeight: el chonmage del sumo y el
+            # kuwagata de Gorō asoman por encima de la cabeza (export_sumo/export_goro.py), así que su altura
+            # crece en esa misma proporción y el cuerpo sigue midiendo 2.5 m y 3.2 m
             ("kaito", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.5, 90),
             ("kage", read_guid(A("Animations teo/kaitooo.fbx")), ctrls["kaito"], 1.6, 90),
             ("ninja", read_guid(A("Models/Ninja/Ninja 1.fbx")), ctrls["ninja"], 1.7, 90),
-            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.5, 180),
-            ("goro", read_guid(A("Models/Minijefe.fbx")), ctrls["goro"], 3.2, 0),
+            ("sumo", read_guid(A("Characters/Sumo/luchadorsumo.fbx")), ctrls["sumo"], 2.6, 180),
+            ("goro", read_guid(A("Models/Minijefe.fbx")), ctrls["goro"], 3.41, 0),
         ]
         if "grandpa" in ctrls:
             # export_grandpa.py usa axis_forward='-Z': el abuelo mira a -Z en Unity (los demás a +Z)

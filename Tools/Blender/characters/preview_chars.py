@@ -18,12 +18,12 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import charlib as C  # noqa: E402
 
-# id: (fbx relativo a Assets, altura en el juego (m), hacia dónde mira en Blender (azimut: 0=-Y, 90=+X, 180=+Y), ocultar)
+# id: (fbx relativo a Assets, altura en el juego (m: la "height" de NindoContent, la de la unión de bounds), hacia dónde mira en Blender (azimut: 0=-Y, 90=+X, 180=+Y), ocultar)
 CHARS = {
     "kaito": ("Animations teo/kaitooo.fbx", 1.5, 90, None),
     "ninja": ("Models/Ninja/Ninja 1.fbx", 1.7, 90, None),
-    "sumo": ("Characters/Sumo/luchadorsumo.fbx", 2.5, 180, None),
-    "goro": ("Models/Minijefe.fbx", 3.2, 0, None),
+    "sumo": ("Characters/Sumo/luchadorsumo.fbx", 2.6, 180, None),
+    "goro": ("Models/Minijefe.fbx", 3.41, 0, None),
     "grandpa": ("Nindo/Art/Models/Characters/Grandpa.fbx", 1.45, 180, "Cube"),
 }
 
@@ -65,7 +65,9 @@ def import_char(cid, src=None):
     for o in new:
         if o.type == 'MESH' and hide and o.name.startswith(hide):
             o.hide_render = True
-    return arm, [o for o in new if o.type == 'MESH'], [a for a in bpy.data.actions if a not in acts]
+    new_acts = [a for a in bpy.data.actions if a not in acts]
+    C.bind_slots(arm, new_acts)
+    return arm, [o for o in new if o.type == 'MESH'], new_acts
 
 
 def pose(arm, new_acts, action, frame):
@@ -73,7 +75,7 @@ def pose(arm, new_acts, action, frame):
     act = next((a for a in new_acts if a.name.lower().endswith("|" + action.lower())), None) if action else None
     if act is None and action:
         act = next((a for a in new_acts if action.lower() in a.name.lower()), None)
-    arm.animation_data.action = act
+    C.use_action(arm, act)
     if act is None:
         C.rest(arm, True)
     else:
@@ -143,7 +145,7 @@ def character_rim(objs, strength=0.3, power=3.0, color=(0.624, 0.761, 1.0)):
 
 def tweak_materials():
     """--glint: el filo 'Glint' encendido en dorado como lo haría CharacterGlint.SetGlint en un aviso de parry.
-    --prologue: la bandana de Kaito tapada con el color del pelo (antes de recibirla)."""
+    --prologue: la bandana de Kaito tapada con el material del pelo (antes de recibirla)."""
     for m in bpy.data.materials:
         if not m.use_nodes: continue
         b = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
@@ -344,7 +346,7 @@ def stress(cid, out):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     arm, ms, acts = import_char(cid, opt("--src"))
     workbench()
-    if arm.animation_data: arm.animation_data.action = None
+    if arm.animation_data: C.use_action(arm, None)
     C.rest(arm, True)
     mn, mx = bounds(visible()); size = mx - mn
     C.rest(arm, False)

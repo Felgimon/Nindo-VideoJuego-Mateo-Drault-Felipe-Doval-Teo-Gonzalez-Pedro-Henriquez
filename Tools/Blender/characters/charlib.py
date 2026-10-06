@@ -5,9 +5,13 @@ los sigue tomando como el mismo asset y los .anim, controllers y NindoContent no
 eso sea seguro cada script:
   1. importa el FBX, guarda su pose por defecto y la pose de cada hueso en cada frame de cada acción,
   2. edita SOLO mallas y materiales (nunca huesos: ni nombres, ni padres, ni pose de bind),
-  3. exporta a un archivo temporal con los ajustes del equipo (los mismos que dieron 0.0° de diferencia),
-  4. valida con fbxcheck.py (nodos, bind pose, tomas, fps, texturas) y re-importando el temporal y
-     comparando las poses hueso por hueso; solo si todo da igual copia encima del original.
+  3. exporta a un archivo temporal con los ajustes del equipo (TEAM),
+  4. valida con fbxcheck.py (nodos, bind pose, tomas, fps, curvas que se mueven en cada toma, texturas) y
+     re-importando el temporal y comparando las poses hueso por hueso (peor caso medido: 0.002°); solo si
+     todo da igual copia encima del original.
+Las tomas se ligan a mano a su slot de acción (bind_slots/use_action): con el importador de Blender 4.4
+el exportador horneaba congelada toda toma que no fuera la primera, y la comparación de poses no lo veía
+porque muestreaba el original igual de congelado.
 
 Cada paso es idempotente (re-correr el script sobre un FBX ya procesado no cambia nada), así que el
 punto de partida puede ser el FBX del repo. Para volver al original del equipo:
@@ -61,7 +65,26 @@ def load(path, anim_offset=1.0):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=path, anim_offset=anim_offset)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    bind_slots(arm, bpy.data.actions)
     return arm
+
+
+def bind_slots(arm, actions):
+    """El importador de Blender 4.4 le da a cada toma su propio slot ('OBArmature|Armature|Idle'). Con eso,
+    'action = a' (lo único que hace el exportador FBX con cada toma) deja action_slot vacío: la pose no cambia
+    entre frames y se horneaba congelada en todas las tomas menos la primera. Con el identificador del objeto
+    ('OBArmature') la asignación simple liga el slot sola."""
+    for a in actions:
+        if len(a.slots) == 1:
+            a.slots[0].name_display = arm.name
+
+
+def use_action(arm, a):
+    """Activa la acción 'a' (o ninguna) en el armature con su slot ligado: sin slot no anima nada."""
+    ad = arm.animation_data or arm.animation_data_create()
+    ad.action = a
+    if a is not None and ad.action_slot is None and a.slots:
+        ad.action_slot = a.slots[0]
 
 
 def default_pose(path):
@@ -80,7 +103,7 @@ def set_pose(arm, pose):
     """Pone la pose por defecto (de default_pose) sin acción activa, en orden de jerarquía."""
     bones, objm = pose
     if arm.animation_data:
-        arm.animation_data.action = None
+        use_action(arm, None)
     arm.matrix_world = objm
     for pb in arm.pose.bones:          # pose.bones viene padre antes que hijo
         if pb.name in bones:
@@ -349,6 +372,36 @@ def bisect_loops(obj, heights, matname):
     bm.to_mesh(me); bm.free(); me.update()
 
 
+def cut_faces(obj, pred, fill_mat, center):
+    """Borra las caras donde pred(Face) es verdadero (y los vértices que quedan sueltos) y tapa cada
+    agujero con triángulos de 'fill_mat' mirando hacia afuera de 'center' (mundo). La tapa solo usa
+    vértices del borde, que ya tienen sus pesos: se deforma igual que lo de alrededor. Devuelve
+    (caras borradas, caras nuevas)."""
+    idx = {f.index for f in faces(obj) if pred(f)}
+    if not idx:
+        return 0, 0
+    mi = slot(obj, fill_mat)
+    me = obj.data
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    tag = bm.verts.layers.int.new("_corte")
+    kill = [bm.faces[i] for i in idx]
+    for f in kill:
+        for v in f.verts: v[tag] = 1
+    bmesh.ops.delete(bm, geom=kill, context='FACES')
+    edges = [e for e in bm.edges if e.is_boundary and e.verts[0][tag] and e.verts[1][tag]]
+    new = bmesh.ops.holes_fill(bm, edges=edges, sides=0)["faces"]
+    new = bmesh.ops.triangulate(bm, faces=new, quad_method='BEAUTY', ngon_method='BEAUTY')["faces"]
+    c = obj.matrix_world.inverted() @ Vector(center)
+    for f in new:
+        f.material_index = mi; f.smooth = False
+        f.normal_update()
+        if f.normal.dot(f.calc_center_median() - c) < 0:
+            f.normal_flip()
+    bm.verts.layers.int.remove(tag)
+    bm.to_mesh(me); bm.free(); me.update()
+    return len(idx), len(new)
+
+
 # ======================================================================= pesos y normales
 def limit_weights(obj, limit=4):
     """Máximo 4 huesos por vértice y normalizado: Unity trunca a 4 (maxBonesPerVertex) y sin esto
@@ -432,7 +485,7 @@ def sample_poses(arm, step=1):
     for a in bpy.data.actions:
         if not any(fc.data_path.startswith("pose.bones") for fc in a.fcurves):
             continue
-        arm.animation_data.action = a
+        use_action(arm, a)
         f0, f1 = (int(round(x)) for x in a.frame_range)
         rows = []
         for f in range(f0, f1 + 1, step):
@@ -440,8 +493,17 @@ def sample_poses(arm, step=1):
             bones = {pb.name: pb.matrix.copy() for pb in arm.pose.bones}
             bones["<objeto Armature>"] = arm.matrix_world.copy()   # las tomas también mueven el objeto
             rows.append((f, bones))
+        # una toma con curvas que se mueven tiene que dar poses distintas: si no, el slot no quedó ligado y
+        # comparar antes/después sería comparar dos poses congeladas (así pasó la validación con 0.0000°)
+        keys = any(max(k.co[1] for k in fc.keyframe_points) - min(k.co[1] for k in fc.keyframe_points) > 1e-4
+                   for fc in a.fcurves if fc.data_path.startswith("pose.bones") and len(fc.keyframe_points))
+        still = all(all((rows[0][1][b] - m).to_translation().length < 1e-6 and
+                        rows[0][1][b].to_quaternion().rotation_difference(m.to_quaternion()).angle < 1e-6
+                        for b, m in bones.items()) for _, bones in rows[1:])
+        if keys and still and len(rows) > 1:
+            raise RuntimeError(f"la acción {a.name} no se mueve al muestrearla (¿slot sin ligar?)")
         out[a.name] = rows
-    arm.animation_data.action = keep
+    use_action(arm, keep)
     return out
 
 
@@ -456,8 +518,11 @@ def compare_poses(A, B):
             for bname, ma in bones.items():
                 mb = bmap[f].get(bname)
                 if mb is None: missing.append(bname); continue
-                r = math.degrees(ma.to_quaternion().rotation_difference(mb.to_quaternion()).angle)
-                r = min(r, 360 - r)
+                # ángulo por la diferencia de matrices (|Ra - Rb| = 2*sqrt(2)*sen(θ/2)): con cuaterniones de
+                # float32 todo giro menor a ~0.04° da exactamente 0 y la tolerancia es 0.05°
+                d = ma.to_3x3().normalized() - mb.to_3x3().normalized()
+                fro = math.sqrt(sum(d[i][j] ** 2 for i in range(3) for j in range(3)))
+                r = math.degrees(2 * math.asin(min(1.0, fro / (2 * math.sqrt(2)))))
                 t = (ma.to_translation() - mb.to_translation()).length
                 if r > worst_r: worst_r = r; where = f"{an}@{f}:{bname}"
                 worst_t = max(worst_t, t)
@@ -478,6 +543,21 @@ def export(path, **over):
     for o in bpy.data.objects: o.select_set(o.type in ('ARMATURE', 'MESH'))
     kw = dict(TEAM); kw.update(over)
     bpy.ops.export_scene.fbx(filepath=path, use_selection=True, **kw)
+
+
+def union_height(path):
+    """Alto de la unión de los bounds de todas las mallas en pose de bind (lo que mide
+    CharacterFactory.NormalizeHeight para escalar el modelo a la altura de NindoContent)."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=path, use_anim=False)
+    bpy.context.view_layer.update()
+    z = []
+    for o in meshes():
+        vs = [v.co for v in o.data.vertices]
+        if not vs: continue
+        lo = [min(v[i] for v in vs) for i in range(3)]; hi = [max(v[i] for v in vs) for i in range(3)]
+        z += [(o.matrix_world @ Vector((x, y, w))).z for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for w in (lo[2], hi[2])]
+    return max(z) - min(z)
 
 
 def report_mesh(obj):
@@ -517,6 +597,11 @@ def finish(arm, src, rel, opts, export_kw=None, anim_offset=1.0, poses=None, bin
     export(tmp, **(export_kw or {}))
     print("exportado", tmp, f"{os.path.getsize(tmp) / 1e6:.2f} MB")
     ok = fbxcheck.compare(src, tmp, rot_tol=bind_tol, dropped_takes=dropped)
+    # una pieza nueva que asoma (el chonmage del sumo) agranda la unión y el juego achica todo el cuerpo:
+    # se avisa para corregir 'height' en NindoContent y generate_assets.py chars()
+    h0, h1 = union_height(src), union_height(tmp)
+    print(f"alto que mide NormalizeHeight: {h0:.4f} -> {h1:.4f} u (x{h1 / h0:.4f})"
+          + ("" if abs(h1 / h0 - 1) < 0.002 else "  << multiplicar 'height' del personaje por este factor"))
     if poses is not None:
         arm2 = load(tmp, anim_offset)
         after = sample_poses(arm2)

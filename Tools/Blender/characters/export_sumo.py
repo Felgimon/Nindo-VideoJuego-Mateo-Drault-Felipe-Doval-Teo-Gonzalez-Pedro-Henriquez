@@ -2,7 +2,8 @@
 
 blender -b --python export_sumo.py -- [--write] [--src otro.fbx] [--out carpeta]
 
-El sumo mira a +Y en Blender (modelYaw 180), Z arriba, 4.85 u = 2.5 m.
+El sumo mira a +Y en Blender (modelYaw 180), Z arriba, 4.85 u = 2.5 m de cuerpo (con el chonmage la unión de bounds
+mide 5.06 u: por eso su "height" en NindoContent es 2.6).
 Cambios (audit_models MODEL-06/11):
   - pelo pintado sobre el cráneo (caras de la cabeza arriba de la línea del pelo: cero triángulos y se
     deforma perfecto) + chonmage (el moño doblado hacia adelante) con su motoyui blanco: desde arriba

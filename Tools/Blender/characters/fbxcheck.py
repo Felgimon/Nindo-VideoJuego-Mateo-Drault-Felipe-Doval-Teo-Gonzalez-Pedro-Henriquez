@@ -7,6 +7,8 @@ lo que Unity usa para no romper prefabs, clips ni controllers:
     nodo (rotación <= 0.01°, traslación <= 0.005 u del archivo)
   - tomas de animación: mismos nombres y mismo rango de tiempo (los .meta usan firstFrame/lastFrame)
   - fps del archivo (Unity mide los frames del .meta con él)
+  - qué curvas de cada toma se mueven de verdad, leídas del archivo sin Blender: una toma horneada
+    congelada conserva nombre y rango pero pierde todas sus curvas móviles
 y avisa si quedaron texturas embebidas (el sumo pesaba 100 MB por dos PNG/JPG 4K empaquetados).
 
 python fbxcheck.py <original.fbx> <nuevo.fbx> [--rot-tol 0.01] [--sin-tomas]   -> exit 1 si algo no cumple
@@ -97,9 +99,46 @@ def obj_name(n):
     return n.props[1].split(b"\x00\x01")[0].decode("utf-8", "replace")
 
 
+# cuánto tiene que variar una curva para contar como movimiento: 0.01° de giro, 0.001 u de traslación y
+# 0.5 % de escala (los targets de IK del abuelo traen ruido de escala de 0.1-0.3 % que nada usa)
+MOVES = {"Lcl Rotation": 0.01, "Lcl Translation": 1e-3, "Lcl Scaling": 5e-3}
+
+
+def motion(root):
+    """{toma: {(nodo, propiedad, eje)}} de las curvas que cambian de valor en esa toma.
+    Toma -> capas -> nodos de curva (OP a un Model: 'Lcl Rotation'...) -> curvas (OP 'd|X')."""
+    objs = {}; up = {}; down = {}
+    for e in root.elems:
+        if e.id == b"Objects":
+            objs = {o.props[0]: o for o in e.elems if o.props}
+        elif e.id == b"Connections":
+            for c in e.elems:
+                kid, par = c.props[1], c.props[2]
+                prop = c.props[3].decode("utf-8", "replace") if len(c.props) > 3 else None
+                down.setdefault(par, []).append((kid, prop)); up.setdefault(kid, []).append((par, prop))
+    kind = lambda i, k: i in objs and objs[i].id == k
+    out = {}
+    for sid, st in objs.items():
+        if st.id != b"AnimationStack": continue
+        moving = set()
+        for lid, _ in down.get(sid, ()):
+            if not kind(lid, b"AnimationLayer"): continue
+            for cn, _ in down.get(lid, ()):
+                if not kind(cn, b"AnimationCurveNode"): continue
+                tgt = [(obj_name(objs[m]), prop) for m, prop in up.get(cn, ()) if kind(m, b"Model")]
+                for cid, axis in down.get(cn, ()):
+                    if not kind(cid, b"AnimationCurve"): continue
+                    kv = next((x.props[0] for x in objs[cid].elems if x.id == b"KeyValueFloat"), ())
+                    if not kv: continue
+                    moving.update((n, prop, axis) for n, prop in tgt if max(kv) - min(kv) > MOVES.get(prop, 1e-3))
+        out[obj_name(st)] = moving
+    return out
+
+
 def summary(path):
     root, ver = parse(path)
-    out = {"version": ver, "models": {}, "local": {}, "bind": {}, "stacks": {}, "videos": 0, "video_bytes": 0, "fps": None}
+    out = {"version": ver, "models": {}, "local": {}, "bind": {}, "stacks": {}, "videos": 0, "video_bytes": 0, "fps": None,
+           "motion": motion(root)}
     for e in root.elems:
         if e.id == b"GlobalSettings":
             g = props70(e)
@@ -213,7 +252,14 @@ def compare(src, dst, rot_tol=0.01, pos_tol=0.005, dropped_takes=()):
         b0, b1 = B["stacks"][s]
         fa, fb = (round(a0 * A["fps"], 2), round(a1 * A["fps"], 2)), (round(b0 * B["fps"], 2), round(b1 * B["fps"], 2))
         if fa != fb: ok = False; print(f"  toma {s}: frames {fa} -> {fb}")
-    print(f"tomas: {len(A['stacks'])} -> {len(B['stacks'])}; fps {A['fps']} -> {B['fps']}")
+        # mismas curvas móviles en los mismos nodos: lo que no se movía puede quedar horneado constante
+        ma, mb = A["motion"].get(s, set()), B["motion"].get(s, set())
+        if ma != mb:
+            ok = False
+            print(f"  toma {s}: curvas que se mueven {len(ma)} -> {len(mb)}; quietas en el nuevo "
+                  f"{sorted(ma - mb)[:4]}, nuevas {sorted(mb - ma)[:4]}")
+    print(f"tomas: {len(A['stacks'])} -> {len(B['stacks'])}; fps {A['fps']} -> {B['fps']}; curvas móviles por toma "
+          + ", ".join(f"{s.split('|')[-1]} {len(B['motion'].get(s, ()))}" for s in A["stacks"] if s in B["stacks"]))
     print(f"texturas embebidas: {A['videos']} ({A['video_bytes'] / 1e6:.1f} MB) -> {B['videos']} ({B['video_bytes'] / 1e6:.1f} MB)")
     if B["video_bytes"]: ok = False; print("  el nuevo FBX trae texturas embebidas")
     print("OK" if ok else "FALLA")

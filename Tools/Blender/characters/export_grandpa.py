@@ -17,7 +17,7 @@ El abuelo mira a +Y en Blender, Z arriba, 3.18 u = 1.45 m. Cambios (audit_models
     más claros, se separa del suelo desde la cámara alta; la frente vuelve a ser piel (la regla vieja,
     descentrada en x, la pintaba de sombrero de un solo lado)
   - cara amable: ojos cerrados en arco, cejas blancas caídas, bigote y mejillas
-  - el ninja del secuestro pasa al mismo carbón frío que los ninjas del juego
+  - el ninja del secuestro pasa al mismo carbón neutro que los ninjas del juego
 """
 import bpy, os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +30,7 @@ COLORS = {
     "Abuelo_Kimono": "#3d5a7a",
     "Abuelo_Faja": "#9a2c22",
     "Abuelo_Piel": "#e3ab84",
-    "GrisOscuro": "#2a2d3a",          # el secuestrador
+    "GrisOscuro": "#2e2b2c",          # el secuestrador: el mismo carbón neutro que export_ninja.py
     "Piel": "#e9b88a",
 }
 GRANDPA = dict(apply_scale_options='FBX_SCALE_UNITS', bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False)

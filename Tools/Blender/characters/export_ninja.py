@@ -4,8 +4,10 @@ blender -b --python export_ninja.py -- [--write] [--src otro.fbx] [--out carpeta
 
 El ninja mira a +X en Blender (modelYaw 90), Z arriba, 2.88 u = 1.7 m.
 Cambios (audit_models MODEL-01/02/12):
-  - el traje sigue siendo NEGRO ("el ninja de vestimenta negra") pero carbón frío: el negro casi puro
-    de antes (98 % de la superficie) era un agujero de noche
+  - el traje sigue siendo NEGRO ("el ninja de vestimenta negra") pero carbón neutro: el negro casi puro
+    de antes (98 % de la superficie) era un agujero de noche, y el carbón azulado que lo reemplazó, bajo
+    la luna fría, se leía azul marino como el gi índigo de Kaito. Con uno neutro apenas cálido queda más
+    oscuro y menos saturado que el gi (valor 0.30 contra 0.51 en el render de noche)
   - ojos claros en la ranura de la capucha: a 100 px de alto es lo único que dice hacia dónde mira
   - katana reconstruida (272 tris en vez de 3324) con el filo en el slot 'Glint' (aviso de parry)
 Los detalles de zona (hachimaki, obi, abrigos) son kits aparte: no se tocan acá.
@@ -17,7 +19,7 @@ from mathutils import Vector
 
 REL = "Models/Ninja/Ninja 1.fbx"
 COLORS = {
-    "GrisOscuro": "#2a2d3a",      # carbón frío: negro de día, se lee bajo la luna
+    "GrisOscuro": "#2e2b2c",      # carbón neutro, apenas cálido: la luna y el rim fríos ya lo azulan de noche
     "Piel": "#e9b88a",
     "Metal": dict(hexc="#b9c2cf", rough=0.45),
     "Plateado": dict(hexc="#7d828c", rough=0.5),    # tsuba y virolas de hierro

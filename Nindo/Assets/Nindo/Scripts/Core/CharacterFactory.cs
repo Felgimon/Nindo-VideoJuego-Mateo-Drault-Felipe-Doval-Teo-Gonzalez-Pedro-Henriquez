@@ -107,15 +107,17 @@ namespace Nindo
         }
 
         /// <summary>
-        /// La bandana de Kaito: hasta que la recibe (prólogo) su slot toma el color del pelo y se lee como
+        /// La bandana de Kaito: hasta que la recibe (prólogo) su slot lleva el material del pelo y se lee como
         /// pelo; al atársele sola (StoryDirector.BandanaAwakening) vuelve su amarillo con un destello.
         /// </summary>
         public static void SetBandana(Transform model, bool visible, bool flash)
         {
             var g = model != null ? model.GetComponentInChildren<CharacterGlint>() : null;
             if (g == null) return;
-            if (visible) g.SetSlotColor(BandanaSlot, null);
-            else if (g.TryGetSlotColor(HairSlot, out var hair)) g.SetSlotColor(BandanaSlot, hair);
+            // un golpe en curso guardó los materiales de antes y los devolvería encima del cambio: se corta ya
+            foreach (var hf in model.GetComponentsInParent<HitFlash>())
+                if (hf.enabled) { hf.enabled = false; hf.enabled = true; }
+            g.CoverSlot(BandanaSlot, visible ? null : HairSlot);
             if (flash) g.Pulse(BandanaSlot, new Color(3.2f, 2.3f, 0.6f), 1.6f);
         }
 
