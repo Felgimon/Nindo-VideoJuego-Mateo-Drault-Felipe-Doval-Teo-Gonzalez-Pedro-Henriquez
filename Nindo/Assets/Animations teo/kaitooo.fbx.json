@@ -1,0 +1,721 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "units_per_meter": 1.8887,
+ "facing": "frente +Y de la armadura (Blender +X): modelYaw 90 en NindoContent, como siempre",
+ "skeleton": "de juego: Mando bajo Antebrazo, Pie bajo Tibia; Target*/Pole* quedan sin pesos y quietos (kits)",
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 73,
+   "frames": 72,
+   "seconds": 2.4,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "events": [],
+   "notes": "guardia de una mano: katana baja adelante, respiración y un cambio de peso por vuelta (2.4 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "loop_seam_deg": 0.056,
+    "min_z_cm": -0.0
+   }
+  },
+  "Walk": {
+   "first": 83,
+   "last": 101,
+   "frames": 18,
+   "seconds": 0.6,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 1.2,
+    "contact_l": 0,
+    "contact_r": 9,
+    "stance_l": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     18
+    ],
+    "stance_r": [
+     0,
+     1,
+     2,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "paso a 1.2 m/s: 18 cuadros, talón -> punta",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.4,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "loop_seam_deg": 0.056,
+    "stance_drift_cm": 0.02,
+    "ground_speed_mps": 1.2,
+    "min_z_cm": -0.1
+   }
+  },
+  "Jog": {
+   "first": 111,
+   "last": 125,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 3.4,
+    "contact_l": 0,
+    "contact_r": 7,
+    "stance_l": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     14
+    ],
+    "stance_r": [
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "trote a 3.4 m/s: 14 cuadros",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.9,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "loop_seam_deg": 0.056,
+    "stance_drift_cm": 0.01,
+    "ground_speed_mps": 3.4,
+    "min_z_cm": 0.1
+   }
+  },
+  "Run": {
+   "first": 135,
+   "last": 147,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": true,
+   "timing": {
+    "ground_speed_mps": 6.2,
+    "contact_l": 0,
+    "contact_r": 6,
+    "stance_l": [
+     0,
+     1,
+     2,
+     12
+    ],
+    "stance_r": [
+     6,
+     7,
+     8
+    ]
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "carrera a 6.2 m/s (PlayerConfig.runSpeed): 12 cuadros, apoyo de 2 cuadros por pie sobre la bola",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.4,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "stance_drift_cm": 0.79,
+    "ground_speed_mps": 6.2,
+    "min_z_cm": 0.1
+   }
+  },
+  "Attack1": {
+   "first": 157,
+   "last": 170,
+   "frames": 13,
+   "seconds": 0.4333,
+   "loop": false,
+   "timing": {
+    "apex": 2,
+    "contact": 4,
+    "active": [
+     4,
+     7
+    ],
+    "combo": 7,
+    "lunge": [
+     1,
+     5,
+     0.9
+    ],
+    "chain_to": "A1_END"
+   },
+   "normalized": {
+    "apex": 0.1538,
+    "contact": 0.3077,
+    "combo": 0.5385,
+    "active": [
+     0.3077,
+     0.5385
+    ],
+    "lunge": [
+     0.0769,
+     0.3846,
+     0.9
+    ]
+   },
+   "events": [
+    {
+     "frame": 4,
+     "t": 0.3077,
+     "fn": "Strike"
+    },
+    {
+     "frame": 5,
+     "t": 0.3846,
+     "fn": "FootR"
+    },
+    {
+     "frame": 6,
+     "t": 0.4615,
+     "fn": "FootL"
+    }
+   ],
+   "notes": "tajo de derecha a izquierda con salto corto; el pie derecho apoya enseguida del impacto, termina envuelto a la izquierda",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.12,
+    "tip_peak": [
+     4,
+     47.9
+    ],
+    "reach_m": 1.2,
+    "min_z_cm": -0.0
+   }
+  },
+  "Attack2": {
+   "first": 180,
+   "last": 191,
+   "frames": 11,
+   "seconds": 0.3667,
+   "loop": false,
+   "timing": {
+    "apex": 1,
+    "contact": 3,
+    "active": [
+     3,
+     6
+    ],
+    "combo": 6,
+    "lunge": [
+     0,
+     4,
+     1.0
+    ],
+    "chain_from": "A1_END",
+    "chain_to": "A2_END"
+   },
+   "normalized": {
+    "apex": 0.0909,
+    "contact": 0.2727,
+    "combo": 0.5455,
+    "active": [
+     0.2727,
+     0.5455
+    ],
+    "lunge": [
+     0.0,
+     0.3636,
+     1.0
+    ]
+   },
+   "events": [
+    {
+     "frame": 3,
+     "t": 0.2727,
+     "fn": "Strike"
+    },
+    {
+     "frame": 4,
+     "t": 0.3636,
+     "fn": "FootL"
+    },
+    {
+     "frame": 7,
+     "t": 0.6364,
+     "fn": "FootR"
+    }
+   ],
+   "notes": "revés ascendente desde la izquierda baja; el pie izquierdo entra adelante al final del avance, la hoja termina alta a la derecha",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.2,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "tip_peak": [
+     2,
+     50.7
+    ],
+    "reach_m": 1.18,
+    "min_z_cm": -0.1
+   }
+  },
+  "Attack3": {
+   "first": 201,
+   "last": 221,
+   "frames": 20,
+   "seconds": 0.6667,
+   "loop": false,
+   "timing": {
+    "apex": 3,
+    "contact": 7,
+    "active": [
+     7,
+     10
+    ],
+    "hold": [
+     8,
+     11
+    ],
+    "lunge": [
+     3,
+     7,
+     1.6
+    ],
+    "chain_from": "A2_END",
+    "chain_to": "READY"
+   },
+   "normalized": {
+    "apex": 0.15,
+    "contact": 0.35,
+    "active": [
+     0.35,
+     0.5
+    ],
+    "hold": [
+     0.4,
+     0.55
+    ],
+    "lunge": [
+     0.15,
+     0.35,
+     1.6
+    ]
+   },
+   "events": [
+    {
+     "frame": 7,
+     "t": 0.35,
+     "fn": "Strike"
+    },
+    {
+     "frame": 7,
+     "t": 0.35,
+     "fn": "Land"
+    }
+   ],
+   "notes": "salto con las dos manos, la hoja pasa por arriba y cruza en diagonal; cae con la hoja baja y queda quieto 3 cuadros",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.6,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.77,
+    "tip_peak": [
+     7,
+     54.6
+    ],
+    "reach_m": 1.19,
+    "min_z_cm": -0.1
+   }
+  },
+  "Dash": {
+   "first": 231,
+   "last": 245,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": false,
+   "timing": {
+    "travel_frames": [
+     0,
+     11
+    ],
+    "slide_ok": true,
+    "play_speed": 1.4
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "se toca a 1.4x: f0-f11 viaja (0.26 s), f11-f14 frena con el pie izquierdo patinando",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "min_z_cm": -0.0
+   }
+  },
+  "ParryStance": {
+   "first": 255,
+   "last": 271,
+   "frames": 16,
+   "seconds": 0.5333,
+   "loop": false,
+   "timing": {
+    "guard": 2,
+    "hold": [
+     2,
+     9
+    ],
+    "recover": [
+     9,
+     16
+    ]
+   },
+   "normalized": {
+    "hold": [
+     0.125,
+     0.5625
+    ],
+    "recover": [
+     0.5625,
+     1.0
+    ]
+   },
+   "events": [],
+   "notes": "guardia en 2 cuadros, espera que tiembla hasta 0.3 s (ventana 0.24 s), vuelve a la guardia (ParryRecover 0.28 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "min_z_cm": -0.0
+   }
+  },
+  "ParrySuccessR": {
+   "first": 281,
+   "last": 293,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "hold": [
+     1,
+     3
+    ],
+    "counter_ready": 7,
+    "chain_to": "COUNTER"
+   },
+   "normalized": {
+    "hold": [
+     0.0833,
+     0.25
+    ]
+   },
+   "events": [],
+   "notes": "desvía hacia su derecha: la hoja se abre afuera y arriba, la palma empuja; 2 cuadros quieto (hit-stop) y queda cargado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "min_z_cm": -0.0
+   }
+  },
+  "ParrySuccessL": {
+   "first": 303,
+   "last": 315,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "hold": [
+     1,
+     3
+    ],
+    "counter_ready": 7,
+    "chain_to": "COUNTER"
+   },
+   "normalized": {
+    "hold": [
+     0.0833,
+     0.25
+    ]
+   },
+   "events": [],
+   "notes": "desvía hacia su izquierda y abajo, el cuerpo gira con el golpe; 2 cuadros quieto y queda cargado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.0,
+    "min_z_cm": -0.0
+   }
+  },
+  "PerfectParry": {
+   "first": 325,
+   "last": 339,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "hold": [
+     1,
+     4
+    ],
+    "counter_ready": 9
+   },
+   "normalized": {
+    "hold": [
+     0.0714,
+     0.2857
+    ]
+   },
+   "events": [],
+   "notes": "parry perfecto: la hoja salta arriba y la palma adelante (3 cuadros), baja girando a una guardia agazapada",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.22,
+    "min_z_cm": -0.0
+   }
+  },
+  "Blocked": {
+   "first": 349,
+   "last": 363,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "rebote contra la guardia: la hoja sale despedida arriba-atrás, saltito hacia atrás, cae agachado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 3.35,
+    "min_z_cm": -0.0
+   }
+  },
+  "Hit": {
+   "first": 373,
+   "last": 384,
+   "frames": 11,
+   "seconds": 0.3667,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "golpe liviano: la cabeza y el pecho se van atrás de golpe, los brazos se abren; recupera la guardia en 0.37 s",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.3,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 0.69,
+    "min_z_cm": -0.0
+   }
+  },
+  "HitHeavy": {
+   "first": 394,
+   "last": 414,
+   "frames": 20,
+   "seconds": 0.6667,
+   "loop": false,
+   "timing": {
+    "impact": 1,
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "golpe pesado: lo levanta, cae en tres apoyos con la mano en el piso y se para (0.65 s)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 1.67,
+    "min_z_cm": -0.0
+   }
+  },
+  "Death": {
+   "first": 424,
+   "last": 466,
+   "frames": 42,
+   "seconds": 1.4,
+   "loop": false,
+   "timing": {
+    "impact": 2,
+    "knee": 18,
+    "ground": 31,
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "se va atrás, se tambalea, cae sobre una rodilla y después de costado; queda tendido (la cámara lenta de Die lo estira)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 3.6,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 2.9,
+    "min_z_cm": -0.3
+   }
+  },
+  "Finisher": {
+   "first": 476,
+   "last": 556,
+   "frames": 80,
+   "seconds": 2.6667,
+   "loop": false,
+   "timing": {
+    "strike": 54,
+    "zanshin": [
+     55,
+     62
+    ],
+    "chiburi": [
+     62,
+     68
+    ],
+    "short_end": 68,
+    "slide_ok": true
+   },
+   "normalized": {
+    "strike": 0.675
+   },
+   "events": [
+    {
+     "frame": 54,
+     "t": 0.675,
+     "fn": "Strike"
+    }
+   ],
+   "notes": "iai: cargado y temblando hasta f54, en f55 (FinisherStrikeAt 0.68) ya cortó y está del otro lado; chiburi y se para",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.1,
+     "legs": 1.3
+    },
+    "plant_drift_cm": 1.61,
+    "strike_n": 0.675,
+    "min_z_cm": -1.5
+   }
+  },
+  "WindSlash": {
+   "first": 566,
+   "last": 597,
+   "frames": 31,
+   "seconds": 1.0333,
+   "loop": false,
+   "timing": {
+    "phases": {
+     "prep": [
+      0,
+      9.6
+     ],
+     "travel": [
+      9.6,
+      14.4
+     ],
+     "slashes": 16.2,
+     "end": 31
+    },
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "prepara (iai) 0.32 s, viaja 0.16 s en la pose del dash, llega de espaldas con la hoja afuera; chiburi y guardia",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.6,
+     "legs": 0.8
+    },
+    "plant_drift_cm": 1.4,
+    "min_z_cm": -1.1
+   }
+  },
+  "Whirlwind": {
+   "first": 607,
+   "last": 637,
+   "frames": 30,
+   "seconds": 1.0,
+   "loop": false,
+   "timing": {
+    "phases": {
+     "coil": [
+      0,
+      3.6
+     ],
+     "spin": [
+      3.6,
+      22.2
+     ],
+     "end": 29.7
+    },
+    "slide_ok": true
+   },
+   "normalized": {},
+   "events": [],
+   "notes": "enrosque, trompo en el aire con la hoja afuera a su derecha (el código gira el modelo 720°), cae agachado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.1,
+     "legs": 0.0
+    },
+    "plant_drift_cm": 1.07,
+    "min_z_cm": -0.0
+   }
+  }
+ }
+}

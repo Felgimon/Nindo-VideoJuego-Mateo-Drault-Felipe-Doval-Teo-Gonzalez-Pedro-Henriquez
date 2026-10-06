@@ -40,9 +40,12 @@ namespace Nindo
         public AttackDef[] combo =
         {
             // temblor de los cortes livianos 0.18 → 0.28: con la cámara a 20+ m casi no se sentían
-            new AttackDef { name = "Corte 1", state = "Attack1", damage = 10, imbalance = 1, range = 2.3f, arc = 150, activeStart = 0.28f, activeEnd = 0.62f, comboWindow = 0.42f, cancelWindow = 0.55f, lunge = 0.9f, lungeStart = 0.1f, lungeEnd = 0.45f, knockback = 0.35f, hitStop = 0.06f, shake = 0.28f, speed = 1.0f },
-            new AttackDef { name = "Corte 2", state = "Attack2", damage = 11, imbalance = 1, range = 2.3f, arc = 150, activeStart = 0.22f, activeEnd = 0.6f, comboWindow = 0.45f, cancelWindow = 0.55f, lunge = 1.0f, lungeStart = 0.05f, lungeEnd = 0.4f, knockback = 0.4f, hitStop = 0.06f, shake = 0.3f, speed = 1.0f },
-            new AttackDef { name = "Corte final", state = "Attack3", damage = 18, imbalance = 1.5f, kind = AttackKind.Heavy, range = 2.6f, arc = 200, activeStart = 0.2f, activeEnd = 0.45f, comboWindow = 0.95f, cancelWindow = 0.6f, lunge = 1.6f, lungeStart = 0.05f, lungeEnd = 0.35f, knockback = 1.6f, hitStop = 0.11f, shake = 0.45f, speed = 0.95f },
+            // ventanas = cuadros de los clips de Tools/Blender/anim/kaito (kaitooo.fbx.json, "normalized"): el Corte 1
+            // pega en f4/13, el 2 en f3/11 y el final en f7/20 al caer del salto; se encadena cuando la pose ya llegó a
+            // la de empalme. El avance (lunge) es el que el clip descuenta de los pies: cambiarlo los hace patinar
+            new AttackDef { name = "Corte 1", state = "Attack1", damage = 10, imbalance = 1, range = 2.3f, arc = 150, activeStart = 0.308f, activeEnd = 0.538f, comboWindow = 0.538f, cancelWindow = 0.55f, lunge = 0.9f, lungeStart = 0.077f, lungeEnd = 0.385f, knockback = 0.35f, hitStop = 0.06f, shake = 0.28f, speed = 1.0f },
+            new AttackDef { name = "Corte 2", state = "Attack2", damage = 11, imbalance = 1, range = 2.3f, arc = 150, activeStart = 0.273f, activeEnd = 0.545f, comboWindow = 0.545f, cancelWindow = 0.55f, lunge = 1.0f, lungeStart = 0f, lungeEnd = 0.364f, knockback = 0.4f, hitStop = 0.06f, shake = 0.3f, speed = 1.0f },
+            new AttackDef { name = "Corte final", state = "Attack3", damage = 18, imbalance = 1.5f, kind = AttackKind.Heavy, range = 2.6f, arc = 200, activeStart = 0.35f, activeEnd = 0.5f, comboWindow = 0.95f, cancelWindow = 0.6f, lunge = 1.6f, lungeStart = 0.15f, lungeEnd = 0.35f, knockback = 1.6f, hitStop = 0.11f, shake = 0.45f, speed = 0.95f },
         };
         [Tooltip("Tiempo extra para encadenar después de que termina un golpe")] public float comboGrace = 0.25f;
         [Tooltip("Desde acá del último corte se puede volver a empezar el combo (con buffer de 0.3 s)")] [Range(0, 1)] public float comboRestart = 0.85f;

@@ -272,6 +272,7 @@ namespace Nindo
 
         // =============================================================== PARRY
         float lastParryWhiff = -9f;
+        bool parryLeft;
         float parryWindowMul = 1f;
         bool parryHadThreat;
         float CurrentParryWindow => config.parryWindow * parryWindowMul;
@@ -339,7 +340,10 @@ namespace Nindo
         {
             Game.FX?.Crescent?.Success();
             SetState(PlayerState.ParrySuccess);
-            anim.Play("ParrySuccess", 0.02f);
+            // el golpe siempre llega de frente (FaceInstant de abajo): los desvíos se alternan izquierda/derecha para
+            // que una cadena de parrys no repita el mismo gesto, y el perfecto tiene su floreo; sin esos clips, el de siempre
+            string parryClip = perfect ? "PerfectParry" : (parryLeft = !parryLeft) ? "ParrySuccessL" : "ParrySuccessR";
+            anim.Play(anim.HasState(parryClip) ? parryClip : "ParrySuccess", 0.02f);
             riposteUntil = Time.time + config.riposteWindow;
             Vector3 dir = info.direction.sqrMagnitude > 0.01f ? info.direction.Flat().normalized : -transform.forward;
             FaceInstant(-dir);
@@ -629,6 +633,7 @@ namespace Nindo
         bool abilityFired;
         readonly List<Enemy> abilityVictims = new List<Enemy>(8);
         int whirlTicks;
+        bool abilityOwnClip;
 
         bool TryAbility(int index)
         {
@@ -650,11 +655,15 @@ namespace Nindo
             if (dir.sqrMagnitude < 0.01f) dir = transform.forward;
             FaceInstant(dir);
 
+            // clips propios (WindSlash / Whirlwind) autorados con los tiempos de TickWindSlash / TickWhirlwind; sin
+            // ellos, el Corte final estirado como antes
+            abilityOwnClip = anim.HasState(index == 1 ? "WindSlash" : "Whirlwind");
             if (index == 1)
             {
                 // Corte del Viento: la cámara se pone detrás de Kaito, el tiempo se frena, y zas.
                 abilityInvulnerable = true;
-                anim.Play("Attack3", 0.05f, 0f, 0.5f);
+                if (abilityOwnClip) anim.Play("WindSlash", 0.05f);
+                else anim.Play("Attack3", 0.05f, 0f, 0.5f);
                 abilityShot = Game.Camera != null ? Game.Camera.PlayAbilityShot(transform, CameraDirector.AbilityShot.OverShoulder, 1.15f) : -1;
                 Game.Time?.SlowMotion(0.2f, 0.55f, 0.05f, 0.15f);
                 Game.FX?.AbilityCharge(transform.position, false);
@@ -665,7 +674,8 @@ namespace Nindo
             {
                 // Torbellino de hojas: giro con daño en área, cámara baja orbitando
                 abilityInvulnerable = true;
-                anim.Play("Attack3", 0.05f, 0f, 0.8f);
+                if (abilityOwnClip) anim.Play("Whirlwind", 0.05f);
+                else anim.Play("Attack3", 0.05f, 0f, 0.8f);
                 abilityShot = Game.Camera != null ? Game.Camera.PlayAbilityShot(transform, CameraDirector.AbilityShot.LowOrbit, 1.1f) : -1;
                 Game.Time?.SlowMotion(0.35f, 0.3f, 0.03f, 0.15f);
                 Game.FX?.AbilityCharge(transform.position, true);
@@ -678,6 +688,8 @@ namespace Nindo
 
         void TickAbility(InputReader input, float dt)
         {
+            // el clip propio sigue el reloj de stateTime: la furia no lo acelera (SetState le pone su multiplicador)
+            if (abilityOwnClip) anim.SetSpeed(1f);
             if (abilityIndex == 1) TickWindSlash(dt);
             else TickWhirlwind(dt);
         }
@@ -695,7 +707,7 @@ namespace Nindo
                 // no atravesar paredes
                 if (Physics.SphereCast(abilityStart + Vector3.up * 0.8f, 0.3f, transform.forward, out var hit, config.windSlashDistance, WorldMask, QueryTriggerInteraction.Ignore))
                     abilityEnd = abilityStart + transform.forward * Mathf.Max(0f, hit.distance - 0.4f);
-                anim.Play("Dash", 0.02f, 0f, 1.6f);
+                if (!abilityOwnClip) anim.Play("Dash", 0.02f, 0f, 1.6f);
                 Game.FX?.AfterImages(model != null ? model : transform, travel + 0.05f, 0.02f, true);
                 Game.Audio?.Play("ability_wind", transform.position, 1f);
                 Game.Camera?.Punch(6f, 0.25f);
@@ -722,7 +734,7 @@ namespace Nindo
                 abilityVictims.Clear();
                 Game.Time?.HitStop(0.08f);
                 if (State != PlayerState.Ability) return;
-                anim.Play("Attack3", 0.05f, 0.55f, 1f);
+                if (!abilityOwnClip) anim.Play("Attack3", 0.05f, 0.55f, 1f);
             }
             if (stateTime > prep + travel + 0.55f) EndAbility();
         }

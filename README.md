@@ -197,6 +197,9 @@ $B -b --python Tools/Blender/build_props.py -- --export [--module props_nature] 
 # mundo (terreno, agua, límites, vegetación, marcadores)  ~2 min
 python3 Tools/Blender/world/validate_plan.py          # chequeo rápido del plan y de los límites invisibles (sin Blender)
 $B -b --python Tools/Blender/world/build_world.py -- --export [--map] [--preview]
+# Kaito: esqueleto de juego + todos sus clips (chequeos de pies, loops e impactos; hojas con --renders DIR)
+$B -b --factory-startup --python Tools/Blender/anim/kaito/build_kaito.py -- --export [--only Run,Attack1] [--renders DIR]
+python3 Tools/Blender/anim/kaito/unity_kaito.py      # solo su .meta, Kaito.controller y sus filas de NindoContent
 # audio (descarga los packs CC0 la primera vez)
 python3 Tools/Audio/build_audio.py [--only sfx|amb|music]
 # kit de UI: paneles de pincel, cintas, teclas, pictogramas, sellos (Resources/UI)
