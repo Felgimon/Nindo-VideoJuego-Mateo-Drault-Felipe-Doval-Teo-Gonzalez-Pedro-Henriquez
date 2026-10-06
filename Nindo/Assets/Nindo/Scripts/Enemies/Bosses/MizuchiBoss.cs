@@ -545,8 +545,10 @@ namespace Nindo
             }
             // el chapuzón tapa el cambio de cuerpo
             transform.position = plunge;
+            // (Beached no: deja una mancha mojada, y esto es agua)
             WaterSplash.Column(plunge, 2.6f, 9f);
-            WaterSplash.Beached(plunge, East, 1.2f);
+            WaterSplash.Column(plunge + East * 2f, 1.6f, 5f);
+            WaterSplash.Column(plunge - East * 2f, 1.6f, 5f);
             Game.Camera?.Shake(0.6f);
             SetHidden(true);
             body?.SetPhase(1);

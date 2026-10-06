@@ -32,7 +32,8 @@ namespace Nindo
         // 1 s antes: simulado a pie (reacción 0.25 s, 6.2 m/s), desde cualquier punto del abanico a 4-11 m hay salida
         // por uno de los dos bordes (con ±35°/0.95/0.6 a 9-11 m había posiciones sin salida)
         const float JetHalf = 0.75f, JetLock = 0.75f, SweepLock = 1.0f, SweepHalf = 30f, SweepTime = 0.8f;
-        const int SweepLanes = 7;
+        // el abanico: relleno (MizuchiMarks.ShowWedge) y sus dos bordes; el borde donde arranca el barrido, entero
+        const int SweepLanes = 2;
         static readonly Color AimColor = new Color(0.55f, 0.9f, 1f);
         bool jetLocked, jetFired, jetSwung;
         Vector3 jetOrigin, jetDir;
@@ -49,7 +50,7 @@ namespace Nindo
 
         // ------------------------------------------------------------------ ola de la cascada
         // la ola nace sobre el agua al norte (11 m) y cruza a 8 m/s; dos canales de 3 m (medio ancho 1.5) sin cresta
-        const float GapHalf = 1.5f, WaveSpeed = 8f, WaveStartZ = 11f, BandWarn = 1.2f, BandNear = 8.4f, BandDepth = 2.4f, BandHalfWidth = 6.6f;
+        const float GapHalf = 1.5f, WaveSpeed = 8f, WaveStartZ = 11f, BandWarn = 1.2f, BandNear = 8.4f, BandDepth = 2.4f, BandHalfWidth = 5.4f;
         bool waveArmed;
         float waveLaunch, gap0, gap1;
         RedCue waveCue;
@@ -70,9 +71,8 @@ namespace Nindo
         {
             stormFired = 0;
             pendingCued = pendingGlinted = false;
-            jetLocked = jetFired = jetSwung = false;
-            aimMark = null;
-            for (int i = 0; i < sweepMarks.Length; i++) sweepMarks[i] = null;
+            ClearJetMarks();
+            jetFired = jetSwung = false;
             sweepCue = default;
             if (a.special == "jet" || a.special == "jetsweep") Game.Audio?.Play("jet_charge", Snout, 0.9f, 0.03f);
         }
@@ -419,13 +419,12 @@ namespace Nindo
             Game.Audio?.Play("lock", jetOrigin, 0.9f, 0.02f);
             if (!sweep) return;
             sweepSign = Random.value < 0.5f ? -1f : 1f;
-            // el barrido dura 0.6 s de tramo activo (el clip se estira para acompañarlo)
+            // el barrido dura SweepTime (0.8 s) de tramo activo: el clip se estira para acompañarlo
             tl.sustain = SweepTime;
+            marks.ShowWedge(Ground(jetOrigin), jetDir, len, SweepHalf);
             for (int i = 0; i < SweepLanes; i++)
-            {
-                float ang = SweepAngle(i / (float)(SweepLanes - 1));
-                sweepMarks[i] = marks.Lane(Ground(jetOrigin), Quaternion.Euler(0f, ang, 0f) * jetDir, len, 1.9f, TellStyle.Crimson);
-            }
+                sweepMarks[i] = marks.Lane(Ground(jetOrigin), Quaternion.Euler(0f, SweepAngle(i), 0f) * jetDir, len, 0.45f, TellStyle.Crimson);
+            sweepMarks[1].SetAlpha(0.55f);
             RedWarn(Ground(jetOrigin) + jetDir * len * 0.5f);
         }
 
@@ -436,6 +435,7 @@ namespace Nindo
             jetLocked = false;
             if (aimMark != null) { marks.Finish(aimMark, false); aimMark = null; }
             for (int i = 0; i < sweepMarks.Length; i++) { marks.Finish(sweepMarks[i], false); sweepMarks[i] = null; }
+            marks?.HideWedge();
         }
 
         Vector3 SweepDir()
@@ -444,20 +444,23 @@ namespace Nindo
             return Quaternion.Euler(0f, SweepAngle(s), 0f) * jetDir;
         }
 
-        /// <summary>El abanico se llena primero del lado donde arranca el barrido (dice para dónde va); cada rayo se apaga
-        /// cuando el chorro lo pasa.</summary>
+        /// <summary>
+        /// El abanico se pinta desde la boca al ritmo del aviso; el borde donde arranca el barrido va entero y el otro a
+        /// media tinta (dice para dónde va). Cada borde se apaga cuando el chorro lo pasa y el relleno al terminar.
+        /// </summary>
         void UpdateSweepMarks(float toFire)
         {
             float warn = 1f - Mathf.Clamp01((toFire - TellStyle.BiasUnblockable) / (SweepLock - TellStyle.BiasUnblockable));
             float s = toFire <= 0f ? Mathf.Clamp01(-toFire / SweepTime) : -1f;
+            marks.WedgeProgress = warn;
             for (int i = 0; i < SweepLanes; i++)
             {
                 var m = sweepMarks[i];
                 if (m == null) continue;
-                float order = i / (float)(SweepLanes - 1);
-                m.Progress = Mathf.Clamp01(warn * 1.3f - order * 0.3f);
-                if (s >= order) { marks.Finish(m, true); sweepMarks[i] = null; }
+                m.Progress = warn;
+                if (s >= i) { marks.Finish(m, true); sweepMarks[i] = null; }
             }
+            if (s >= 1f) marks.HideWedge();
         }
 
         /// <summary>Cuándo el chorro barrido llega a Kaito (infinito si está fuera del abanico o ya pasó).</summary>
@@ -735,10 +738,10 @@ namespace Nindo
             float kx = target != null ? Mathf.Clamp(LocalX(target.transform.position), -8f, 8f) : 0f;
             float side = Mathf.Abs(kx) > 5f ? -Mathf.Sign(kx) : (Random.value < 0.5f ? -1f : 1f);
             gap0 = Mathf.Clamp(kx + side * Random.Range(1.5f, 3.5f), -7f, 7f);
-            float sep = Random.Range(8f, 10f);
-            float r = gap0 + sep, l = gap0 - sep;
-            bool okR = r <= 8.5f, okL = l >= -8.5f;
-            gap1 = okR && okL ? (Random.value < 0.5f ? r : l) : okR ? r : okL ? l : (gap0 > 0f ? gap0 - 8f : gap0 + 8f);
+            // el otro, del lado más ancho y adentro de ±7 m (más afuera el canal caía al agua en las esquinas del octógono)
+            float far = gap0 >= 0f ? -7f : 7f;
+            float room = Mathf.Abs(far - gap0);
+            gap1 = room >= 8f ? gap0 + Mathf.Sign(far - gap0) * Random.Range(8f, Mathf.Min(10f, room)) : far;
             if (gap1 < gap0) { float t = gap0; gap0 = gap1; gap1 = t; }
         }
 
@@ -760,8 +763,11 @@ namespace Nindo
             float[] gaps = { gap0, gap1 };
             for (int i = 0; i < 2; i++)
             {
-                Vector3 from = Center + North * BandNear + East * gaps[i];
-                laneMarks[i] = marks.Lane(from, -North, BandNear + RailRadius, GapHalf * 2f, AimColor);
+                // de punta a punta de la plataforma en ese x (octógono: |x| + |z| <= 13.86)
+                float half = Mathf.Min(RailRadius - 0.1f, 13.5f - Mathf.Abs(gaps[i]));
+                float top = Mathf.Min(BandNear, half);
+                Vector3 from = Center + North * top + East * gaps[i];
+                laneMarks[i] = marks.Lane(from, -North, top + half, GapHalf * 2f, AimColor);
                 laneMarks[i].SetAlpha(0.45f);
                 laneMarks[i].Progress = 1f;
             }
@@ -957,7 +963,7 @@ namespace Nindo
                     pending = true;
                     float left = pillarImpact[i] - now;
                     if (pillarMark[i] != null) pillarMark[i].Progress = Mathf.Clamp01(1f - (left - TellStyle.BiasUnblockable) / (PillarWarn - TellStyle.BiasUnblockable));
-                    if (!pillarDropped[i] && left <= PillarFall) { pillarDropped[i] = true; pillarFx[i].Drop(pillarAt[i], PillarRadius, Mathf.Max(0.05f, left), DeckHeight); }
+                    if (!pillarDropped[i] && left <= PillarFall) { pillarDropped[i] = true; pillarFx[i].Drop(pillarAt[i], PillarRadius * 0.75f, Mathf.Max(0.05f, left), DeckHeight); }
                     if (PillarThreatens(i)) TickRedCue(ref pillarCue[i], left, pillarAt[i]);
                     if (left <= 0f) CrashPillar(i, a);
                 }

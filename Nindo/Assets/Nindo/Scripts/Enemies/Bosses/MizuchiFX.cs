@@ -240,7 +240,9 @@ namespace Nindo
             float r = Mathf.Lerp(radius * 0.72f, radius, k) * (1f - 0.5f * thin);
             transform.position = new Vector3(transform.position.x, bottom, transform.position.z);
             transform.localScale = new Vector3(r, h, r);
-            KoiWater.Drive(mat, phase, 0.35f, 0.95f * (1f - thin), 1.4f);
+            // translúcido y más angosto que su disco (0.75): con la cámara alta la columna tapaba a Kaito y al disco justo
+            // antes del golpe (render de prueba); el chapuzón del impacto sí llega al borde del disco
+            KoiWater.Drive(mat, phase, 0.35f, 0.72f * (1f - thin), 1.4f);
         }
     }
 

@@ -178,7 +178,8 @@ namespace Nindo
                 poiseHits = 3, hyperArmor = true, knockbackResist = 0.95f, parriedRecoil = 0.4f, staggerTime = 0.3f,
                 preferredDistance = 4.5f, detectRadius = 30f, loseRadius = 80f, finisherHealth = 0.12f,
                 attackCooldown = new Vector2(0.8f, 1.6f),
-                animGuard = "Guard", animCounter = "FinR", animExhausted = "Exhausted", animHit = "Hit",
+                // contraataque: muestra el flanco (Guard) antes del golpe; con FinR barría con la aleta sin pegar
+                animGuard = "Guard", animCounter = "Guard", animExhausted = "Exhausted", animHit = "Hit",
                 animSpotted = "Roar", animDeath = "Freed", animParried = "Parried",
             };
             // ---- fase 1
@@ -213,6 +214,7 @@ namespace Nindo
             pillars.special = "pillars"; pillars.specialParam = 4; pillars.tracking = false;
             // ---- fase 3
             var storm = pearls.Clone(); storm.name = "Perlas de tormenta"; storm.special = "storm"; storm.specialParam = 5; storm.damage = 8;
+            // los especiales grandes piden 2 m o más: el contraataque (Enemy.Counter elige con distancia 1) es siempre un golpe corto
             c.patterns = new[]
             {
                 new AttackPattern { name = "Mordida", steps = new[] { bite }, weight = 1.6f, maxRange = 3.6f, maxAngle = 70f },
@@ -220,13 +222,13 @@ namespace Nindo
                 new AttackPattern { name = "Mordida y aletazo", steps = new[] { bite, finL, finR }, weight = 1.1f, maxRange = 3.6f, maxAngle = 70f, maxPhase = 0 },
                 new AttackPattern { name = "Coletazo", steps = new[] { tail }, weight = 2.5f, maxRange = 4.8f, minAngle = 100f, cooldown = 4f },
                 new AttackPattern { name = "Perlas del Lago", steps = new[] { pearls }, weight = 1.2f, minRange = 6f, maxRange = 14f, cooldown = 5f, maxPhase = 0 },
-                new AttackPattern { name = "Salto del Dragón", steps = new[] { dive }, weight = 1f, maxRange = 30f, cooldown = 12f },
+                new AttackPattern { name = "Salto del Dragón", steps = new[] { dive }, weight = 1f, minRange = 2f, maxRange = 30f, cooldown = 12f },
                 new AttackPattern { name = "Chorro", steps = new[] { jet }, weight = 0.9f, minRange = 4f, maxRange = 11f, cooldown = 9f, maxPhase = 0 },
                 new AttackPattern { name = "Torrente", steps = new[] { tBite, tFinL, tFinR, tTail }, weight = 1.6f, maxRange = 3.6f, maxAngle = 70f, minPhase = 1 },
                 new AttackPattern { name = "Tama-asobi", steps = new[] { rally }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 14f, minPhase = 1 },
                 new AttackPattern { name = "Chorro barrido", steps = new[] { sweep }, weight = 1f, minRange = 4f, maxRange = 9f, cooldown = 8f, minPhase = 1 },
-                new AttackPattern { name = "Ola de la Cascada", steps = new[] { wave }, weight = 0.9f, maxRange = 30f, cooldown = 15f, minPhase = 1 },
-                new AttackPattern { name = "Pilares", steps = new[] { pillars }, weight = 0.8f, maxRange = 30f, cooldown = 20f, minPhase = 1 },
+                new AttackPattern { name = "Ola de la Cascada", steps = new[] { wave }, weight = 0.9f, minRange = 2f, maxRange = 30f, cooldown = 15f, minPhase = 1 },
+                new AttackPattern { name = "Pilares", steps = new[] { pillars }, weight = 0.8f, minRange = 2f, maxRange = 30f, cooldown = 20f, minPhase = 1 },
                 new AttackPattern { name = "Perlas de tormenta", steps = new[] { storm }, weight = 1f, minRange = 6f, maxRange = 14f, cooldown = 6f, minPhase = 2 },
             };
             return c;

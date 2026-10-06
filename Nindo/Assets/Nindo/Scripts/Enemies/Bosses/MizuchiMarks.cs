@@ -41,6 +41,17 @@ namespace Nindo
         Material mat;
         MaterialPropertyBlock mpb;
 
+        // abanico (chorro barrido): relleno plano que crece desde la boca; los bordes los pintan dos carriles finos.
+        // Un abanico de 7 carriles cruzaba 14 bordes en la boca y se leía como una telaraña (render de prueba)
+        Transform wedge;
+        MeshRenderer wedgeR;
+        Mesh wedgeMesh;
+        Material wedgeMat;
+        MaterialPropertyBlock wedgeMpb;
+        float wedgeAlpha, wedgeTarget, wedgeRadius;
+        /// <summary>Cuánto del abanico está pintado desde la boca (0..1).</summary>
+        public float WedgeProgress { get; set; }
+
         public static MizuchiMarks Create()
         {
             var go = new GameObject("[MizuchiMarks]");
@@ -66,7 +77,47 @@ namespace Nindo
         {
             if (mat != null) Destroy(mat);
             if (quad != null) Destroy(quad);
+            if (wedgeMesh != null) Destroy(wedgeMesh);
+            if (wedgeMat != null) Destroy(wedgeMat);
         }
+
+        /// <summary>Muestra el abanico rojo con vértice en 'apex', centrado en 'dir', de 'radius' m y ±'halfAngle'°.</summary>
+        public void ShowWedge(Vector3 apex, Vector3 dir, float radius, float halfAngle)
+        {
+            if (wedge == null)
+            {
+                const int Seg = 16;
+                var v = new Vector3[Seg + 2];
+                var tri = new int[Seg * 3];
+                v[0] = Vector3.zero;
+                for (int i = 0; i <= Seg; i++)
+                {
+                    float a = Mathf.Lerp(-halfAngle, halfAngle, i / (float)Seg) * Mathf.Deg2Rad;
+                    v[i + 1] = new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
+                }
+                for (int i = 0; i < Seg; i++) { tri[i * 3] = 0; tri[i * 3 + 1] = i + 1; tri[i * 3 + 2] = i + 2; }
+                wedgeMesh = new Mesh { name = "MarkWedge", vertices = v, triangles = tri };
+                wedgeMesh.RecalculateBounds();
+                var go = new GameObject("Wedge");
+                go.transform.SetParent(transform, false);
+                go.AddComponent<MeshFilter>().sharedMesh = wedgeMesh;
+                wedgeR = go.AddComponent<MeshRenderer>();
+                wedgeMat = FXMaterials.MakeUnlitTransparent("MarkWedge", TellStyle.Crimson, false);
+                wedgeR.sharedMaterial = wedgeMat;
+                wedgeR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                wedgeR.receiveShadows = false;
+                wedgeMpb = new MaterialPropertyBlock();
+                wedge = go.transform;
+            }
+            wedge.SetPositionAndRotation(apex + Vector3.up * 0.05f, Quaternion.LookRotation(dir.Flat().normalized, Vector3.up));
+            wedgeRadius = radius;
+            WedgeProgress = 0f;
+            wedgeTarget = 1f;
+            wedgeAlpha = 0f;
+            wedgeR.enabled = true;
+        }
+
+        public void HideWedge() => wedgeTarget = 0f;
 
         /// <summary>Disco rojo de radio 'radius' apoyado en 'center' (y = altura del piso).</summary>
         public Mark Disc(Vector3 center, float radius)
@@ -97,6 +148,7 @@ namespace Nindo
         public void Clear()
         {
             foreach (var m in marks) { m.active = false; if (m.mr != null) m.mr.enabled = false; }
+            if (wedgeR != null) { wedgeR.enabled = false; wedgeAlpha = wedgeTarget = 0f; }
         }
 
         Mark Acquire()
@@ -126,6 +178,21 @@ namespace Nindo
         {
             if (mat == null) return;
             float dt = Time.deltaTime;
+            if (wedgeR != null && wedgeR.enabled)
+            {
+                // entra en 0.1 s y se apaga en 0.2 s; crece desde la boca al ritmo del aviso
+                wedgeAlpha = Mathf.MoveTowards(wedgeAlpha, wedgeTarget, dt / (wedgeTarget > wedgeAlpha ? 0.1f : 0.2f));
+                if (wedgeAlpha <= 0f && wedgeTarget <= 0f) wedgeR.enabled = false;
+                else
+                {
+                    float r = wedgeRadius * Mathf.Lerp(0.15f, 1f, Mathf.Clamp01(WedgeProgress));
+                    wedge.localScale = new Vector3(r, 1f, r);
+                    Color c = TellStyle.Crimson; c.a = (0.16f + 0.2f * Mathf.Clamp01(WedgeProgress)) * wedgeAlpha;
+                    wedgeMpb.SetColor("_BaseColor", c);
+                    wedgeMpb.SetColor("_Color", c);
+                    wedgeR.SetPropertyBlock(wedgeMpb);
+                }
+            }
             foreach (var m in marks)
             {
                 if (!m.active) continue;
