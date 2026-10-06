@@ -39,7 +39,10 @@ namespace Nindo
         static void ResetList() => all.Clear();
     }
 
-    /// <summary>Santuario: guarda la partida, cura y es el punto de reaparición.</summary>
+    /// <summary>
+    /// Santuario: punto de reaparición. Pasar a menos de 6 m ya lo registra (antes había que rezar: el que no rezaba
+    /// reaparecía 75-90 m atrás, lejos del jefe); rezar además cura, guarda y reinicia los encuentros pendientes.
+    /// </summary>
     public class Checkpoint : Interactable
     {
         public string id = "cp";
@@ -95,7 +98,7 @@ namespace Nindo
         public override bool CanInteract => Game.Combat == null || !Game.Combat.InCombat;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetDict() => byId.Clear();
+        static void ResetDict() { byId.Clear(); toasted.Clear(); }
 
         public override void Interact(PlayerController p)
         {
@@ -120,7 +123,34 @@ namespace Nindo
         void Update()
         {
             if (glow != null) glow.intensity = (Game.Save.checkpoint == id ? 2.4f : 1.2f) * (0.9f + 0.1f * Mathf.Sin(Time.time * 3f));
+            AutoRegister();
         }
+
+        /// <summary>Radio en el que pasar cerca ya deja el santuario como punto de reaparición (m).</summary>
+        public const float AutoRegisterRadius = 6f;
+
+        /// <summary>
+        /// Reaparición por cercanía: sin curar ni reiniciar encuentros (eso es rezar). No en combate (cp_dojo está
+        /// dentro de la arena de Kage), ni en cinemáticas, ni antes de terminar el prólogo.
+        /// </summary>
+        void AutoRegister()
+        {
+            var p = Game.Player;
+            if (p == null || !p.IsAlive || Game.Save.checkpoint == id || Game.InCutscene) return;
+            if (!Game.Save.HasFlag(Flags.IntroDone) || (Game.Combat != null && Game.Combat.InCombat)) return;
+            Vector3 d = p.transform.position - transform.position;
+            if (d.y * d.y > 9f || d.x * d.x + d.z * d.z > AutoRegisterRadius * AutoRegisterRadius) return;
+            Game.Save.checkpoint = id;
+            SaveSystem.Save();
+            Game.FX?.SealGlow(transform.position + Vector3.up);
+            Game.Audio?.Play("checkpoint", transform.position, 0.45f);
+            // el cartel una vez por santuario y por sesión: yendo y viniendo entre dos santuarios cercanos (lago,
+            // muelles) alcanzan el brillo y el sonido
+            if (toasted.Add(id)) Game.UI?.ShowToast($"{displayName}: volvés acá si caés", UIFactory.Gold, 2f);
+            GameEvents.RaiseCheckpoint(id);
+        }
+
+        static readonly HashSet<string> toasted = new HashSet<string>();
     }
 
     /// <summary>Uno de los tres sellos/llaves que custodian los jefes.</summary>

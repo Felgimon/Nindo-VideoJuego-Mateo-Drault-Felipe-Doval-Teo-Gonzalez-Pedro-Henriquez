@@ -13,8 +13,18 @@ for pid, x, z, yaw, sc in W.LANDMARKS:
         WATER_OK.append((x, z, 9.2))
 
 
+# muelles de santuarios (rectángulo de 4 x 2.2 m con el largo según el yaw)
+LANDINGS = [(x, z, math.sin(math.radians(yaw)), math.cos(math.radians(yaw)), 2.0 * sc, 1.1 * sc)
+            for pid, x, z, yaw, sc in W.CHECKPOINT_LANDINGS]
+
+
+def on_landing(x, z, pad=0.0):
+    return any(abs((x - lx) * sa + (z - lz) * ca) <= hl + pad and abs((x - lx) * ca - (z - lz) * sa) <= hw + pad
+               for lx, lz, sa, ca, hl, hw in LANDINGS)
+
+
 def on_platform(x, z):
-    if any(math.hypot(x - a, z - b) < r for a, b, r in WATER_OK):
+    if any(math.hypot(x - a, z - b) < r for a, b, r in WATER_OK) or on_landing(x, z):
         return True
     # sobre la pasarela de tablones
     return any(name == "pasarela_lago" for name in [T.path_info(x, z)[3]]) and T.path_info(x, z)[0] < -0.3
@@ -22,7 +32,7 @@ def on_platform(x, z):
 
 def check(kind, name, x, z, margin=0.8):
     wd = T.walk_dist(x, z)
-    if wd > -margin:
+    if wd > -margin and not on_landing(x, z):
         problems.append(f"{kind} {name} ({x},{z}) está a {-wd:.1f} m del borde transitable (wd={wd:.2f})")
     if T.in_lake(x, z) and not on_platform(x, z):
         problems.append(f"{kind} {name} ({x},{z}) cae en el agua")
@@ -38,6 +48,17 @@ def check(kind, name, x, z, margin=0.8):
 
 
 check("Start", "", W.START[0], W.START[1])
+# cada muelle: en el lago, con fondo, y con una punta sobre la pasarela (si no, el santuario queda aislado)
+for lx, lz, sa, ca, hl, hw in LANDINGS:
+    if not T.in_lake(lx, lz) or W.WATER_LAKE - T.height(lx, lz) < 0.5:
+        problems.append(f"Muelle ({lx},{lz}) fuera del lago o con poco fondo")
+    ends = [(lx + sa * hl * k, lz + ca * hl * k) for k in (-1, 1)]
+    if not any(T.path_info(ex, ez)[3] == "pasarela_lago" and T.path_info(ex, ez)[0] < 0.3 for ex, ez in ends):
+        problems.append(f"Muelle ({lx},{lz}): ninguna punta toca la pasarela")
+# el lugar donde se reaparece (1.8 m delante del santuario) también tiene que ser piso
+for cid, x, z, yaw in W.CHECKPOINTS:
+    sx, sz = x + math.sin(math.radians(yaw)) * 1.8, z + math.cos(math.radians(yaw)) * 1.8
+    check("Reaparición", cid, sx, sz, 0.3)
 for k, (x, z) in W.POINTS.items():
     check("Point", k, x, z, 0.3)
 for cid, x, z, yaw in W.CHECKPOINTS:

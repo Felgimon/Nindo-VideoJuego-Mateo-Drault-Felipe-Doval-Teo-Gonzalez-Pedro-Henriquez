@@ -684,6 +684,13 @@ def scatter():
     print(f"scatter trees={n_tree} ground={n_ground} cliffs={n_cliff}")
 
 
+def place_checkpoint_landings():
+    """Muelles de los santuarios sobre el agua (W.CHECKPOINT_LANDINGS). Van después del scatter: así no corren los
+    índices (y los nombres P__) de los demás props ni cambian el sorteo de la vegetación."""
+    for pid, x, z, yaw, sc in W.CHECKPOINT_LANDINGS:
+        place(pid, x, z, yaw, sc)
+
+
 # =========================================================================== decoración fusionada
 _PROP_FNS = None
 
@@ -949,6 +956,7 @@ L.clear_scene()
 place_landmarks()
 build_markers()
 scatter()
+place_checkpoint_landings()
 TERRAIN_OBJS = build_terrain() + build_water() + build_decor()
 WALL_OBJS = build_walls()
 TERRAIN_OBJS += WALL_OBJS

@@ -249,7 +249,8 @@ namespace Nindo
             }, () => 36f, 0.12f, 6f, 0.35f);
         }
 
-        public int PlayBossIntroShot(Transform boss, float height, float duration)
+        /// <summary>Presentación de jefe: se acerca de frente y sube. La re-presentación de un reintento usa fundidos cortos.</summary>
+        public int PlayBossIntroShot(Transform boss, float height, float duration, float blendIn = 1.0f, float blendOut = 0.9f)
         {
             return PlayShot(t =>
             {
@@ -259,7 +260,7 @@ namespace Nindo
                 Vector3 pos = boss.position + fwd * Mathf.Lerp(9f, 6f, k) + right * Mathf.Lerp(2.5f, -1f, k) + Vector3.up * Mathf.Lerp(1.2f, height * 0.9f, k);
                 Vector3 look = boss.position + Vector3.up * height * 0.6f;
                 return new Pose(pos, Quaternion.LookRotation(look - pos));
-            }, () => 34f, 1.0f, duration, 0.9f);
+            }, () => 34f, blendIn, duration, blendOut);
         }
 
         public int PlayBossDeathShot(Transform boss)

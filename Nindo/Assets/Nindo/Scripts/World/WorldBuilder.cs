@@ -62,6 +62,13 @@ namespace Nindo
             return cp != null ? cp.spawnPoint.position : StartPoint;
         }
 
+        /// <summary>Hacia dónde mira Kaito al reaparecer (la del santuario: antes reaparecía siempre mirando al norte).</summary>
+        public Quaternion RespawnRotation()
+        {
+            var cp = Checkpoint.Get(Game.Save.checkpoint);
+            return cp != null ? cp.spawnPoint.rotation : StartRotation;
+        }
+
         // ================================================================== construcción
         public IEnumerator Build()
         {

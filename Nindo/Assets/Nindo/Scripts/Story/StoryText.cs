@@ -30,6 +30,8 @@ namespace Nindo
                 case "cp_lake_docks": return "Santuario de los Muelles";
                 case "cp_bamboo": return "Santuario del Bambú";
                 case "cp_dojo": return "Santuario del Patio";
+                case "cp_lake_falls": return "Santuario de la Cascada";
+                case "cp_bamboo_gate": return "Santuario del Arco de Bambú";
                 default: return "Santuario";
             }
         }

@@ -219,6 +219,17 @@ CHECKPOINTS = [
     ("cp_lake_docks", 112, 16, 220),
     ("cp_bamboo", 72, 108, 200),
     ("cp_dojo", 10, 140, 180),
+    # a la entrada de los jefes (antes el más cercano quedaba a 75-91 m y cada reintento era una caminata):
+    # Mizuchi: sobre un muelle al costado de la pasarela, 15 m antes de la plataforma (mirando a la pasarela)
+    ("cp_lake_falls", 177.36, 57.88, 311),
+    # Ōzeki: en el centro del camino, 6 m antes del arco de bambú (fuera de la barrera de la arena, r 15)
+    ("cp_bamboo_gate", 111.5, 144.2, 220),
+]
+
+# muelles que sostienen un santuario sobre el agua: (prop, x, z, yaw, escala). El largo (4 m) va perpendicular a la
+# pasarela, del lado sin baranda (sureste), con la punta cercana tocando el borde de los tablones
+CHECKPOINT_LANDINGS = [
+    ("dock_segment", 176.35, 58.77, 131.2, 1.0),
 ]
 
 # zonas (id, x, z, radio, prioridad)

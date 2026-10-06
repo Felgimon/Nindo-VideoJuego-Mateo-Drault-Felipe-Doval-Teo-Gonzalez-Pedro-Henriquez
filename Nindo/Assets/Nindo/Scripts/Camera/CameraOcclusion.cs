@@ -200,9 +200,9 @@ namespace Nindo
     /// </summary>
     public class Occluder : MonoBehaviour
     {
-        /// <summary>Cuánto se disuelve: en el hueco queda un 18 % de la trama (se sigue viendo qué hay); pegado a la
-        /// cámara un 12 % (a ese tamaño más trama ya es ruido).</summary>
-        const float HoleFade = 0.82f, NearFade = 0.88f;
+        /// <summary>Cuánto se disuelve: en el hueco queda 3/16 de la trama (se sigue viendo qué hay); pegado a la
+        /// cámara 1/16 (ocupa media pantalla: con más puntos la trama ya se ve como ruido encima de la pelea).</summary>
+        const float HoleFade = 0.82f, NearFade = 0.94f;
         const float FadeInTime = 0.18f, FadeOutTime = 0.45f, Linger = 0.3f;
 
         static readonly int FadeId = Shader.PropertyToID("_NindoFade");
