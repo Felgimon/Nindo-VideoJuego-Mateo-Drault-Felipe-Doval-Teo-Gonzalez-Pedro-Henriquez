@@ -112,6 +112,8 @@ Shader "Nindo/Spray"
                 #if defined(_ADDITIONAL_LIGHTS_VERTEX)
                 lighting += input.vertexLight;
                 #endif
+                // tope: la luz de relleno de la cascada (intensidad 48) sumada sin límite quemaba el agua en blanco
+                lighting = min(lighting, half3(2.0h, 2.0h, 2.0h));
                 half3 color = albedo * lighting + _Color.rgb * _Glow;
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);

@@ -186,6 +186,8 @@ Shader "Nindo/Waterfall"
                 lighting += input.vertexLight;
                 #endif
 
+                // tope: la luz de relleno de la cascada (intensidad 48) sumada sin límite quemaba el agua en blanco
+                lighting = min(lighting, half3(2.0h, 2.0h, 2.0h));
                 half3 color = col * lighting + specular;
                 // luz propia de la espuma (se lee de noche) y destellos sueltos que bajan con el agua
                 color += _GlowColor.rgb * (half)foam * 0.25h;

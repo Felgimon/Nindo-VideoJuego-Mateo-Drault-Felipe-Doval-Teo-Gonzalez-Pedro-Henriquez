@@ -217,6 +217,9 @@ Shader "Nindo/Foam Water"
                 #if defined(_ADDITIONAL_LIGHTS_VERTEX)
                 lighting += input.vertexLight;
                 #endif
+                // tope: la luz de contorno de la cascada es fuerte (para que se note sobre los personajes) y sumada sin
+                // límite convertía la película mojada (9 % de opacidad) en una placa celeste que tapaba la plataforma
+                lighting = min(lighting, half3(1.6h, 1.6h, 1.6h));
                 float3 v = normalize(GetWorldSpaceViewDir(input.positionWS));
                 half fres = (half)pow(1.0 - saturate(v.y), 2.0);
                 half3 waterCol = lerp(_WaterColor.rgb * lighting * (1.0h + 0.45h * chop), _SkyColor.rgb, fres * 0.5h);
