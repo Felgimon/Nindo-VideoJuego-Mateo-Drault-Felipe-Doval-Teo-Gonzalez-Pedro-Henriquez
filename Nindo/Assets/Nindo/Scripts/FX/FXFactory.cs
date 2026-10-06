@@ -144,8 +144,13 @@ namespace Nindo
             var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = radius; sh.radiusThickness = 0.4f;
             sh.rotation = new Vector3(90f, 0f, 0f);
             var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.Local;
+            // Unity exige el mismo modo en los tres ejes (si no, error de consola en cada remolino):
+            // X/Z van como "dos constantes" en cero
+            var zero = new ParticleSystem.MinMaxCurve(0f, 0f);
+            vel.orbitalX = zero; vel.orbitalZ = zero;
             vel.orbitalY = new ParticleSystem.MinMaxCurve(7f, 10f);
             vel.radial = new ParticleSystem.MinMaxCurve(-0.4f, 0.4f);
+            vel.x = zero; vel.z = zero;
             vel.y = new ParticleSystem.MinMaxCurve(0.6f, 2.2f);
             var rot = ps.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-6f, 6f);
             ColorOverLife(ps, Color.white, Color.white);
