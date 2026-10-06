@@ -22,9 +22,10 @@ namespace Nindo
             public Enemy enemy;
             public float visibleUntil, ghostValue = 1f, ghostHold, lastHp = -1f;
             public string statusText = "";
-            public bool wasOpen, tipText, shown;
-            public Vector2 pos;
-            public float height;
+            public bool wasOpen, tipText, shown, snap;
+            public Vector2 head, pos;            // cabeza proyectada y dónde se dibuja (con lo apilado, suavizado)
+            public float height, target, stack;  // alto ocupado; altura apilada a la que va y corrimiento actual
+            public int rank;                     // orden de abajo arriba del cuadro anterior
         }
         readonly List<EnemyWidget> widgets = new List<EnemyWidget>();
         readonly Dictionary<Enemy, EnemyWidget> widgetOf = new Dictionary<Enemy, EnemyWidget>();
@@ -107,22 +108,24 @@ namespace Nindo
             if (w == null)
             {
                 w = new EnemyWidget();
-                w.rt = UIFactory.Rect("EnemyBar", world, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(124, 60));
-                // trazo de tinta con la vida en carmesí y una estela de papel (lo que se perdió)
-                w.glow = UIFactory.Sliced("Glow", w.rt, UISprites.BossBarBack, new Color(1f, 0.8f, 0.35f, 0f), 26f);
-                Place(w.glow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, -6f), new Vector2(128, 26));
+                w.rt = UIFactory.Rect("EnemyBar", world, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(124, 64));
+                // trazo de tinta con la vida en carmesí y una estela de papel (lo que se perdió). 20 de alto: con 16 la
+                // banda roja (el relleno es opaco en 47 de sus 72 filas) quedaba en 6 px a 1080p y 4 a 720p, y es lo
+                // que se lee de cada ninja en una pelea grupal
+                w.glow = UIFactory.Sliced("Glow", w.rt, UISprites.BossBarBack, new Color(1f, 0.8f, 0.35f, 0f), 30f);
+                Place(w.glow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, -6f), new Vector2(128, 30));
                 w.glow.rectTransform.pivot = new Vector2(0.5f, 0f);
-                w.back = UIFactory.Sliced("Back", w.rt, UISprites.BossBarBack, Color.white, 16f);
-                Place(w.back.rectTransform, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(116, 16));
+                w.back = UIFactory.Sliced("Back", w.rt, UISprites.BossBarBack, Color.white, 20f);
+                Place(w.back.rectTransform, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(116, 20));
                 w.back.rectTransform.pivot = new Vector2(0.5f, 0f);
                 w.ghost = WidgetFill("Ghost", w.back.rectTransform, new Color(UIFactory.Paper.r, UIFactory.Paper.g, UIFactory.Paper.b, 0.8f));
                 w.fill = WidgetFill("Hp", w.back.rectTransform, EnemyRed);
                 w.pips = new Image[6];
                 for (int i = 0; i < w.pips.Length; i++)
-                    w.pips[i] = UIFactory.Centered("Pip" + i, w.rt, PipOff, new Vector2(0.5f, 0f), new Vector2((i - 2.5f) * 17f, 26f), new Vector2(15, 15), UISprites.Pip);
-                w.guard = UIFactory.Centered("Guard", w.rt, UIFactory.Steel, new Vector2(0.5f, 0f), new Vector2(72f, 8f), new Vector2(24, 24), UISprites.Guard);
+                    w.pips[i] = UIFactory.Centered("Pip" + i, w.rt, PipOff, new Vector2(0.5f, 0f), new Vector2((i - 2.5f) * 17f, PipY), new Vector2(15, 15), UISprites.Pip);
+                w.guard = UIFactory.Centered("Guard", w.rt, UIFactory.Steel, new Vector2(0.5f, 0f), new Vector2(72f, 10f), new Vector2(24, 24), UISprites.Guard);
                 w.guard.enabled = false;
-                w.status = UIFactory.NoWrap(UIFactory.Text("Status", w.rt, "", 24, UIFactory.Gold, new Vector2(0.5f, 0f), new Vector2(0, 38), new Vector2(320, 34), TextAlignmentOptions.Bottom, true));
+                w.status = UIFactory.NoWrap(UIFactory.Text("Status", w.rt, "", 24, UIFactory.Gold, new Vector2(0.5f, 0f), new Vector2(0, 42), new Vector2(320, 34), TextAlignmentOptions.Bottom, true));
                 w.status.rectTransform.pivot = new Vector2(0.5f, 0f);
                 UIFactory.Outline(w.status, 0.25f);
                 widgets.Add(w);
@@ -139,9 +142,11 @@ namespace Nindo
             var img = UIFactory.Image(name, back, c, UISprites.BossBarFill != null ? UISprites.BossBarFill : UIFactory.White);
             img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal;
             img.rectTransform.anchorMin = Vector2.zero; img.rectTransform.anchorMax = Vector2.one;
-            img.rectTransform.offsetMin = new Vector2(5f, 3.5f); img.rectTransform.offsetMax = new Vector2(-5f, -3.5f);
+            img.rectTransform.offsetMin = new Vector2(5f, 2.5f); img.rectTransform.offsetMax = new Vector2(-5f, -2.5f);
             return img;
         }
+
+        const float PipY = 30f;   // centro de los rombos de postura, justo arriba de la barra
 
         // proyección al canvas del mundo (el canvas está estirado: ancla abajo a la izquierda, en unidades del canvas)
         static bool Project(Camera cam, Vector3 worldPos, float scale, out Vector2 p)
@@ -166,7 +171,14 @@ namespace Nindo
             var p = Game.Player;
             bool show = cam != null && p != null && !HideHud;
             if (world.gameObject.activeSelf != show) world.gameObject.SetActive(show);
-            if (!show) return;
+            if (!show)
+            {
+                // las marcas y los avisos son del momento: después de una cinemática, un diálogo o la muerte no
+                // vuelven a saltar con el tiempo que les quedaba ("¡FILO DE IRA!" tras la muerte de un jefe). En
+                // pausa sí esperan: el juego también está quieto
+                if (!PauseOpen) ClearWorldCues();
+                return;
+            }
             float scale = root.localScale.x > 0 ? root.localScale.x : 1f;
             float t = Time.unscaledTime;
 
@@ -179,14 +191,16 @@ namespace Nindo
             {
                 var e = w.enemy;
                 bool vis = e != null && e.IsAlive && e.gameObject.activeInHierarchy && (Time.time < w.visibleUntil || Time.time - e.LastHitTime < 3f) && !(e is Boss);
-                if (vis) vis = Project(cam, HeadPoint(e), scale, out w.pos);
+                if (vis) vis = Project(cam, HeadPoint(e), scale, out w.head);
+                // la que aparece entra directo a su lugar (sin deslizarse desde la cabeza) y va arriba de las demás
+                if (vis && !w.shown) { w.snap = true; w.rank = int.MaxValue; }
                 if (w.shown != vis) { w.rt.gameObject.SetActive(vis); w.shown = vis; }
                 if (!vis) continue;
                 UpdateWidget(w, e, dt, t);
                 if (n == sortBuf.Length) System.Array.Resize(ref sortBuf, n * 2);
                 sortBuf[n++] = w;
             }
-            Declutter(n);
+            Declutter(n, dt);
             for (int i = 0; i < n; i++) sortBuf[i].rt.anchoredPosition = sortBuf[i].pos;
 
             // ---------------------------------------------------------------- remate (antes del fijado: el kunai va arriba)
@@ -273,7 +287,7 @@ namespace Nindo
                 bool on = i < max;
                 if (w.pips[i].enabled != on) w.pips[i].enabled = on;
                 if (!on) continue;
-                w.pips[i].rectTransform.anchoredPosition = new Vector2((i - (max - 1) * 0.5f) * 17f, 26f);
+                w.pips[i].rectTransform.anchoredPosition = new Vector2((i - (max - 1) * 0.5f) * 17f, PipY);
                 // las fracciones también se ven (parry perfecto +0.5, guardia imperfecta, rebote en la guardia)
                 float f = Mathf.Clamp01(e.Imbalance - i);
                 w.pips[i].color = open ? Color.Lerp(UIFactory.Gold, Color.white, 0.5f + 0.5f * Mathf.Sin(t * 16f))
@@ -298,25 +312,53 @@ namespace Nindo
             w.wasOpen = open;
             string status = open && w.tipText ? (broken ? "¡DESEQUILIBRADO!" : "¡ABIERTO!") : "";
             if (status != w.statusText) { w.statusText = status; w.status.text = status; }
-            w.height = status.Length > 0 ? 70f : 36f;
+            w.height = status.Length > 0 ? 74f : 40f;
         }
 
-        /// <summary>Las barras de enemigos juntos se apilan: de abajo para arriba, la que pisa a otra sube.</summary>
-        void Declutter(int n)
+        /// <summary>
+        /// Las barras de enemigos juntos se apilan: de abajo para arriba, la que pisa a otra sube. El orden tiene
+        /// histéresis (dos cabezas a menos de 12 px conservan el del cuadro anterior) y el corrimiento se desliza:
+        /// con los enemigos girando alrededor de Kaito las cabezas se cruzaban todo el tiempo y la barra de arriba
+        /// saltaba abajo (y su texto, la cinta de Ejecutar, las marcas y el kunai del fijado con ella) en un cuadro.
+        /// </summary>
+        void Declutter(int n, float dt)
         {
+            // primero el orden anterior y después por altura, moviendo solo lo que se separó de verdad
             for (int i = 1; i < n; i++)
             {
                 var w = sortBuf[i]; int j = i - 1;
-                while (j >= 0 && sortBuf[j].pos.y > w.pos.y) { sortBuf[j + 1] = sortBuf[j]; j--; }
+                while (j >= 0 && sortBuf[j].rank > w.rank) { sortBuf[j + 1] = sortBuf[j]; j--; }
                 sortBuf[j + 1] = w;
             }
             for (int i = 1; i < n; i++)
+            {
+                var w = sortBuf[i]; int j = i - 1;
+                while (j >= 0 && sortBuf[j].head.y > w.head.y + 12f) { sortBuf[j + 1] = sortBuf[j]; j--; }
+                sortBuf[j + 1] = w;
+            }
+            for (int i = 0; i < n; i++)
+            {
+                var a = sortBuf[i];
+                a.rank = i;
+                a.target = a.head.y;
                 for (int j = 0; j < i; j++)
                 {
-                    var a = sortBuf[i]; var b = sortBuf[j];
-                    if (Mathf.Abs(a.pos.x - b.pos.x) < 128f && a.pos.y < b.pos.y + b.height + 4f && a.pos.y + a.height > b.pos.y)
-                        a.pos.y = b.pos.y + b.height + 4f;
+                    var b = sortBuf[j];
+                    if (Mathf.Abs(a.head.x - b.head.x) < 128f && a.target < b.target + b.height + 4f && a.target + a.height > b.target)
+                        a.target = b.target + b.height + 4f;
                 }
+                float off = a.target - a.head.y;
+                a.stack = a.snap ? off : Mathf.MoveTowards(a.stack, off, dt * 500f);
+                a.snap = false;
+                a.pos = new Vector2(a.head.x, a.head.y + a.stack);
+            }
+        }
+
+        /// <summary>Apaga los avisos sobre Kaito y las marcas sobre los enemigos que estaban en el aire.</summary>
+        void ClearWorldCues()
+        {
+            foreach (var c in callouts) if (c.active) { c.active = false; c.text.enabled = false; }
+            foreach (var m in markers) if (m.active) { m.active = false; m.img.enabled = false; }
         }
 
         /// <summary>Punto (en el canvas) arriba de todo lo que tiene el enemigo encima: barra, postura y texto.</summary>

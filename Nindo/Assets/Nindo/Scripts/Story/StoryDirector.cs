@@ -158,7 +158,7 @@ namespace Nindo
             if (Game.Input != null) Game.Input.GameplayBlocked = false;
             bandana.enabled = true;
             UpdateObjective();
-            Game.UI.ShowTutorial($"Acercate a la guadaña y presioná [{Game.Input.Glyph(Act.Interact)}]");
+            Game.UI.ShowTutorial($"Acercate a la guadaña y presioná {{Interact}}");
             while (!Game.Save.HasFlag(Flags.KatanaObtained)) yield return null;
             Game.UI.HideTutorial();
 
@@ -238,7 +238,7 @@ namespace Nindo
             var cp = Checkpoint.Get("cp_home");
             if (cp != null) cp.Activate(P, false);
             SaveSystem.Save();
-            Game.UI.ShowTutorial($"Tip: [{Game.Input.Glyph(Act.Lock)}] fija a un enemigo. Mantenelo apretado para soltarlo.");
+            Game.UI.ShowTutorial($"Tip: {{Lock}} fija a un enemigo. Mantenelo apretado para soltarlo.");
             StartCoroutine(HideTutorialLater(5f));
         }
 
@@ -271,7 +271,7 @@ namespace Nindo
                 finisherTip = true;
                 Game.Save.SetFlag("tip_finisher");
                 Game.Time.SlowMotion(0.25f, 1.2f, 0.05f, 0.4f);
-                Game.UI.ShowTutorial($"¡Está desequilibrado! Pegale [{Game.Input.Glyph(Act.Attack)}] o EJECUTALO con [{Game.Input.Glyph(Act.Finisher)}] (cuesta Espíritu, te cura)");
+                Game.UI.ShowTutorial($"¡Está desequilibrado! Pegale {{Attack}} o EJECUTALO con {{Finisher}} (cuesta Espíritu, te cura)");
                 StartCoroutine(HideTutorialLater(4.5f));
             }
         }
@@ -326,18 +326,18 @@ namespace Nindo
 
         void ShowParryText(bool attacking)
         {
-            string k = Game.Input.Glyph(Act.Parry);
+            const string k = "{Parry}";   // la UI la dibuja con la tecla del dispositivo de ese momento
             if (ParryGuidedPhase)
             {
                 if (attacking)
                     Game.UI.ShowTutorial(parryMisses > 0
-                        ? $"Esperá a que el anillo dorado se cierre del todo y recién ahí presioná [{k}]"
-                        : $"Mirá el anillo dorado: cuando se cierre, presioná [{k}] (Parry)");
+                        ? $"Esperá a que el anillo dorado se cierre del todo y recién ahí presioná {k}"
+                        : $"Mirá el anillo dorado: cuando se cierre, presioná {k} (Parry)");
                 else Game.UI.HideTutorial();
                 return;
             }
             // práctica a velocidad real: el texto queda hasta lograrlo
-            Game.UI.ShowTutorial($"Ahora a velocidad real: [{k}] justo cuando se cierra el anillo dorado  ({parryRealtime}/{RealtimeParries})");
+            Game.UI.ShowTutorial($"Ahora a velocidad real: {k} justo cuando se cierra el anillo dorado  ({parryRealtime}/{RealtimeParries})");
         }
 
         void EndParryWatch()
@@ -375,13 +375,13 @@ namespace Nindo
             {
                 // solo imparables que pueden conectar (carril hacia Kaito, Kaito dentro del pisotón)
                 if (e == null || !e.InTell || e.StepKind != AttackKind.Unblockable || !e.StrikeCanReach(P.transform.position, P.Radius)) continue;
-                string k = Game.Input.Glyph(Act.Dash);
+                const string k = "{Dash}";
                 if (e is Boss)
                 {
                     // pelea de jefe sin el dash todavía: se habilita sin congelar la pelea
                     Game.Save.SetFlag(Flags.DashUnlocked);
                     P.AddSpirit(40f);
-                    Game.UI.ShowTutorial($"Anillo ROJO: no se puede desviar. Esquivá con [{k}] cuando se cierre (DASH MÁGICO)");
+                    Game.UI.ShowTutorial($"Anillo ROJO: no se puede desviar. Esquivá con {k} cuando se cierre (DASH MÁGICO)");
                     StartCoroutine(HideTutorialLater(4f));
                     return;
                 }
@@ -395,7 +395,7 @@ namespace Nindo
                 dashWatchTell = e.TellId;
                 Game.Time.SlowMotion(0.03f, 1f, 0.05f, 0.3f);
                 tutorialSlow = Game.Time.SlowMotion(0.2f, 30f, 0.05f, 0.1f);
-                Game.UI.ShowTutorial($"¡Anillo ROJO: no se puede desviar! Esquivá hacia un costado con [{k}] cuando se cierre (DASH MÁGICO, usa Espíritu)");
+                Game.UI.ShowTutorial($"¡Anillo ROJO: no se puede desviar! Esquivá hacia un costado con {k} cuando se cierre (DASH MÁGICO, usa Espíritu)");
                 return;
             }
         }
@@ -501,7 +501,7 @@ namespace Nindo
             yield return new WaitForSecondsRealtime(0.8f);
             yield return Say("abilities");
             Game.Camera.CancelShot(shot);
-            Game.UI.ShowTutorial($"[{Game.Input.Glyph(Act.Ability1)}] Corte del Viento (35)   ·   [{Game.Input.Glyph(Act.Ability2)}] Torbellino de Hojas (30)");
+            Game.UI.ShowTutorial($"{{Ability1}} Corte del Viento (35)   ·   {{Ability2}} Torbellino de Hojas (30)");
             StartCoroutine(HideTutorialLater(6f));
         }
 

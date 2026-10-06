@@ -9,7 +9,8 @@
 //  * Filo de Ira vive en el LOMO, aparte del Espíritu: la cresta se enciende como brasa desde la cola hasta
 //    _RageFront (lo cargado). Lista para encenderse (_Ready) le asoman lenguas de fuego; activa (_RageOn)
 //    el dragón arde y las llamas se achican hacia la cola con el tiempo que queda (el mismo _RageFront,
-//    que PlayerController vacía con el temporizador). Así se lee aunque el Espíritu esté vacío.
+//    que PlayerController vacía con el temporizador). Así se lee aunque el Espíritu esté vacío. Si un golpe
+//    le saca carga, el tramo perdido queda un instante como lomo de ceniza (_RageAsh) y se vacía.
 // _Mode: 0 = marco (silueta oscura, va detrás y dibuja las llamas), 1 = relleno.
 // u = posición a lo largo del dragón (0 cola, 1 hocico), igual en el marco y en el relleno: uv.x * _UScale +
 // _UOffset. La ola usa u * _Len (ancho en unidades de canvas) y no la posición del vértice: no depende de
@@ -38,6 +39,7 @@ Shader "Nindo/UI Spirit"
         _Nod ("Cabeceo (uv)", Float) = 0
         _Shine ("Brillo de escamas", Range(0, 1)) = 0.7
         _RageFront ("Ira: frente (carga o tiempo que queda)", Range(0, 1)) = 0
+        _RageAsh ("Ira: hasta dónde llegaba antes del golpe (ceniza)", Range(0, 1)) = 0
         _Ready ("Ira lista para encenderse", Range(0, 1)) = 0
         _RageOn ("Filo de Ira activo", Range(0, 1)) = 0
         _Pulse ("Pulso (ganó espíritu)", Range(0, 1)) = 0
@@ -109,7 +111,7 @@ Shader "Nindo/UI Spirit"
             fixed4 _TextureSampleAdd;
             float4 _ClipRect;
             float _Mode, _UScale, _UOffset, _Len, _Height, _Fill, _Ghost, _GhostAge, _Need, _NeedA;
-            float _WaveAmp, _WaveFreq, _WaveSpeed, _Nod, _Shine, _RageFront, _Ready, _RageOn;
+            float _WaveAmp, _WaveFreq, _WaveSpeed, _Nod, _Shine, _RageFront, _RageAsh, _Ready, _RageOn;
             float _Pulse, _Deny, _Dim, _Spark, _SparkX, _T;
 
             v2f vert(appdata_t v)
@@ -173,6 +175,9 @@ Shader "Nindo/UI Spirit"
                 float glow = _Ready > 0.5 ? 0.6 + 0.4 * sin(_T * 3.2) : 0.85;
                 glow *= 0.82 + 0.18 * noise(float2(u * 40 - _T * 2.2, 3.1));
                 half3 ember = _Mode < 0.5 ? half3(1.0, 0.42, 0.08) * 1.15 : half3(0.95, 0.16, 0.04) * 1.15;
+                // ceniza: el tramo del lomo que un golpe acaba de apagar, gris con alguna brasa que muere
+                float ashGate = smoothstep(-0.02, 0.0, _RageAsh - u) * (1 - gate) * step(0.002, _RageAsh);
+                half3 ash = lerp(half3(0.36, 0.34, 0.33), half3(0.85, 0.32, 0.08), saturate((noise(float2(u * 60, _T * 3)) - 0.6) * 2.5));
 
                 if (_Mode < 0.5)
                 {
@@ -189,11 +194,17 @@ Shader "Nindo/UI Spirit"
                         float turb = noise(float2((u + sway) * 40, hgt * 3.2 - _T * 5.5)) * 0.65
                                    + noise(float2((u + sway) * 90 + 3, hgt * 6 - _T * 9)) * 0.35;
                         fire = saturate((1 - hgt / lim) * 1.5 + (turb - 0.55) * 1.6) * step(-0.2, hgt) * (1 - tex.a) * gate * inten;
+                        // sin cuerpo debajo no hay llama: nace en la punta de la cola y se apaga antes del hocico
+                        // (ardía en el aire delante de la mandíbula y se cortaba en seco contra los bordes del quad).
+                        // Y sigue al alfa del Image y del CanvasGroup, como el resto del dragón: el HUD se funde en
+                        // pausa, diálogos y cinemáticas y las llamas quedaban solas en la esquina
+                        fire *= smoothstep(0.0, 0.03, u) * (1 - smoothstep(0.935, 0.975, u)) * i.color.a;
                     }
                     // marco: silueta oscura. Activo, se calienta (más dentro del frente: se ve cuánto queda)
                     float hot = (0.8 * gate + 0.35 * (1 - gate)) * _RageOn;
                     col = lerp(col, col * half3(1.6, 0.45, 0.3) + half3(0.12, 0.01, 0), hot);
                     col = lerp(col, ember, saturate(rim * gate * glow + tip * tex.a * 0.9));
+                    col = lerp(col, ash, rim * ashGate * 0.85);
                     col += half3(0.55, 0.42, 0.1) * _Pulse * 0.5;
                     col = lerp(col, half3(0.85, 0.08, 0.05), _Deny * 0.6);
                 }
@@ -234,6 +245,7 @@ Shader "Nindo/UI Spirit"
                     float fl = 0.72 + 0.28 * noise(float2(xf * 18 - _T * 4, uv.y * 6 + _T * 2));
                     col = lerp(col, half3(1.0, 0.36, 0.12) * fl * 1.3, _RageOn * (0.45 + 0.4 * gate));
                     col = lerp(col, ember, saturate(rim * gate * glow * 0.9));
+                    col = lerp(col, ash, rim * ashGate * 0.75);
 
                     col = lerp(col, half3(0.85, 0.78, 0.55), trail);
                     col = lerp(col, col * half3(1.2, 0.35, 0.3), _Deny * 0.7);

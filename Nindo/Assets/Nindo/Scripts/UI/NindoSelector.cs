@@ -53,8 +53,11 @@ namespace Nindo
 
         public void OnPointerClick(PointerEventData e)
         {
-            // clic en la mitad izquierda de la fila = atrás, derecha = adelante
             if (valueText == null) { Step(1); return; }
+            // solo cambia el clic sobre "‹ valor ›" (mitad izquierda = atrás, derecha = adelante); el clic en la
+            // etiqueta solo elige la fila (antes le cambiaba el valor para atrás)
+            var box = valueText.transform.parent as RectTransform;
+            if (box != null && !RectTransformUtility.RectangleContainsScreenPoint(box, e.position, e.pressEventCamera)) return;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(valueText.rectTransform, e.position, e.pressEventCamera, out var local);
             Step(local.x < 0f ? -1 : 1);
         }

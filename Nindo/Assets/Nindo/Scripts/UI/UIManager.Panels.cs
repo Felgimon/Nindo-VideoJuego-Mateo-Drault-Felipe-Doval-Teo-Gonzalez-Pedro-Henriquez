@@ -16,13 +16,13 @@ namespace Nindo
     }
 
     /// <summary>
-    /// Paneles con el estilo "Tinta y Bandana" (todo era un rectángulo plano): avisos de progreso arriba en cola,
+    /// Paneles con el estilo "Tinta y Bandana" (todo era un rectángulo plano): avisos de progreso en cola,
     /// título de zona con su sello rojo, consejo, diálogo con la cinta de quien habla, pausa y opciones con la
     /// columna de tinta y el logo del equipo, muerte con el tajo rojo y el final.
     /// </summary>
     public partial class UIManager
     {
-        // ---- avisos de progreso (arriba al centro, en cola)
+        // ---- avisos de progreso (en el lugar del título de zona, en cola)
         struct Banner { public string text; public Color color; public float life; public Sprite icon; }
         readonly Queue<Banner> bannerQueue = new Queue<Banner>();
         RectTransform bannerRoot;
@@ -46,6 +46,7 @@ namespace Nindo
         Image tutorialPanel;
         TextMeshProUGUI tutorialText;
         string tutorialRaw;
+        int tutorialGlyphs = -1;
         bool tutorialVisible;
         float tutorialOpenT = 9f, tutorialHeight = 110f;
 
@@ -93,7 +94,9 @@ namespace Nindo
         // ================================================================== avisos de progreso
         void BuildBanner()
         {
-            bannerRoot = UIFactory.Rect("Banner", story, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, -170), new Vector2(900, 110));
+            // debajo de la franja del HUD, en el lugar del título de zona (lo espera, así nunca compiten). Arriba,
+            // a -170, un aviso largo tapaba la cabeza del dragón y el comienzo del objetivo
+            bannerRoot = UIFactory.Rect("Banner", story, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, -300), new Vector2(900, 110));
             bannerGroup = bannerRoot.gameObject.AddComponent<CanvasGroup>();
             bannerGroup.alpha = 0f;
             var sw = UIFactory.Image("Swash", bannerRoot, new Color(0.043f, 0.039f, 0.051f, 0.86f), UISprites.BrushSwash);
@@ -105,8 +108,8 @@ namespace Nindo
         }
 
         /// <summary>
-        /// Aviso de progreso ("Victoria", "Sello del Lago (2/3)", "Santuario... — partida guardada"): arriba al centro
-        /// sobre un trazo de tinta, en cola (antes uno pisaba al otro en el centro, encima de los enemigos) y
+        /// Aviso de progreso ("Victoria", "Sello del Lago (2/3)", "Santuario... — partida guardada"): sobre un trazo
+        /// de tinta debajo del HUD, en cola (antes uno pisaba al otro en el centro, encima de los enemigos) y
         /// esperando a que se vaya el título de zona. Los avisos de combate van pegados a Kaito: ShowCallout.
         /// </summary>
         public void ShowToast(string text, Color c, float life = 1.6f, Sprite icon = null)
@@ -120,9 +123,23 @@ namespace Nindo
 
         void UpdateBanner(float dt)
         {
+            // con la muerte o el final lo pendiente ya no corresponde ("Victoria" después de reaparecer)
+            if (deathPanel.activeSelf || endPanel.activeSelf)
+            {
+                bannerQueue.Clear();
+                if (bannerActive) { bannerActive = false; bannerGroup.alpha = 0f; }
+                return;
+            }
+            // en pausa (seguía animándose debajo) y mientras está el título de zona (va en el mismo lugar) el
+            // aviso espera: se apaga rápido y, al volver, entra de nuevo con su tiempo entero
+            if (PauseOpen || titleRoutine != null)
+            {
+                if (bannerActive) { bannerGroup.SetAlpha(Mathf.MoveTowards(bannerGroup.alpha, 0f, dt * 8f)); bannerT = 0f; }
+                return;
+            }
             if (!bannerActive)
             {
-                if (bannerQueue.Count == 0 || titleGroup.alpha > 0.01f) return;
+                if (bannerQueue.Count == 0) return;
                 var b = bannerQueue.Dequeue();
                 bannerActive = true; bannerT = 0f; bannerLife = b.life + 0.6f;
                 bannerText.text = b.text; bannerText.color = b.color;
@@ -139,7 +156,7 @@ namespace Nindo
             // baja 40 px en 0.2 s, queda y se apaga en 0.4 s
             float a = bannerT < 0.2f ? UIAnim.OutCubic(bannerT / 0.2f) : bannerT > bannerLife - 0.4f ? Mathf.Clamp01((bannerLife - bannerT) / 0.4f) : 1f;
             bannerGroup.alpha = a;
-            bannerRoot.anchoredPosition = new Vector2(0f, -130f - 40f * UIAnim.OutCubic(bannerT / 0.2f));
+            bannerRoot.anchoredPosition = new Vector2(0f, -260f - 40f * UIAnim.OutCubic(bannerT / 0.2f));
             if (bannerT >= bannerLife) { bannerActive = false; bannerGroup.alpha = 0f; }
         }
 
@@ -189,24 +206,32 @@ namespace Nindo
         IEnumerator AreaTitle(string title, string subtitle, Sprite stamp)
         {
             titleText.text = title; titleSub.text = subtitle;
+            // el ancho se mide con el espaciado final (4): antes se medía con el que tuviera el texto (0 en el
+            // primer título de la partida) y, mientras las letras se juntan desde 18, el sello caía encima de las
+            // primeras. TMP suma espaciado * tamaño / 100 por letra: el sello se corre con eso cada cuadro
+            titleText.characterSpacing = 4f;
             float tw = titleText.GetPreferredValues(title, 9999f, 100f).x;
+            float perSpacing = Mathf.Max(0, title.Length - 1) * titleText.fontSize * 0.01f;
             titleSwash.rectTransform.sizeDelta = new Vector2(Mathf.Clamp(tw + 420f, 900f, 1380f), 200f);
-            var stampPos = new Vector2(-tw * 0.5f - 96f, 10f);
             titleStamp.sprite = stamp;
             titleStamp.enabled = false;
-            titleStamp.rectTransform.anchoredPosition = stampPos;
             titleRule.fillAmount = 0f; titleSub.alpha = 0f; titleText.alpha = 0f; titleSwash.fillAmount = 0f;
             Game.Audio?.Play("area_title", null, 0.7f);
             float t = 0f;
             bool thumped = false;
             while (t < 4.2f)
             {
+                // en pausa el título espera escondido (seguía pintándose debajo del panel)
+                if (PauseOpen) { titleGroup.alpha = 0f; yield return null; continue; }
                 t += Time.unscaledDeltaTime;
                 titleGroup.alpha = t > 3.6f ? 1f - (t - 3.6f) / 0.6f : 1f;
                 // el trazo se pinta de izquierda a derecha, el nombre aparece y se junta
                 titleSwash.fillAmount = UIAnim.OutCubic(t / 0.35f);
                 titleText.alpha = Mathf.Clamp01((t - 0.1f) / 0.5f);
-                titleText.characterSpacing = Mathf.Lerp(18f, 4f, UIAnim.OutCubic(t / 2.5f));
+                float spacing = Mathf.Lerp(18f, 4f, UIAnim.OutCubic(t / 2.5f));
+                titleText.characterSpacing = spacing;
+                var stampPos = new Vector2(-(tw + (spacing - 4f) * perSpacing) * 0.5f - 96f, 10f);
+                titleStamp.rectTransform.anchoredPosition = stampPos;
                 // el sello cae de golpe a los 0.3 s y salpica tinta
                 if (stamp != null && t >= 0.3f)
                 {
@@ -264,13 +289,20 @@ namespace Nindo
             tutorialText.rectTransform.Fill(new Vector2(120, 14), new Vector2(-120, -26));
         }
 
+        /// <param name="text">Las teclas como "{Parry}" siguen al dispositivo mientras el consejo está a la vista.</param>
         public void ShowTutorial(string text)
         {
             if (!tutorialVisible || tutorialGroup.alpha < 0.05f) tutorialOpenT = 0f;
             tutorialVisible = true;
             if (text == tutorialRaw) return;
             tutorialRaw = text;
-            tutorialText.text = UIFactory.RichKeys(text);
+            RenderTutorial();
+        }
+
+        void RenderTutorial()
+        {
+            tutorialGlyphs = Game.Input != null ? Game.Input.GlyphVersion : -1;
+            tutorialText.text = UIFactory.RichKeys(tutorialRaw);
             // el panel crece con el texto (los consejos largos de dos renglones se salían)
             tutorialHeight = Mathf.Max(110f, tutorialText.GetPreferredValues(tutorialText.text, 860f, 400f).y + 56f);
             tutorialRoot.sizeDelta = new Vector2(1100, tutorialHeight);
@@ -283,7 +315,11 @@ namespace Nindo
 
         void UpdateTutorial(float dt)
         {
-            bool show = tutorialVisible && !DialogueOpen;
+            // agarró el mando (o volvió al teclado) con el consejo abierto: las teclas cambian con él
+            if (tutorialRaw != null && Game.Input != null && Game.Input.GlyphVersion != tutorialGlyphs) RenderTutorial();
+            // en pausa se aparta: el consejo del parry, justo cuando uno pausa a leer los controles, quedaba
+            // debajo del velo y asomaba bajo la tarjeta de controles
+            bool show = tutorialVisible && !DialogueOpen && !PauseOpen && !deathPanel.activeSelf && !endPanel.activeSelf;
             tutorialGroup.SetAlpha(Mathf.MoveTowards(tutorialGroup.alpha, show ? 1f : 0f, dt * 5f));
             // se desenrolla de 0 al ancho y el texto entra después (quieto, no se toca: no rehace el canvas)
             if (tutorialOpenT > 0.5f) return;
@@ -343,10 +379,18 @@ namespace Nindo
                     speakerWidth = Mathf.Max(300f, dialogueSpeaker.GetPreferredValues(lastSpeaker, 9999f, 50f).x + 160f);
                     speakerSwipe = 0f;
                 }
-                dialogueText.text = UIFactory.RichKeys(lines[i].text);
+                string raw = lines[i].text;
+                int glyphs = -1, total = 0;
+                // las teclas "{Attack}" se resuelven con el dispositivo de ahora y se rehacen si cambia a mitad de línea
+                void Render()
+                {
+                    glyphs = input != null ? input.GlyphVersion : -1;
+                    dialogueText.text = UIFactory.RichKeys(raw);
+                    dialogueText.ForceMeshUpdate();
+                    total = dialogueText.textInfo.characterCount;
+                }
                 dialogueText.maxVisibleCharacters = 0;
-                dialogueText.ForceMeshUpdate();
-                int total = dialogueText.textInfo.characterCount;
+                Render();
                 lineComplete = false;
                 Game.Audio?.Play("dialogue", null, 0.4f);
                 yield return null;
@@ -355,6 +399,7 @@ namespace Nindo
                 float wait = 0f;
                 while (shown < total)
                 {
+                    if (input != null && input.GlyphVersion != glyphs) { Render(); shown = Mathf.Min(shown, total); }
                     wait -= Time.unscaledDeltaTime;
                     while (wait <= 0f && shown < total)
                     {
@@ -369,7 +414,11 @@ namespace Nindo
                 dialogueText.maxVisibleCharacters = 99999;
                 lineComplete = true;
                 yield return null;
-                while (!AdvancePressed(input)) yield return null;
+                while (!AdvancePressed(input))
+                {
+                    if (input != null && input.GlyphVersion != glyphs) { Render(); dialogueText.maxVisibleCharacters = 99999; }
+                    yield return null;
+                }
                 Game.Audio?.Play("ui_move", null, 0.35f);
             }
             DialogueOpen = false;
@@ -582,7 +631,10 @@ namespace Nindo
             Row(UIFactory.OptionSlider("Shake", optionsCard, "Sacudida de cámara", Settings.ScreenShake, v => Settings.ScreenShake = v, size));
             Row(UIFactory.OptionSelector("SlowMo", optionsCard, "Cámara lenta", new[] { "Reducida", "Sí" }, Settings.SlowMotionEnabled ? 1 : 0, i => Settings.SlowMotionEnabled = i == 1, size));
             Row(UIFactory.OptionSelector("Rumble", optionsCard, "Vibración", new[] { "No", "Sí" }, Settings.Rumble ? 1 : 0, i => Settings.Rumble = i == 1, size));
-            Row(UIFactory.OptionSelector("Aids", optionsCard, "Avisos de combate", new[] { "Ninguno", "Solo imparables", "Completos" }, Settings.CombatAids, i => Settings.CombatAids = i, size));
+            // solo las marcas sobre los enemigos ("!", escudo, rombo rojo): los anillos ensō y las zonas del piso
+            // quedan siempre (son la lectura del golpe). Si el combate llega a usar Settings.ShowParryAids /
+            // ShowUnblockableAids para los anillos, la opción puede volver a llamarse "Avisos de combate"
+            Row(UIFactory.OptionSelector("Aids", optionsCard, "Marcas en enemigos", new[] { "Ninguna", "Solo imparables", "Todas" }, Settings.CombatAids, i => Settings.CombatAids = i, size));
             Row(UIFactory.OptionSelector("Fullscreen", optionsCard, "Pantalla completa", new[] { "No", "Sí" }, Screen.fullScreen ? 1 : 0, i => Settings.Fullscreen = i == 1, size));
             Row(UIFactory.OptionSelector("Quality", optionsCard, "Calidad", QualitySettings.names, QualitySettings.GetQualityLevel(), i => { QualitySettings.SetQualityLevel(i, true); Settings.Quality = i; }, size));
             var back = UIFactory.MenuItem("Back", optionsCard, "Volver", new Vector2(300, 66), CloseOptions, 36f);
@@ -716,6 +768,9 @@ namespace Nindo
         public void ShowEnding()
         {
             endPanel.SetActive(true);
+            // la cinemática del final ya devolvió el control: el clic o la A que adelantan los renglones hacían
+            // atacar o esquivar a Kaito detrás del panel (con su sonido). El botón del menú no usa el buffer
+            if (Game.Input != null) Game.Input.GameplayBlocked = true;
             StartCoroutine(EndingReveal());
             Cursor.visible = true;
         }

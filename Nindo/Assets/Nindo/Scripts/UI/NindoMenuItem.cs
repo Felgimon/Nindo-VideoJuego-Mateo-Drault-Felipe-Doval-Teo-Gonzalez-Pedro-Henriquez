@@ -30,9 +30,16 @@ namespace Nindo
 
         public bool IsSelected => selected;
 
-        void OnEnable()
+        // al volver a mostrar el panel el EventSystem puede seguir apuntando a este ítem
+        void OnEnable() => Refresh();
+
+        /// <summary>
+        /// Toma el estado de selección de ahora, sin animar. UIFactory.AttachFocus la llama al terminar de armar
+        /// el ítem: el AddComponent sobre un objeto activo corre OnEnable antes de que existan la cinta y el kunai,
+        /// y en un panel que ya está a la vista (el menú principal) todos los ítems arrancaban con la cinta puesta.
+        /// </summary>
+        public void Refresh()
         {
-            // al volver a mostrar el panel el EventSystem puede seguir apuntando a este ítem
             selected = EventSystem.current != null && EventSystem.current.currentSelectedGameObject == gameObject;
             k = selected ? 1f : 0f;
             punch = 0f;

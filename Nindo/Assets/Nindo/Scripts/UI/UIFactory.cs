@@ -278,6 +278,7 @@ namespace Nindo
             item.ribbon = rrt; item.ribbonImage = rib; item.ribbonWidth = size.x + 50f; item.ribbonMin = Mathf.Min(110f, size.x * 0.4f);
             item.cursor = cur.rectTransform; item.cursorImage = cur; item.cursorPos = new Vector2(-62f, 0f);
             item.label = t;
+            item.Refresh();
             return item;
         }
 
@@ -291,7 +292,8 @@ namespace Nindo
             s.transition = Selectable.Transition.None;
             s.targetGraphic = hit;
             AttachFocus(row, label, 30f, TextAlignmentOptions.Left, size, false);
-            float x0 = size.x * 0.5f + 10f, w = size.x * 0.42f;
+            // la pista termina antes de la caja del %: con 0.42 el rombo, al 100%, tapaba el "100%"
+            float x0 = size.x * 0.5f + 10f, w = size.x * 0.36f;
             var track = Image("Track", row, new Color(Paper.r, Paper.g, Paper.b, 0.28f), new Vector2(0f, 0.5f), new Vector2(x0, 0f), new Vector2(w, 16f), UISprites.BrushLine);
             track.rectTransform.pivot = new Vector2(0f, 0.5f);
             var fillArea = Rect("FillArea", track.rectTransform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
@@ -396,24 +398,34 @@ namespace Nindo
         }
 
         static readonly StringBuilder keySb = new StringBuilder(256);
+        static readonly char[] KeyOpen = { '[', '{' };
 
         /// <summary>
-        /// Resalta las teclas entre corchetes de un texto ("presioná [K]", "[Clic izq.]") como fichas dentro del
-        /// renglón: el símbolo en negrita y del color de su botón, con un velo claro encima (el resaltado de
-        /// TMP se dibuja SOBRE las letras, por eso va translúcido). Sin sprite asset.
+        /// Resalta las teclas de un texto como fichas dentro del renglón: el símbolo en negrita y del color de su
+        /// botón, con un velo claro encima (el resaltado de TMP se dibuja SOBRE las letras, por eso va translúcido).
+        /// Sin sprite asset. Dos formas: "{Parry}" (una acción: se resuelve acá con la tecla del dispositivo de
+        /// ahora, y quien muestra el texto lo vuelve a pasar cuando cambia Game.Input.GlyphVersion) y "[K]" (la
+        /// tecla ya escrita: queda fija aunque se cambie de teclado a mando).
         /// </summary>
         public static string RichKeys(string text)
         {
-            if (string.IsNullOrEmpty(text) || text.IndexOf('[') < 0) return text;
+            if (string.IsNullOrEmpty(text) || (text.IndexOf('[') < 0 && text.IndexOf('{') < 0)) return text;
             keySb.Length = 0;
             int i = 0;
             while (i < text.Length)
             {
-                int a = text.IndexOf('[', i);
-                int b = a >= 0 ? text.IndexOf(']', a + 1) : -1;
+                int a = text.IndexOfAny(KeyOpen, i);
+                int b = a >= 0 ? text.IndexOf(text[a] == '[' ? ']' : '}', a + 1) : -1;
                 if (a < 0 || b < 0 || b - a > 20) { keySb.Append(text, i, text.Length - i); break; }
                 keySb.Append(text, i, a - i);
                 string glyph = text.Substring(a + 1, b - a - 1);
+                if (text[a] == '{')
+                {
+                    // lo que no es el nombre de una acción queda como estaba ("{1}" también: TryParse acepta números)
+                    if (Game.Input == null || glyph.Length == 0 || !char.IsLetter(glyph[0]) || !Enum.TryParse(glyph, out Act act))
+                    { keySb.Append(text, a, b - a + 1); i = b + 1; continue; }
+                    glyph = Game.Input.Glyph(act);
+                }
                 Color gc = GlyphColor(glyph);
                 // en el texto claro de los paneles el negro de la tecla de teclado no se ve: dorado
                 if (gc.r + gc.g + gc.b < 0.3f) gc = Gold;

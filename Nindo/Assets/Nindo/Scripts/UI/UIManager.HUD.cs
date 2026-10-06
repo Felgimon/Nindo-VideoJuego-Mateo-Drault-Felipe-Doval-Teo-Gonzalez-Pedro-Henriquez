@@ -10,7 +10,8 @@ namespace Nindo
     /// El HUD es SOLO el arte del equipo: la bandana roja (vida) y el dragón dorado (Espíritu). Nada de barras
     /// extra: el Filo de Ira vive en el lomo del dragón (brasa que avanza de la cola a la cabeza al cargarse,
     /// lenguas de fuego cuando está listo, el dragón arde mientras dura y las llamas se retiran hacia la cola
-    /// con el tiempo que queda). El dragón está vivo: nada, respira, cabecea, parpadea, le brillan las escamas,
+    /// con el tiempo que queda; si un golpe le saca carga, lo perdido se vuelve ceniza). El dragón está vivo:
+    /// nada, respira, cabecea, parpadea, le brillan las escamas,
     /// se apaga sin Espíritu para el dash, ruge al encenderse y raya en rojo lo que falta para pagar algo.
     /// Arriba a la derecha, los tres sellos (pictogramas con contorno de tinta) y el objetivo, que se aparta
     /// en combate. Shaders: Nindo/UI Spirit y Nindo/UI Bandana.
@@ -34,7 +35,7 @@ namespace Nindo
         Vector2 spiritSize;
         float spiritShown, spiritGhostValue, spiritGhostHold, spiritGhostAge = 1f, spiritPulse, lastSpirit = -1f, spiritShake;
         float rageShown, readyShown, dimShown, rageFrontShown, lastRage01, needValue, needA, needHold, sparkA, sparkX, roar = 1f;
-        float emberAcc, mouthAcc, blinkT = 1f, nextBlink = 3f, lidShown = 1f;
+        float emberAcc, mouthAcc, blinkT = 1f, nextBlink = 3f, lidShown = 1f, rageAsh, rageAshHold;
         bool wasRageActive;
         readonly float[] crest = new float[64], skin = new float[64];
 
@@ -70,7 +71,7 @@ namespace Nindo
             IdPulse = Shader.PropertyToID("_Pulse"), IdDeny = Shader.PropertyToID("_Deny"), IdDim = Shader.PropertyToID("_Dim"),
             IdSpark = Shader.PropertyToID("_Spark"), IdSparkX = Shader.PropertyToID("_SparkX"), IdT = Shader.PropertyToID("_T"),
             IdHit = Shader.PropertyToID("_Hit"), IdFlash = Shader.PropertyToID("_Flash"), IdHeal = Shader.PropertyToID("_Heal"),
-            IdHealA = Shader.PropertyToID("_HealA"), IdLow = Shader.PropertyToID("_Low");
+            IdHealA = Shader.PropertyToID("_HealA"), IdLow = Shader.PropertyToID("_Low"), IdRageAsh = Shader.PropertyToID("_RageAsh");
 
         void BuildHUD()
         {
@@ -334,7 +335,7 @@ namespace Nindo
             bool sealsShow = (!hide && !inCombat) || Time.unscaledTime < sealVisibleUntil;
             rightGroup.SetAlpha(Mathf.MoveTowards(rightGroup.alpha, sealsShow ? 1f : 0f, dt * (sealsShow ? 2f : 4f)));
             // el objetivo, además, espera a que se vaya el título de zona (antes competía con todo)
-            bool objShow = !hide && objective.Length > 0 && !inCombat && titleGroup.alpha < 0.01f;
+            bool objShow = !hide && objective.Length > 0 && !inCombat && titleRoutine == null;
             objectiveGroup.SetAlpha(Mathf.MoveTowards(objectiveGroup.alpha, objShow ? 1f : 0f, dt * (objShow ? 2f : 5f)));
             float t = Time.unscaledTime;
             UpdateHealth(p, dt, t);
@@ -420,7 +421,23 @@ namespace Nindo
             bool ready = !active && rage01 >= 0.85f;
             rageShown = Mathf.MoveTowards(rageShown, active ? 1f : 0f, dt * 2.5f);
             readyShown = Mathf.MoveTowards(readyShown, ready ? 1f : 0f, dt * 3f);
+            float prevFront = rageFrontShown;
             rageFrontShown = rage01 > rageFrontShown ? Mathf.MoveTowards(rageFrontShown, rage01, dt * 1.6f) : rage01;
+            // un golpe le saca 40% al Filo: lo perdido se vuelve ceniza (brasas que se apagan en gris y suben) y
+            // queda un instante como lomo apagado antes de vaciarse, como la estela de la bandana. Sin esto la
+            // brasa y el ojo ardiente desaparecían de golpe y el castigo se leía como una falla
+            if (active || wasRageActive) rageAsh = rageFrontShown;   // activo, el Filo baja con el tiempo: no es pérdida
+            else
+            {
+                if (rage01 < prevFront - 0.05f && leftGroup.alpha > 0.5f)
+                {
+                    Ash(rage01, prevFront, t);
+                    rageAsh = Mathf.Max(rageAsh, prevFront); rageAshHold = 0.3f;
+                }
+                rageAshHold -= dt;
+                if (rageAshHold <= 0f) rageAsh = Mathf.MoveTowards(rageAsh, rageFrontShown, dt);
+                if (rageAsh < rageFrontShown) rageAsh = rageFrontShown;
+            }
             dimShown = Mathf.MoveTowards(dimShown, p.DashTired ? 1f : 0f, dt * 3f);
             if (active && !wasRageActive) Roar();
             if (active && rage01 > lastRage01 + 0.004f) Flare(rage01, t);   // pegando estira el Filo: el frente brilla
@@ -460,14 +477,15 @@ namespace Nindo
             if (m == null) return;
             m.SetFloat(IdFill, spiritShown); m.SetFloat(IdGhost, spiritGhostValue); m.SetFloat(IdGhostAge, spiritGhostAge);
             m.SetFloat(IdNeed, Mathf.Max(needValue, spiritShown)); m.SetFloat(IdNeedA, needA);
-            m.SetFloat(IdRageFront, rageFrontShown); m.SetFloat(IdReady, readyShown); m.SetFloat(IdRageOn, rageShown);
+            m.SetFloat(IdRageFront, rageFrontShown); m.SetFloat(IdRageAsh, rageAsh); m.SetFloat(IdReady, readyShown); m.SetFloat(IdRageOn, rageShown);
             m.SetFloat(IdPulse, spiritPulse); m.SetFloat(IdDeny, Mathf.Clamp01(spiritShake * 2.8f)); m.SetFloat(IdDim, dimShown);
             m.SetFloat(IdSpark, sparkA); m.SetFloat(IdSparkX, sparkX); m.SetFloat(IdNod, nod); m.SetFloat(IdT, t);
         }
 
         // ---------------------------------------------------------------- ojo
         // siempre abierto con su destello (antes, sin ira, no tenía ojo); parpadea cada 4-7 s, entrecierra sin
-        // Espíritu para el dash (y cierra del todo mientras el dash cansado se recupera); con la ira arde
+        // Espíritu para el dash (y lo cierra, una raya como en el parpadeo, mientras el dash cansado se recupera);
+        // con la ira arde
         void UpdateEye(PlayerController p, float dt, float t)
         {
             eyeRt.anchoredPosition = new Vector2(0f, -DragonWave(DragonEye.x, t) * spiritSize.y);
@@ -476,7 +494,7 @@ namespace Nindo
             if (nextBlink <= 0f) { blinkT = 0f; nextBlink = Random.Range(4f, 7f); }
             blinkT += dt;
             float blink = blinkT < 0.12f ? 1f - 0.9f * Mathf.Sin(blinkT / 0.12f * Mathf.PI) : 1f;
-            float lid = p.DashTired ? (p.TiredDashReadyIn > 0f ? 0.25f : 0.55f) : 1f;
+            float lid = p.DashTired ? (p.TiredDashReadyIn > 0f ? 0.1f : 0.55f) : 1f;
             lidShown = Mathf.MoveTowards(lidShown, lid, dt * 4f);
             eyeRt.localScale = new Vector3(1f, Mathf.Max(0.1f, blink * lidShown), 1f);
             float fire = Mathf.Max(readyShown, rageShown);
@@ -507,6 +525,18 @@ namespace Nindo
             }
         }
 
+        // ceniza del Filo perdido, desde el tramo del lomo que se apagó
+        void Ash(float from, float to, float t)
+        {
+            int n = Mathf.Clamp(Mathf.RoundToInt((to - from) * 25f), 3, 12);
+            for (int i = 0; i < n; i++)
+            {
+                float u = Mathf.Lerp(from, to, Random.value);
+                var pos = DragonPoint(u, Profile(crest, u), t);
+                SpawnEmber(pos, new Vector2(Random.Range(-20f, 20f), Random.Range(15f, 50f)), Random.Range(0.8f, 1.3f), Random.Range(7f, 13f), AshA, AshB, AshC);
+            }
+        }
+
         void SparkleAt(float fillX, int n, float t)
         {
             var c = Game.Content;
@@ -526,6 +556,7 @@ namespace Nindo
 
         static readonly Color FireA = new Color(1f, 0.92f, 0.55f), FireB = new Color(1f, 0.5f, 0.12f), FireC = new Color(0.8f, 0.12f, 0.05f);
         static readonly Color SparkA = new Color(1f, 1f, 0.85f), SparkB = new Color(1f, 0.8f, 0.3f);
+        static readonly Color AshA = new Color(1f, 0.45f, 0.15f), AshB = new Color(0.45f, 0.42f, 0.4f), AshC = new Color(0.22f, 0.21f, 0.21f);
 
         void UpdateEmbers(float dt, float t)
         {
