@@ -399,6 +399,7 @@ namespace Nindo
                 }
                 else targetDist += Mathf.Clamp(0.9f * (boss.config.height * boss.config.scale - 1.7f), 0f, bossExtraMax);
             }
+            baseTargetDist = targetDist;
             targetDist += fitExtra;
 
             UpdateThreatFraming(ppos, fighting && !InShot, dt);
@@ -453,7 +454,7 @@ namespace Nindo
         }
 
         // ================================================================== auto-encuadre del jefe
-        float fitExtra, fitTarget;
+        float fitExtra, fitTarget, baseTargetDist;
         Boss fitBoss;
         readonly List<Renderer> fitRenderers = new List<Renderer>();
         readonly List<Transform> fitBones = new List<Transform>();
@@ -488,9 +489,11 @@ namespace Nindo
                     if (local.z > 0.5f)
                     {
                         float vy = 0.5f + 0.5f * local.y / (local.z * tanHalf);
-                        // alejarse Δ sobre el eje de la cámara suma Δ a local.z: Δ para que el punto quede en 'v'
-                        if (vy > 0.94f) fitTarget = Mathf.Clamp(fitExtra + NeededPullBack(local, tanHalf, 0.92f), 0f, autoFitMax);
-                        else if (vy < 0.86f) fitTarget = Mathf.Clamp(fitExtra + NeededPullBack(local, tanHalf, 0.90f), 0f, autoFitMax);
+                        // alejarse Δ sobre el eje de la cámara suma Δ a local.z: Δ para que el punto quede en 'v'. Se mide
+                        // contra la distancia actual y se resta la del encuadre sin ajuste (no se acumula mientras la
+                        // cámara todavía viaja hacia la distancia pedida)
+                        if (vy > 0.94f) fitTarget = Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.92f) - baseTargetDist, 0f, autoFitMax);
+                        else if (vy < 0.86f) fitTarget = Mathf.Clamp(distance + NeededPullBack(local, tanHalf, 0.90f) - baseTargetDist, 0f, autoFitMax);
                     }
                 }
             }

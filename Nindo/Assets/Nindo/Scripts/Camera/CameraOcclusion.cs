@@ -165,8 +165,10 @@ namespace Nindo
         {
             if (src == null || !FadeSupported) return null;
             if (variants.TryGetValue(src, out var m)) return m;
-            bool wind = src.HasProperty("_WindStrength");
-            bool lit = src.HasProperty("_BaseMap") && src.HasProperty("_BaseColor");
+            // solo los shaders del mundo (paleta Lit y follaje): el agua, los efectos o lo transparente se quedan como están
+            string sn = src.shader != null ? src.shader.name : "";
+            bool wind = sn == "Nindo/Foliage Wind";
+            bool lit = wind || sn == "Universal Render Pipeline/Lit" || sn == "Universal Render Pipeline/Simple Lit";
             if (!lit || src.renderQueue >= (int)UnityEngine.Rendering.RenderQueue.Transparent) { variants[src] = null; return null; }
             m = new Material(fadeShader) { name = src.name + " (disolución)" };
             m.SetTexture("_BaseMap", src.GetTexture("_BaseMap"));
@@ -218,7 +220,7 @@ namespace Nindo
             propId != null && (propId.StartsWith("cliff_") || propId == "temple_bell" || propId == "bamboo_young" || propId == "rock_pillar");
 
         Renderer[] rs;
-        Material[][] originals;
+        Material[][] originals, fades;
         bool swapped, tracked, legacyHidden;
         float hole, near, holeUntil = -1f, nearUntil = -1f;
 
@@ -239,11 +241,12 @@ namespace Nindo
             box.size = new Vector3(b.size.x / Mathf.Max(0.01f, s.x), b.size.y / Mathf.Max(0.01f, s.y), b.size.z / Mathf.Max(0.01f, s.z)) * 0.85f;
         }
 
-        /// <summary>Solo mallas: humo, luciérnagas o fuego del prop son partículas y no se tocan.</summary>
+        /// <summary>Solo mallas activas: humo, luciérnagas o fuego del prop son partículas y no se tocan (y un renderer
+        /// inactivo daría un bounds vacío en el origen, que estiraría el volumen hasta el centro del mapa).</summary>
         Renderer[] MeshRenderers()
         {
             var list = new List<Renderer>();
-            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            foreach (var r in GetComponentsInChildren<Renderer>())
                 if (r is MeshRenderer || r is SkinnedMeshRenderer) list.Add(r);
             return list.ToArray();
         }
@@ -290,17 +293,21 @@ namespace Nindo
         void Swap()
         {
             swapped = true;
-            originals ??= new Material[rs.Length][];
-            for (int i = 0; i < rs.Length; i++)
+            // las listas se arman la primera vez y se reusan (los materiales del mundo no cambian)
+            if (originals == null)
             {
-                var r = rs[i];
-                if (r == null) continue;
-                var mats = r.sharedMaterials;
-                originals[i] = mats;
-                var fade = new Material[mats.Length];
-                for (int k = 0; k < mats.Length; k++) fade[k] = CameraOcclusion.FadeVariant(mats[k]) ?? mats[k];
-                r.sharedMaterials = fade;
+                originals = new Material[rs.Length][];
+                fades = new Material[rs.Length][];
+                for (int i = 0; i < rs.Length; i++)
+                {
+                    if (rs[i] == null) continue;
+                    originals[i] = rs[i].sharedMaterials;
+                    fades[i] = new Material[originals[i].Length];
+                    for (int k = 0; k < originals[i].Length; k++) fades[i][k] = CameraOcclusion.FadeVariant(originals[i][k]) ?? originals[i][k];
+                }
             }
+            for (int i = 0; i < rs.Length; i++)
+                if (rs[i] != null && fades[i] != null) rs[i].sharedMaterials = fades[i];
         }
 
         /// <summary>Vuelve a sus materiales y suelta el bloque de propiedades (y con eso, al batching normal).</summary>
