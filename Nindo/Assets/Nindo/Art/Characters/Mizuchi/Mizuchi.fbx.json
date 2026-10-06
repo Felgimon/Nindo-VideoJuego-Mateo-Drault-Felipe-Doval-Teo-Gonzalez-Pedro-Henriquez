@@ -1,0 +1,1159 @@
+{
+ "character": "mizuchi_koi",
+ "fps": 30,
+ "height": 3.472,
+ "modelYaw": 0,
+ "bones": 46,
+ "tris": {
+  "Body_P1": 4593,
+  "Body_P2": 4552,
+  "Ripple": 33
+ },
+ "meshes": {
+  "Body_P1": "fase 1 (Tancho)",
+  "Body_P2": "fase 2 (corrompido) y forma del dragón liberado",
+  "Ripple": "espejo de agua 4 cm sobre la cubierta (100 % root)"
+ },
+ "materials": {
+  "Nindo_Palette": "paleta del juego",
+  "Mizuchi_Glow": "brillo de la fase 1 (filos de agua, escamas gin-rin)",
+  "Mizuchi_Curse": "brillo de la maldición (fase 2: grietas, bigotes, filos violetas)"
+ },
+ "clips": [
+  {
+   "name": "Hover",
+   "take": "MizuchiRig|Hover",
+   "first": 0,
+   "last": 60,
+   "frames": 60,
+   "length": 2.0,
+   "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.1,
+    "minZ": [
+     0.322,
+     "pel_L",
+     42
+    ],
+    "maxDegPerFrame": [
+     3.3,
+     "fluke_R2",
+     3
+    ],
+    "flips": [
+     0,
+     60
+    ],
+    "seam": 0.04,
+    "seamStep": [
+     3.06,
+     3.06
+    ]
+   }
+  },
+  {
+   "name": "Swim",
+   "take": "MizuchiRig|Swim",
+   "first": 0,
+   "last": 30,
+   "frames": 30,
+   "length": 1.0,
+   "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.05,
+    "minZ": [
+     0.433,
+     "pec_L3",
+     12
+    ],
+    "maxDegPerFrame": [
+     16.9,
+     "fluke_L2",
+     6
+    ],
+    "flips": [
+     0,
+     30
+    ],
+    "seam": 0.04,
+    "seamStep": [
+     8.02,
+     8.03
+    ]
+   }
+  },
+  {
+   "name": "Bite",
+   "take": "MizuchiRig|Bite",
+   "first": 0,
+   "last": 33,
+   "frames": 33,
+   "length": 1.1,
+   "loop": false,
+   "tellFrame": 7,
+   "apexFrame": 15,
+   "contactFrame": 19,
+   "activeEndFrame": 23,
+   "strikeBone": "jaw",
+   "kind": "parry",
+   "hold": [
+    13,
+    16
+   ],
+   "apex": 0.4545,
+   "activeStart": 0.5758,
+   "activeEnd": 0.697,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.02,
+    0.6
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.5758,
+    "snapFrames": 3,
+    "ratio": [
+     48,
+     9,
+     42
+    ],
+    "holdDrift": 1.15,
+    "holdSpeed": [
+     13.9,
+     "head"
+    ],
+    "bodyTravel": 0.6,
+    "minZ": [
+     0.272,
+     "barbel_R2",
+     20
+    ],
+    "maxDegPerFrame": [
+     54.4,
+     "pec_R3",
+     19
+    ],
+    "flips": [
+     0,
+     33
+    ],
+    "strikePeak": [
+     19,
+     34.0
+    ],
+    "recovery": 0.13,
+    "reach": [
+     3.63,
+     357,
+     0.96
+    ]
+   }
+  },
+  {
+   "name": "FinL",
+   "take": "MizuchiRig|FinL",
+   "first": 0,
+   "last": 27,
+   "frames": 27,
+   "length": 0.9,
+   "loop": false,
+   "tellFrame": 3,
+   "apexFrame": 11,
+   "contactFrame": 15,
+   "activeEndFrame": 18,
+   "strikeBone": "pec_L3",
+   "kind": "parry",
+   "hold": [
+    7,
+    11
+   ],
+   "apex": 0.4074,
+   "activeStart": 0.5556,
+   "activeEnd": 0.6667,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.15,
+    0.2
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.5556,
+    "snapFrames": 4,
+    "ratio": [
+     41,
+     15,
+     44
+    ],
+    "holdDrift": 2.17,
+    "holdSpeed": [
+     35.0,
+     "pec_L1"
+    ],
+    "bodyTravel": 0.31,
+    "minZ": [
+     -0.006,
+     "pec_L3",
+     23
+    ],
+    "maxDegPerFrame": [
+     83.2,
+     "pec_L3",
+     15
+    ],
+    "flips": [
+     0,
+     27
+    ],
+    "strikePeak": [
+     15,
+     64.1
+    ],
+    "recovery": 0.41,
+    "reach": [
+     3.45,
+     353,
+     0.9
+    ]
+   }
+  },
+  {
+   "name": "FinR",
+   "take": "MizuchiRig|FinR",
+   "first": 0,
+   "last": 24,
+   "frames": 24,
+   "length": 0.8,
+   "loop": false,
+   "tellFrame": 0,
+   "apexFrame": 6,
+   "contactFrame": 10,
+   "activeEndFrame": 13,
+   "strikeBone": "pec_R3",
+   "kind": "parry",
+   "apex": 0.25,
+   "activeStart": 0.4167,
+   "activeEnd": 0.5417,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.15,
+    0.2
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.4167,
+    "snapFrames": 4,
+    "ratio": [
+     25,
+     17,
+     58
+    ],
+    "bodyTravel": 0.31,
+    "minZ": [
+     0.077,
+     "pec_R3",
+     19
+    ],
+    "maxDegPerFrame": [
+     83.1,
+     "pec_R3",
+     10
+    ],
+    "flips": [
+     0,
+     24
+    ],
+    "strikePeak": [
+     10,
+     68.8
+    ],
+    "recovery": 0.33,
+    "reach": [
+     3.55,
+     18,
+     0.92
+    ]
+   }
+  },
+  {
+   "name": "TailWhip",
+   "take": "MizuchiRig|TailWhip",
+   "first": 0,
+   "last": 42,
+   "frames": 42,
+   "length": 1.4,
+   "loop": false,
+   "tellFrame": 4,
+   "apexFrame": 19,
+   "contactFrame": 23,
+   "activeEndFrame": 30,
+   "strikeBone": "fluke_L2",
+   "kind": "parry",
+   "hold": [
+    12,
+    20
+   ],
+   "apex": 0.4524,
+   "activeStart": 0.5476,
+   "activeEnd": 0.7143,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.1,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.5476,
+    "snapFrames": 3,
+    "ratio": [
+     48,
+     7,
+     45
+    ],
+    "holdDrift": 3.54,
+    "holdSpeed": [
+     30.4,
+     "head"
+    ],
+    "bodyTravel": 0.47,
+    "minZ": [
+     0.202,
+     "fluke_R2",
+     23
+    ],
+    "maxDegPerFrame": [
+     108.2,
+     "fluke_L2",
+     24
+    ],
+    "flips": [
+     0,
+     42
+    ],
+    "strikePeak": [
+     24,
+     155.1
+    ],
+    "recovery": 0.21,
+    "reach": [
+     4.91,
+     178,
+     1.55
+    ]
+   }
+  },
+  {
+   "name": "Spit",
+   "take": "MizuchiRig|Spit",
+   "first": 0,
+   "last": 36,
+   "frames": 36,
+   "length": 1.2,
+   "loop": false,
+   "tellFrame": 4,
+   "apexFrame": 16,
+   "contactFrame": 20,
+   "activeEndFrame": 21,
+   "strikeBone": "jaw",
+   "kind": "parry",
+   "releaseFrame": 20,
+   "hold": [
+    16,
+    18
+   ],
+   "apex": 0.4444,
+   "activeStart": 0.5556,
+   "activeEnd": 0.5833,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.12,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.5556,
+    "snapFrames": 2,
+    "ratio": [
+     50,
+     6,
+     44
+    ],
+    "holdDrift": 1.31,
+    "holdSpeed": [
+     20.2,
+     "pec_L1"
+    ],
+    "bodyTravel": 0.36,
+    "minZ": [
+     0.067,
+     "fluke_L2",
+     27
+    ],
+    "maxDegPerFrame": [
+     35.2,
+     "barbel_R1",
+     20
+    ],
+    "flips": [
+     0,
+     36
+    ],
+    "strikePeak": [
+     20,
+     31.9
+    ],
+    "recovery": 0.17
+   }
+  },
+  {
+   "name": "Return",
+   "take": "MizuchiRig|Return",
+   "first": 0,
+   "last": 12,
+   "frames": 12,
+   "length": 0.4,
+   "loop": false,
+   "tellFrame": 0,
+   "apexFrame": 3,
+   "contactFrame": 5,
+   "activeEndFrame": 6,
+   "strikeBone": "jaw",
+   "kind": "parry",
+   "eventFrame": 5,
+   "apex": 0.25,
+   "activeStart": 0.4167,
+   "activeEnd": 0.5,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.4
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "activeStart": 0.4167,
+    "snapFrames": 2,
+    "ratio": [
+     25,
+     17,
+     58
+    ],
+    "bodyTravel": 0.4,
+    "minZ": [
+     0.414,
+     "pel_L",
+     4
+    ],
+    "maxDegPerFrame": [
+     27.1,
+     "whisker_L2",
+     5
+    ],
+    "flips": [
+     0,
+     12
+    ],
+    "strikePeak": [
+     5,
+     25.2
+    ],
+    "recovery": 0.3
+   }
+  },
+  {
+   "name": "Jet",
+   "take": "MizuchiRig|Jet",
+   "first": 0,
+   "last": 66,
+   "frames": 66,
+   "length": 2.2,
+   "loop": false,
+   "tellFrame": 6,
+   "apexFrame": 32,
+   "contactFrame": 36,
+   "activeEndFrame": 50,
+   "strikeBone": "jaw",
+   "kind": "danger",
+   "hold": [
+    26,
+    32
+   ],
+   "apex": 0.4848,
+   "activeStart": 0.5455,
+   "activeEnd": 0.7576,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.7,
+    -0.2
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "holdDrift": 1.07,
+    "holdSpeed": [
+     7.8,
+     "spine_f"
+    ],
+    "bodyTravel": 1.4,
+    "minZ": [
+     0.096,
+     "fluke_R2",
+     14
+    ],
+    "maxDegPerFrame": [
+     27.5,
+     "jaw",
+     35
+    ],
+    "flips": [
+     0,
+     66
+    ]
+   }
+  },
+  {
+   "name": "Dive",
+   "take": "MizuchiRig|Dive",
+   "first": 0,
+   "last": 24,
+   "frames": 24,
+   "length": 0.8,
+   "loop": false,
+   "tellFrame": 0,
+   "apexFrame": 8,
+   "kind": "danger",
+   "hideFrame": 22,
+   "apex": 0.3333,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    -1.6,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 1.6,
+    "minZ": [
+     -2.784,
+     "barbel_R1",
+     24
+    ],
+    "maxDegPerFrame": [
+     40.2,
+     "fluke_L2",
+     13
+    ],
+    "flips": [
+     0,
+     24
+    ]
+   }
+  },
+  {
+   "name": "BreachAir",
+   "take": "MizuchiRig|BreachAir",
+   "first": 0,
+   "last": 33,
+   "frames": 33,
+   "length": 1.1,
+   "loop": false,
+   "tellFrame": 0,
+   "apexFrame": 14,
+   "kind": "danger",
+   "apex": 0.4242,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.0,
+    "minZ": [
+     -2.951,
+     "fluke_R2",
+     7
+    ],
+    "maxDegPerFrame": [
+     23.7,
+     "fluke_L2",
+     33
+    ],
+    "flips": [
+     0,
+     33
+    ]
+   }
+  },
+  {
+   "name": "BreachLand",
+   "take": "MizuchiRig|BreachLand",
+   "first": 0,
+   "last": 54,
+   "frames": 54,
+   "length": 1.8,
+   "loop": false,
+   "contactFrame": 0,
+   "kind": "danger",
+   "beached": [
+    12,
+    40
+   ],
+   "activeStart": 0.0,
+   "bodyAtStart": [
+    -0.0,
+    -0.35,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    -0.35,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.6,
+    "minZ": [
+     -0.308,
+     "pec_R3",
+     43
+    ],
+    "maxDegPerFrame": [
+     31.8,
+     "shide_R",
+     43
+    ],
+    "flips": [
+     0,
+     54
+    ]
+   }
+  },
+  {
+   "name": "GreatWave",
+   "take": "MizuchiRig|GreatWave",
+   "first": 0,
+   "last": 48,
+   "frames": 48,
+   "length": 1.6,
+   "loop": false,
+   "tellFrame": 2,
+   "apexFrame": 12,
+   "contactFrame": 17,
+   "activeEndFrame": 19,
+   "strikeBone": "fluke_L2",
+   "kind": "danger",
+   "hold": [
+    10,
+    12
+   ],
+   "apex": 0.25,
+   "activeStart": 0.3542,
+   "activeEnd": 0.3958,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    -0.296,
+    0.156
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    -0.38,
+    0.1
+   ],
+   "lint": {
+    "holdDrift": 2.04,
+    "holdSpeed": [
+     30.8,
+     "head"
+    ],
+    "bodyTravel": 1.02,
+    "minZ": [
+     -1.293,
+     "fluke_L2",
+     19
+    ],
+    "maxDegPerFrame": [
+     47.5,
+     "tail",
+     16
+    ],
+    "flips": [
+     0,
+     48
+    ],
+    "strikePeak": [
+     16,
+     53.5
+    ]
+   }
+  },
+  {
+   "name": "Roar",
+   "take": "MizuchiRig|Roar",
+   "first": 0,
+   "last": 48,
+   "frames": 48,
+   "length": 1.6,
+   "loop": false,
+   "tellFrame": 0,
+   "loopRange": [
+    14,
+    30
+   ],
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.36,
+    "minZ": [
+     0.136,
+     "fluke_R2",
+     14
+    ],
+    "maxDegPerFrame": [
+     21.7,
+     "barbel_R2",
+     13
+    ],
+    "flips": [
+     0,
+     48
+    ]
+   }
+  },
+  {
+   "name": "Intro",
+   "take": "MizuchiRig|Intro",
+   "first": 0,
+   "last": 90,
+   "frames": 90,
+   "length": 3.0,
+   "loop": false,
+   "roarFrame": 76,
+   "landFrame": 58,
+   "bodyAtStart": [
+    -0.0,
+    -2.6,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    -2.6,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 2.6,
+    "minZ": [
+     -4.805,
+     "fluke_L2",
+     0
+    ],
+    "maxDegPerFrame": [
+     27.0,
+     "fluke_R2",
+     2
+    ],
+    "flips": [
+     0,
+     90
+    ]
+   }
+  },
+  {
+   "name": "Hit",
+   "take": "MizuchiRig|Hit",
+   "first": 0,
+   "last": 14,
+   "frames": 14,
+   "length": 0.4667,
+   "loop": false,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.12,
+    "minZ": [
+     0.309,
+     "pel_R",
+     3
+    ],
+    "maxDegPerFrame": [
+     36.5,
+     "pec_L3",
+     1
+    ],
+    "flips": [
+     0,
+     14
+    ]
+   }
+  },
+  {
+   "name": "Parried",
+   "take": "MizuchiRig|Parried",
+   "first": 0,
+   "last": 21,
+   "frames": 21,
+   "length": 0.7,
+   "loop": false,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.61,
+    "minZ": [
+     0.069,
+     "fluke_L2",
+     4
+    ],
+    "maxDegPerFrame": [
+     29.2,
+     "barbel_R2",
+     2
+    ],
+    "flips": [
+     0,
+     21
+    ]
+   }
+  },
+  {
+   "name": "Guard",
+   "take": "MizuchiRig|Guard",
+   "first": 0,
+   "last": 36,
+   "frames": 36,
+   "length": 1.2,
+   "loop": false,
+   "holdsLast": true,
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.05,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.05,
+    "minZ": [
+     0.288,
+     "pel_R",
+     26
+    ],
+    "maxDegPerFrame": [
+     24.2,
+     "barbel_R2",
+     2
+    ],
+    "flips": [
+     0,
+     36
+    ]
+   }
+  },
+  {
+   "name": "Exhausted",
+   "take": "MizuchiRig|Exhausted",
+   "first": 0,
+   "last": 72,
+   "frames": 72,
+   "length": 2.4,
+   "loop": true,
+   "punish": true,
+   "bodyAtStart": [
+    -0.0,
+    -0.586,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    -0.586,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    -0.586,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.63,
+    "minZ": [
+     -0.238,
+     "shide_R",
+     17
+    ],
+    "maxDegPerFrame": [
+     22.8,
+     "fluke_L2",
+     19
+    ],
+    "flips": [
+     0,
+     72
+    ],
+    "seam": 0.056,
+    "seamStep": [
+     6.48,
+     14.18
+    ]
+   }
+  },
+  {
+   "name": "Freed",
+   "take": "MizuchiRig|Freed",
+   "first": 0,
+   "last": 120,
+   "frames": 120,
+   "length": 4.0,
+   "loop": false,
+   "swapFrame": 55,
+   "eject": [
+    20,
+    40
+   ],
+   "bodyAtStart": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.0,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    4.7,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 4.7,
+    "minZ": [
+     0.417,
+     "pel_L",
+     0
+    ],
+    "maxDegPerFrame": [
+     73.4,
+     "seal",
+     30
+    ],
+    "flips": [
+     0,
+     120
+    ]
+   }
+  },
+  {
+   "name": "ClimbFalls",
+   "take": "MizuchiRig|ClimbFalls",
+   "first": 0,
+   "last": 36,
+   "frames": 36,
+   "length": 1.2,
+   "loop": true,
+   "bodyAtStart": [
+    -0.0,
+    0.3,
+    0.0
+   ],
+   "bodyAtContact": [
+    -0.0,
+    0.3,
+    0.0
+   ],
+   "bodyAtEnd": [
+    -0.0,
+    0.3,
+    0.0
+   ],
+   "lint": {
+    "bodyTravel": 0.3,
+    "minZ": [
+     -3.282,
+     "fluke_R2",
+     8
+    ],
+    "maxDegPerFrame": [
+     29.0,
+     "fluke_R2",
+     4
+    ],
+    "flips": [
+     0,
+     36
+    ],
+    "seam": 0.04,
+    "seamStep": [
+     13.49,
+     13.49
+    ]
+   }
+  }
+ ]
+}

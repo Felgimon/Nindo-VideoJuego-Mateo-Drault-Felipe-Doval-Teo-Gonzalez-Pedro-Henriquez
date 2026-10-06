@@ -25,6 +25,7 @@ P_PROPS = os.path.join(ART, "Models", "Props")
 P_WORLD = os.path.join(ART, "Models", "World")
 P_CHARS = os.path.join(ART, "Models", "Characters")
 P_KITS = os.path.join(ART, "Characters", "Kits")
+P_MIZUCHI = os.path.join(ART, "Characters", "Mizuchi")
 P_RES = os.path.join(N, "Resources")
 P_DATA = os.path.join(N, "Data")
 P_AUDIO = os.path.join(N, "Audio")
@@ -645,7 +646,36 @@ def controllers():
         idle = (ref(g, stable_id("grandpa", "Idle"), 3), gl.get("Idle"))
         kid = (ref(g, stable_id("grandpa", "Kidnap"), 3), gl.get("Kidnap"))
         c["grandpa"] = controller(os.path.join(P_ANIM, "Grandpa.controller"), "Grandpa", {"Idle": idle, "Kidnap": kid}, (idle, idle))
+    mp, minfo = mizuchi_koi()
+    if mp:
+        # Gran Koi (jefe del lago): un estado por clip con el mismo nombre; Idle = Hover y la locomoción
+        # mezcla Hover (0) -> Swim (1) por Speed. Duraciones del sidecar (cuadros de la toma / 30 fps)
+        g = ensure_guid(mp)
+        cl = {k["name"]: (ref(g, stable_id("mizuchi_koi", k["name"]), 3), k["length"]) for k in minfo["clips"]}
+        c["mizuchi_koi"] = controller(os.path.join(P_ANIM, "MizuchiKoi.controller"), "MizuchiKoi", {"Idle": cl["Hover"], **cl},
+                                      (cl["Hover"], cl["Swim"]))
     return c
+
+
+def mizuchi_koi():
+    """(ruta del FBX, sidecar) del Gran Koi que escribe Tools/Blender/bosses/mizuchi/build_mizuchi.py --export."""
+    p = os.path.join(P_MIZUCHI, "Mizuchi.fbx")
+    if not (os.path.exists(p) and os.path.exists(p + ".json")):
+        return None, None
+    return p, json.load(open(p + ".json", encoding="utf-8"))
+
+
+# brillo del Gran Koi por fase (multiplica el mapa de emisión de la paleta, que solo tiene las muestras glow_*).
+# Nindo_Emissive (x3.2) con el ACES del juego quemaba el violeta de la maldición a lavanda casi blanca
+# (saturación 0.13): a 0.9 queda en ~0.38 y sigue pasando el umbral del bloom. KoiBody puede pulsarlo.
+MIZUCHI_GLOW = {"Mizuchi_Glow": 1.1, "Mizuchi_Curse": 0.9}
+
+
+def mizuchi_glow_materials():
+    palg = ensure_guid(os.path.join(P_TEX, "NindoPalette.png"))
+    emg = ensure_guid(os.path.join(P_TEX, "NindoPalette_Emission.png"))
+    return {name: lit(os.path.join(P_MIZUCHI, name + ".mat"), name, palg, smooth=0.2, emission_tex=emg, emission=(e, e, e, 1))
+            for name, e in MIZUCHI_GLOW.items()}
 
 
 def character_fbx_metas():
@@ -659,6 +689,19 @@ def character_fbx_metas():
                  dict(name="Kidnap", take=take, id=stable_id("grandpa", "Kidnap"), first=f0, last=f0 + info["frames"] - 1, loop=False)]
         write_meta(gp, model_meta(anim_type=2, import_anim=True, clips=clips, readable=False), force=True)
     write_meta(os.path.join(P_CHARS, "Grandpa.fbx.json"), TEXT_META)
+    mp, minfo = mizuchi_koi()
+    if mp:
+        # una toma por clip ('MizuchiRig|<Clip>', empieza en 0; el loop repite el cuadro 0 en el último).
+        # Paleta del juego (mismo atlas que el mundo) y SIN compresión de animación: la reducción de claves
+        # de Unity suaviza los latigazos de 2-3 cuadros y corre el contacto del cuadro diseñado
+        clips = [dict(name=k["name"], take=k["take"], id=stable_id("mizuchi_koi", k["name"]), first=k["first"], last=k["last"],
+                      loop=k["loop"]) for k in minfo["clips"]]
+        remap = {"Nindo_Palette": read_guid(os.path.join(P_MAT, "Nindo_Palette.mat"))}
+        remap.update(mizuchi_glow_materials())
+        body = model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False)
+        write_meta(mp, body.replace("animationCompression: 1", "animationCompression: 0"), force=True)
+        write_meta(mp + ".json", TEXT_META)
+        ensure_folder_metas(P_MIZUCHI)
 
 
 def kit_metas(mats):
@@ -829,6 +872,12 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
             # el secuestro NO se gira: las escenas ponen el transform de espaldas a la salida y lo deslizan
             # hacia ella; con la orientación original el ninja va adelante tirando de las piernas del abuelo
             defs.append(("kidnap", ensure_guid(os.path.join(P_CHARS, "Grandpa.fbx")), ctrls["grandpa"], 1.45, 0))
+        if "mizuchi_koi" in ctrls:
+            # el Gran Koi se exporta con el frente en Blender -Y = Unity +Z (sin giro). El alto es el del modelo
+            # en reposo (del anillo Ripple en la cubierta a la punta del medallón): NormalizeHeight queda en
+            # escala 1 y el koi flota a la altura diseñada sin código
+            mp, minfo = mizuchi_koi()
+            defs.append(("mizuchi_koi", ensure_guid(mp), ctrls["mizuchi_koi"], minfo["height"], minfo["modelYaw"]))
         for cid, mg, (cg, lens), h, yaw in defs:
             # duración del clip de cada estado (CharacterAnimator.Length busca por estado, no por clip)
             names = "".join(f"\n    - {n}" for n in lens) or " []"
