@@ -351,9 +351,16 @@ class Spring:
     Quaternion que corrige la pose rígida (p. ej. el faldón que empuja el muslo); floor: la punta
     no baja de esa altura (el piso empuja la tela hacia afuera en vez de atravesarlo)."""
 
-    def __init__(self, bones, k=140.0, damp=0.12, grav=4.0, max_deg=55.0, push=None, floor=None, hang=0.0):
+    def __init__(self, bones, k=140.0, damp=0.12, grav=4.0, max_deg=55.0, push=None, floor=None, hang=0.0, colliders=(),
+                 follow=None):
         self.bones, self.k, self.damp, self.grav, self.max_deg, self.push = list(bones), k, damp, grav, max_deg, push
         self.hang = hang        # 0..1: cuánto busca colgar hacia abajo en vez de seguir rígido al padre (pelo, telas)
+        # esferas (hueso, centro en el espacio del hueso, radio) que la punta no puede atravesar: la melena
+        # cae sobre la espalda en vez de meterse en la coraza
+        self.colliders = list(colliders)
+        # orientación de reposo tomada de otro hueso (la melena acompaña la espalda, no la cabeza: con la
+        # cabeza agachada no se levanta como una cresta); la raíz sigue colgando de su padre
+        self.follow = follow
         self.floor = floor      # altura mínima de la punta en mundo (faldones al arrodillarse, melena al agacharse)
 
 
@@ -394,17 +401,30 @@ def run_springs(rig, frames, springs, root_offsets, loop=False, preroll=1.0, sub
         seq = [0] * int(preroll * FPS) + list(range(n))
     record_from = len(seq) - cyc
 
-    def solve_frame(fi):
+    # en un loop que avanza (caminar) cada vuelta arranca donde terminó la anterior, no en el origen
+    shift = (root_offsets[cyc] - root_offsets[0]) if loop and n > 1 else Vector()
+
+    def solve_frame(fi, lap=0):
         P = prim[fi]
         fo = floor_offsets[fi] if floor_offsets else 0.0
         Wc = dict(P)
-        off = Matrix.Translation(root_offsets[fi])
+        off = Matrix.Translation(root_offsets[fi] + shift * lap)
         offi = off.inverted()
+        spheres = {}
         for b in order:
             s = spring_of[b]
+            sph = []
+            for cb, cl, cr in s.colliders:
+                key = (cb, tuple(cl))
+                if key not in spheres:
+                    spheres[key] = off @ (P[cb] @ V(cl))
+                sph.append((spheres[key], cr))
             p = rig.parent[b]
             Fp = (off @ Wc[p]) if p else off
             F = Fp @ rig.rel[b] @ base_of(P, b)
+            if s.follow and b == s.bones[0]:
+                Rf = rot3(off @ P[s.follow]) @ rot3(rig.rest_inv[s.follow] @ rig.rest[b])
+                F = compose(F.translation, Rf)
             if s.push:
                 q = s.push(P, b)
                 if q is not None:
@@ -423,15 +443,25 @@ def run_springs(rig, frames, springs, root_offsets, loop=False, preroll=1.0, sub
                 t = h + dv.normalized() * L if dv.length > 1e-6 else t
             st = state.get(b)
             if st is None:
-                st = state[b] = [t.copy(), t.copy()]
-            x, xp = st
+                st = state[b] = [t.copy(), t.copy(), t.copy()]
+            x, xp, tp = st
+            # el amortiguamiento frena la velocidad RELATIVA al ancla (fricción interna), no la del mundo:
+            # caminando a velocidad constante el pelo acompaña; solo se atrasa al acelerar o frenar
+            vt = (t - tp) / substeps
             for _ in range(substeps):
                 acc = (t - x) * s.k + Vector((0.0, 0.0, -s.grav))
-                xn = x + (x - xp) * (1.0 - s.damp) + acc * dt * dt
+                xn = x + (x - xp) * (1.0 - s.damp) + vt * s.damp + acc * dt * dt
                 dirn = xn - h
                 if dirn.length < 1e-6:
                     dirn = t - h
                 xn = h + dirn.normalized() * L
+                for cc, cr in sph:
+                    dv = xn - cc
+                    if dv.length < cr:
+                        xn = cc + dv.normalized() * cr
+                        dirn = xn - h
+                        if dirn.length > 1e-6:
+                            xn = h + dirn.normalized() * L
                 if fl is not None and xn.z < fl:
                     xn.z = fl
                     dirn = xn - h
@@ -443,7 +473,7 @@ def run_springs(rig, frames, springs, root_offsets, loop=False, preroll=1.0, sub
             ang = math.degrees(a.angle(b0)) if a.length > 0 and b0.length > 0 else 0.0
             if ang > s.max_deg:
                 x = h + slerp_dir(b0, a, s.max_deg / ang) * L
-            st[0], st[1] = x, xp
+            st[0], st[1], st[2] = x, xp, t.copy()
             q = b0.rotation_difference((x - h).normalized())
             Wc[b] = offi @ compose(h, q.to_matrix() @ rot3(F))
         for c in riders:
@@ -451,7 +481,7 @@ def run_springs(rig, frames, springs, root_offsets, loop=False, preroll=1.0, sub
         return Wc
 
     for i, fi in enumerate(seq):
-        Wc = solve_frame(fi)
+        Wc = solve_frame(fi, i // cyc if loop else 0)
         if i >= record_from:
             frames[fi] = Wc
     if loop and n > 1:

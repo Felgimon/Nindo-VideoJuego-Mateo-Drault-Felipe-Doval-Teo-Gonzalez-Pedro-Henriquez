@@ -31,7 +31,7 @@ BANDANA_RGB = (0.9387, 0.4614, 0.0)
 SEAM_RGB = (0.753, 0.541, 1.0)        # glow_purple
 EDGE_BASE_RGB = (0.62, 0.64, 0.70)
 
-C = dict(plate="ink", plate2="tile_dark", bevel="tile_light", bevel2="tile_blue", gold="gold", gold2="gold_dark",
+C = dict(plate="ink", plate2="tile_dark", bevel="tile_light", bevel2="cloth_purple", gold="gold", gold2="gold_dark",
          lace="cloth_purple", cloth="cloth_indigo", obi="cloth_red", obi2="wood_red_dark", rope="rope", straw="straw",
          glove="cloth_black", iron="iron", steel="iron_light", mask="wood_red", mask2="wood_red_dark",
          white="white", white2="cloth_white", sole="wood_black", skin="wood_pale", paper="paper")
@@ -385,8 +385,7 @@ def build_torso(kits):
             face, top, tr = C["plate"], C["bevel2"], C["lace"]
         k.lame(tp, bp, outs, t=0.05, bev=0.04, trim=0.04, face=face, top=top, tr=tr, closed=True,
                skip=(5,) if i == 0 else (0, 5))
-    # espaldar y cuello (nodowa)
-    kc.obox((0, 0.62, 2.95), (0.9, 0.08, 0.5), (1, 0, 0), (0, 0, 1), C["plate2"], bevel=0.02, up_color=C["bevel2"])
+    # cuello (nodowa)
     kn = kits["Neck"] = Kit("part_Neck", "Neck")
     kn.tube([(0, 0.02, 3.26), (0, 0.02, 3.58)], [0.27, 0.24], 8, C["plate"], phase=math.pi / 8)
     kn.obox((0, -0.27, 3.42), (0.36, 0.08, 0.2), (1, 0, 0), (0, 0.25, 1), C["plate2"], up_color=C["bevel"])

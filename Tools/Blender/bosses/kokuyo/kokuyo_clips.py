@@ -59,11 +59,20 @@ def springs(rig):
 
     # la melena es pesada: rígida, amortiguada y con tope bajo (si no, en un tajo que frena de golpe se
     # da vuelta sobre la cabeza); busca colgar cuando el torso se inclina
-    sp = [Spring([f"Mane_{c}_1", f"Mane_{c}_2", f"Mane_{c}_3"], k=170.0, damp=0.2, grav=4.0, max_deg=32.0, floor=0.08, hang=0.45)
-          for c in "CRL"]
-    sp += [Spring([f"Sash_{s}_1", f"Sash_{s}_2"], k=120.0, damp=0.14, grav=6.0, max_deg=55.0, floor=0.06, hang=0.6) for s in "RL"]
+    def local(bone, p):
+        return rig.rest_inv[bone] @ Vector(p)
+    # la coraza es ancha pero poco profunda: esferas grandes corridas hacia adelante, que asoman justo
+    # por la espalda sin tocar la nuca (de donde sale la melena)
+    back = [("Chest", local("Chest", (0.0, -0.12, 2.76)), 0.78), ("Spine", local("Spine", (0.0, -0.12, 2.36)), 0.7)]
+    front = [("Hips", local("Hips", (0.0, -0.05, 1.95)), 0.8),
+             ("Thigh_R", local("Thigh_R", (-0.41, -0.04, 1.36)), 0.46), ("Thigh_L", local("Thigh_L", (0.41, -0.04, 1.36)), 0.46)]
+    sp = [Spring([f"Mane_{c}_1", f"Mane_{c}_2", f"Mane_{c}_3"], k=150.0, damp=0.2, grav=5.0, max_deg=40.0, floor=0.08, hang=0.3,
+                 colliders=back, follow="Chest") for c in "CRL"]
+    sp += [Spring([f"Sash_{s}_1", f"Sash_{s}_2"], k=120.0, damp=0.14, grav=6.0, max_deg=60.0, floor=0.06, hang=0.6,
+                  colliders=front) for s in "RL"]
     sp += [Spring(["Sode_R"], k=320.0, damp=0.2, grav=0.0, max_deg=16.0), Spring(["Sode_L"], k=320.0, damp=0.2, grav=0.0, max_deg=16.0)]
-    sp += [Spring(["Ribbon_1", "Ribbon_2"], k=75.0, damp=0.1, grav=6.0, max_deg=70.0, floor=0.05, hang=0.7)]
+    sp += [Spring(["Ribbon_1", "Ribbon_2"], k=75.0, damp=0.1, grav=6.0, max_deg=70.0, floor=0.05, hang=0.7,
+                  colliders=[("UpperArm_L", local("UpperArm_L", (1.27, 0.0, 2.85)), 0.38)])]
     sp += [Spring(["Tassel_1", "Tassel_2"], k=70.0, damp=0.1, grav=7.0, max_deg=80.0, floor=0.04, hang=0.85)]
     sp += [Spring([KR.skirt_name(a)], k=240.0, damp=0.2, grav=0.0, max_deg=40.0, push=thigh_push, floor=0.07)
            for a in KR.SKIRT_ANGLES]
@@ -535,7 +544,7 @@ _df_bow = mod(KNEEL_W, head=(22.0, 0.0, 0.0), spine=(26.0, 0.0, 2.0))
 _df_let = mod(_df_bow, hand_r=(-0.7, -0.75, 1.75), hand_r_dir=(0.0, -0.6, -0.8), hand_r_up=(0.0, -0.8, 0.6))
 _df_rest = mod(_df_bow, hand_r=(-0.55, -0.55, 1.35), hand_r_dir=(0.0, -0.9, -0.4), hand_r_up=(0.0, 0.0, 1.0),
                hand_l=(0.55, -0.62, 1.32))
-_df_snap = mod(_df_rest, head=(-12.0, 0.0, 0.0), neck=(-6.0, 0.0, 0.0), spine=(18.0, 0.0, 0.0))
+_df_snap = mod(_df_rest, head=(-12.0, 0.0, 0.0), neck=(-6.0, 0.0, 0.0))
 _df_low = mod(_df_rest, head=(24.0, 0.0, 0.0), neck=(8.0, 0.0, 0.0))
 _df_lift = feet(mod(_df_low, hips=(0.0, 0.25, -0.95)), l=((0.45, -0.3, 0.5), (40.0, 0.0, 6.0)))
 _df_keys = [(0, KNEEL_W, "sine"), (10, _df_bow, "sine"), (20, _df_bow, "sine"),
