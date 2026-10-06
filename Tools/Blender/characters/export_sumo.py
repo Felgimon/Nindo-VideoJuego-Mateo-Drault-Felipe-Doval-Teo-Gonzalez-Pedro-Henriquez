@@ -9,7 +9,7 @@ Cambios (audit_models MODEL-06/11):
     era un huevo pelado
   - la 'Pollera' gris con foto de cuero 4K pasa a mawashi de color plano; su anillo de arriba es el
     cinto más oscuro ('PolleraCinto') y adelante cuelgan 9 sagari ('Sagari') que siguen a la tela
-  - fuera las dos texturas 4K empaquetadas: el FBX baja de 100 MB a ~2 MB
+  - fuera las dos texturas 4K empaquetadas y las tomas que nada usa: el FBX baja de 100 MB a menos de 1 MB
   - pesos limitados a 4 huesos (185 vértices tenían 5-8)
 """
 import bpy, os, sys, math
@@ -29,7 +29,6 @@ o = C.args()
 src = o["src"] or os.path.join(C.ASSETS, REL)
 pose = C.default_pose(src)
 arm = C.load(src)
-poses = C.sample_poses(arm)
 C.rest(arm, True)
 body = bpy.data.objects["Cube"]
 
@@ -95,4 +94,6 @@ if C.count(body, "Motoyui") == 0:
     geo.prism((0, -0.27, 4.86), (0, -0.19, 4.915), 0.125, 0.13, "Motoyui", seg=6, up=(1, 0, 0), sy=0.8)
     print("chonmage", C.attach(body, geo, ("bone", "Cabeza")), "tris")
 
-C.finish(arm, src, REL, o, poses=poses, pose=pose)
+# sin tomas: el sumo anima con los .anim de Characters/Sumo (Sumo.controller) y ningún controller usa los
+# clips del FBX; sus 8 tomas (casi estáticas) eran 2.4 MB del archivo. La pose por defecto sí se conserva.
+C.finish(arm, src, REL, o, pose=pose, export_kw=dict(bake_anim=False))

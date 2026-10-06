@@ -9,7 +9,7 @@ lo que Unity usa para no romper prefabs, clips ni controllers:
   - fps del archivo (Unity mide los frames del .meta con él)
 y avisa si quedaron texturas embebidas (el sumo pesaba 100 MB por dos PNG/JPG 4K empaquetados).
 
-python fbxcheck.py <original.fbx> <nuevo.fbx> [--rot-tol 0.01]   -> exit 1 si algo no cumple
+python fbxcheck.py <original.fbx> <nuevo.fbx> [--rot-tol 0.01] [--sin-tomas]   -> exit 1 si algo no cumple
 python fbxcheck.py --info <archivo.fbx>
 Las tomas de objetos sueltos ('Isan|Atack1', 'Katana|Block': armas pegadas a huesos, 1 frame, nada las usa)
 se aceptan como descartadas: el importador de Blender no las lee (ver charlib.weapon_takes).
@@ -228,5 +228,7 @@ if __name__ == "__main__":
     else:
         a, b = sys.argv[1], sys.argv[2]
         tol = float(sys.argv[sys.argv.index("--rot-tol") + 1]) if "--rot-tol" in sys.argv else 0.01
-        weapons = {t for t in summary(a)["stacks"] if "|" in t and not t.startswith("Armature|")}
+        stacks = summary(a)["stacks"]
+        # --sin-tomas: el nuevo se exportó sin animación a propósito (el sumo: anima con .anim de Unity)
+        weapons = set(stacks) if "--sin-tomas" in sys.argv else {t for t in stacks if "|" in t and not t.startswith("Armature|")}
         sys.exit(0 if compare(a, b, rot_tol=tol, dropped_takes=weapons) else 1)

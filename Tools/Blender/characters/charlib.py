@@ -499,8 +499,12 @@ def finish(arm, src, rel, opts, export_kw=None, anim_offset=1.0, poses=None, bin
             limit_weights(o)
         flat_normals(o)
     strip_images()
-    all_actions = (export_kw or {}).get("bake_anim_use_all_actions", True)
-    dropped = weapon_takes(src, arm) if all_actions else set()
+    kw = export_kw or {}
+    all_actions = kw.get("bake_anim_use_all_actions", True)
+    if not kw.get("bake_anim", True):
+        dropped = set(fbxcheck.summary(src)["stacks"])      # sin tomas a propósito (ver export_sumo.py)
+    else:
+        dropped = weapon_takes(src, arm) if all_actions else set()
     if all_actions:
         take_actions(arm)
     rest(arm, False)
