@@ -59,6 +59,12 @@ for arch, ax, az, r, bx, bz, yaw in W.BOSSES:
     for cid, x, z, cyaw in W.CHECKPOINTS:
         if math.hypot(x - ax, z - az) < r + 1.0:
             problems.append(f"Checkpoint {cid} ({x},{z}) dentro de la barrera de {arch} (a {math.hypot(x - ax, z - az):.1f} m, r {r})")
+        # Kaito reaparece 1.8 m delante del santuario (Checkpoint.spawnPoint): ese punto también afuera y transitable
+        sx, sz = x + math.sin(math.radians(cyaw)) * 1.8, z + math.cos(math.radians(cyaw)) * 1.8
+        if math.hypot(x - ax, z - az) < r + 6.0:
+            if math.hypot(sx - ax, sz - az) < r + 1.0:
+                problems.append(f"Checkpoint {cid}: la reaparición ({sx:.1f},{sz:.1f}) cae dentro de la barrera de {arch} (a {math.hypot(sx - ax, sz - az):.1f} m, r {r})")
+            check("Reaparición", cid, round(sx, 2), round(sz, 2))
     if not W.on_courtyard(bx, bz) or not W.on_courtyard(ax, az):
         problems.append(f"{arch}: el jefe o el centro de la arena fuera del piso del patio")
     for npc, variant, x, z, nyaw in W.NPCS:

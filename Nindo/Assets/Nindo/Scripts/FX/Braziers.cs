@@ -12,7 +12,10 @@ namespace Nindo
     /// lenguas de fuego facetadas (Nindo/Fire, se mueven en el shader), cama de brasas, chispas que suben, una
     /// luz puntual que titila y un hilo de humo cuando está frío. Se encienden en secuencia en la presentación,
     /// se vuelven violetas cuando la sombra se suelta y se apagan uno por uno en el eclipse (con humo y siseo).
-    /// Los índices van en sentido horario desde el norte (el brasero 0 es el de la derecha de Kokuyō).
+    /// Cada brasero encendido crepita (loop "brazier_crackle" en 3D, sigue el tamaño de la llama): el patio suena
+    /// vivo y el eclipse se oye apagarse.
+    /// Los índices van en sentido horario desde el norte: el brasero 0 queda a la derecha de la pantalla (a la
+    /// izquierda de Kokuyō, que mira al sur).
     /// </summary>
     public class Braziers : MonoBehaviour
     {
@@ -22,6 +25,8 @@ namespace Nindo
         public float LightRange = 7f;
         /// <summary>A más de esta distancia de Kaito las luces se apagan (el fuego se sigue viendo por el bloom).</summary>
         public float LightCullDistance = 45f;
+        /// <summary>Volumen del crepitar de un brasero encendido (antes de los ajustes de audio).</summary>
+        public float CrackleVolume = 0.45f;
 
         struct Palette
         {
@@ -53,7 +58,8 @@ namespace Nindo
             public MeshRenderer flame;
             public Light light;
             public ParticleSystem embers, wisp;
-            public float size, target, flare, bed, seed;
+            public AudioSource crackle;
+            public float size, target, flare, bed, seed, pitch;
             public bool lit;
         }
 
@@ -129,8 +135,24 @@ namespace Nindo
             it.embers = MakeEmbers(fire);
             it.wisp = FXFactory.Smoke(fire, 0.55f);
             it.wisp.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+            it.crackle = MakeCrackle(fire, it);
             items.Add(it);
             Refresh(it, 0f);
+        }
+
+        /// <summary>Loop de fuego en 3D (corto alcance: se oye el brasero que Kaito tiene cerca, no los ocho juntos).</summary>
+        static AudioSource MakeCrackle(Transform fire, Item it)
+        {
+            var entry = Game.LoadContent() != null ? Game.LoadContent().Sfx("brazier_crackle") : null;
+            if (entry == null || entry.clips == null || entry.clips.Length == 0 || entry.clips[0] == null) return null;
+            var s = fire.gameObject.AddComponent<AudioSource>();
+            s.clip = entry.clips[0];
+            s.loop = true; s.playOnAwake = false; s.volume = 0f;
+            s.spatialBlend = 0.85f; s.rolloffMode = AudioRolloffMode.Linear; s.minDistance = 2f; s.maxDistance = 16f; s.dopplerLevel = 0f;
+            // cada uno en otro punto del loop y otro tono: ocho copias juntas no suenan en fase
+            it.pitch = Random.Range(0.9f, 1.1f);
+            s.time = Random.Range(0f, s.clip.length * 0.9f);
+            return s;
         }
 
         static ParticleSystem MakeEmbers(Transform parent)
@@ -366,6 +388,12 @@ namespace Nindo
                 pal = Palette.Lerp(palFrom, palTo, Mathf.SmoothStep(0f, 1f, palT));
             }
             Vector3 player = Game.Player != null ? Game.Player.transform.position : transform.position;
+            float vol = CrackleVolume * Settings.MasterVolume * Settings.SfxVolume;
+            // como los efectos de AudioManager, en cámara lenta suena más grave; el fuego violeta, un poco más grave
+            // siempre (no es fuego de verdad). violet: cuánto violeta hay, siguiendo el fundido de SetStyle
+            float k = Mathf.SmoothStep(0f, 1f, palT);
+            float violet = Style == FlameStyle.Violet ? k : 1f - k;
+            float pitch = Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(Game.Time != null ? Game.Time.SlowMoScale : 1f)) * Mathf.Lerp(1f, 0.82f, violet);
             foreach (var it in items)
             {
                 // las llamas nacen rápido (con el empujón del destello) y se hunden más rápido al apagarse
@@ -373,6 +401,14 @@ namespace Nindo
                 it.flare = Mathf.Max(0f, it.flare - dt * 3f);
                 if (!it.lit) it.bed = Mathf.Max(0f, it.bed - dt / 6f);
                 Refresh(it, (player - it.fire.position).sqrMagnitude);
+                if (it.crackle != null)
+                {
+                    it.crackle.volume = vol * it.size * (1f + 0.6f * it.flare);
+                    it.crackle.pitch = it.pitch * pitch;
+                    bool on = it.crackle.volume > 0.001f;
+                    if (on && !it.crackle.isPlaying) it.crackle.Play();
+                    else if (!on && it.crackle.isPlaying) it.crackle.Pause();
+                }
             }
         }
 

@@ -222,7 +222,8 @@ CHECKPOINTS = [
     ("cp_lake", 90, 28, 200),
     ("cp_lake_docks", 112, 16, 220),
     ("cp_bamboo", 72, 108, 200),
-    ("cp_dojo", 8, 114.5, 0),     # junto al portón, fuera de la barrera de Kokuyō (r 18): antes en (10, 140), adentro
+    ("cp_dojo", 8, 114.5, 90),    # junto al portón, fuera de la barrera de Kokuyō (r 18); mira al este: Kaito reaparece
+                                  # 1.8 m adelante (9.8, 114.5), a 20 m del centro (con yaw 0 caía adentro, a 17.6 m)
 ]
 
 # zonas (id, x, z, radio, prioridad)

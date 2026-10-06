@@ -32,6 +32,7 @@ namespace Nindo
         public Vector3 Center => transform.position;
 
         bool introDone, torn, eclipsed, finale;
+        int skyShot = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatic() => Current = null;
@@ -85,16 +86,47 @@ namespace Nindo
         }
 
         // ================================================================== beats
-        /// <summary>Presentación: la luna gira detrás del dojo y rompe las nubes; los braseros se encienden en ola desde el jefe.</summary>
-        public void Intro(Transform boss)
+        /// <summary>
+        /// Presentación: los braseros se encienden en ola desde el jefe y aparece la luna tapada por nubes. Si hay
+        /// cinemática, 'skyShotDelay' s después (pasados el rugido y el título de StoryDirector.BossIntroRoutine) un
+        /// plano al cielo muestra cómo la luna rompe las nubes sobre el techo del dojo; si no, las nubes se abren ya.
+        /// Un valor negativo no toma la cámara (la pelea guionada puede usar Moon.PlaySkyShot en su momento).
+        /// </summary>
+        public void Intro(Transform boss, float skyShotDelay = 3.4f)
         {
             introDone = true;
-            if (Moon != null) { Moon.SetVeil(1f, 0f); Moon.EnterArena(2f); Moon.SetVeil(0f, 2.2f); }
+            if (Moon != null)
+            {
+                Moon.SetVeil(1f, 0f);
+                Moon.EnterArena(2f);
+                if (skyShotDelay >= 0f && Game.InCutscene) StartCoroutine(IntroSky(skyShotDelay));
+                else Moon.SetVeil(0f, 2.2f);
+            }
             if (Braziers != null)
             {
                 Braziers.SetStyle(FlameStyle.Fire, 0f);
                 Braziers.IgniteFrom(boss != null ? boss.position : Center, 0.12f);
             }
+        }
+
+        IEnumerator IntroSky(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            if (!Game.InCutscene) { Moon.SetVeil(0f, 1f); yield break; }
+            const float blendIn = 1.0f, hold = 2.8f;
+            skyShot = Moon.PlaySkyShot(hold, blendIn, 1.0f);
+            // las nubes se abren cuando el plano ya llegó arriba
+            yield return new WaitForSecondsRealtime(blendIn * 0.6f);
+            Moon.SetVeil(0f, 2.0f);
+            float t = 0f;
+            while (t < hold + blendIn * 0.4f && skyShot >= 0)
+            {
+                // diálogo salteado: la pelea no arranca mirando al cielo
+                if (!Game.InCutscene) { Game.Camera?.CancelShot(skyShot); break; }
+                t += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            skyShot = -1;
         }
 
         /// <summary>La sombra viva del jefe (espejo de su pose; la pelea guionada la adelanta con Shadow.SampleAhead).</summary>
@@ -107,9 +139,11 @@ namespace Nindo
         }
 
         /// <summary>
-        /// La sombra arrancada (Acto 2): los braseros se vuelven violetas con un golpe de chispas y la sombra se despega
-        /// del piso como figura de humo. Sin la pelea guionada (que la convierte en Kage) se desvanece: el cuerpo queda
-        /// sin sombra, a propósito inquietante.
+        /// La sombra arrancada (Acto 2): los braseros se vuelven violetas con un golpe de chispas y la sombra se suelta
+        /// del cuerpo (Detach) y se para como figura de humo desde su punta, a ~60% de su largo hacia la cámara: se ve
+        /// arrancarse (parada sobre el cuerpo lo pintaba entero de tinta). Sin la pelea guionada (que la convierte en
+        /// Kage y la mueve por Shadow.Root) se desvanece: el cuerpo queda sin sombra, a propósito inquietante. Quien la
+        /// levante por su cuenta tiene que soltarla igual (Detach) antes de RiseTo.
         /// </summary>
         public void ShadowTear(bool fadeShadow = true)
         {
@@ -118,10 +152,28 @@ namespace Nindo
             if (Shadow != null)
             {
                 Shadow.Strike(0.3f);
+                Shadow.Detach();
+                Vector3 l = PlanarShadow.DefaultLight; l.y = 0f;
+                Vector3 from = Shadow.Root.position;
+                StartCoroutine(PeelShadow(Shadow, from, from + l.normalized * Shadow.Length * 0.6f, 0.8f));
                 Shadow.RiseTo(1f, 0.8f);
                 if (fadeShadow) StartCoroutine(FadeShadowLater(1.3f, 0.7f));
             }
+            Game.Audio?.Play("shadow_tear", Shadow != null ? Shadow.Root.position : Center, 1f);
             Game.Camera?.Shake(0.6f);
+        }
+
+        /// <summary>La raíz de la sombra suelta viaja hasta la punta mientras se levanta (sale rápido y frena).</summary>
+        IEnumerator PeelShadow(PlanarShadow s, Vector3 from, Vector3 to, float seconds)
+        {
+            float t = 0f;
+            while (t < seconds && s != null && s.Detached)
+            {
+                t += Time.deltaTime;
+                float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t / seconds), 3f);
+                s.Root.position = Vector3.Lerp(from, to, k);
+                yield return null;
+            }
         }
 
         IEnumerator FadeShadowLater(float delay, float seconds)
@@ -134,6 +186,8 @@ namespace Nindo
         public void Eclipse()
         {
             eclipsed = true;
+            // en 2D: el eclipse no pasa en un punto del patio, le pasa a toda la noche
+            Game.Audio?.Play("eclipse", null, 1f);
             if (Braziers != null) Braziers.ExtinguishAll(0.18f);
             if (Moon != null) Moon.Eclipse(2f);
             if (Shadow != null) Shadow.FadeTo(0f, 0.6f);
@@ -148,23 +202,38 @@ namespace Nindo
             if (g != null) g.Pulse(Color.white, perfect ? 1f : 0.6f);
         }
 
-        /// <summary>Kokuyō cae: vuelve la luna con pétalos, se deshacen las cuerdas del abuelo y los braseros se encienden tibios.</summary>
-        public void Finale()
+        /// <summary>
+        /// Kokuyō cae. Con skyShot, pasado lo mejor del plano de su muerte (Boss.Die) un plano al cielo muestra la tinta
+        /// escurriéndose de la luna: MoonReturn llega cuando el plano ya está arriba, así el golpe de luz se ve. Sin
+        /// él, la luna vuelve en el acto. Después se encienden los braseros y las cuerdas del abuelo se deshacen a los
+        /// ~4.4 s, ya en el plano del final de StoryDirector (Kaito y el abuelo): "está libre" se ve.
+        /// </summary>
+        public void Finale(bool skyShot = true)
         {
             finale = true;
-            if (Moon != null) Moon.MoonReturn(3f, 9f);
             if (Shadow != null) { Shadow.Release(); Shadow = null; }
             var g = Game.Player != null ? Game.Player.GetComponent<BandanaGlow>() : null;
             if (g != null) g.Disable(2.5f);
-            StartCoroutine(FinaleRoutine());
+            StartCoroutine(FinaleRoutine(skyShot && Moon != null && Game.Camera != null));
         }
 
-        IEnumerator FinaleRoutine()
+        IEnumerator FinaleRoutine(bool sky)
         {
-            yield return new WaitForSecondsRealtime(1.2f);
-            if (Ropes != null) Ropes.Dissolve(1.6f);
-            yield return new WaitForSecondsRealtime(1.3f);
+            float t = 0f;
+            if (sky)
+            {
+                const float wait = 1.8f, blendIn = 0.6f;
+                yield return new WaitForSecondsRealtime(wait);
+                skyShot = Moon.PlaySkyShot(1.0f, blendIn, 0.8f);
+                yield return new WaitForSecondsRealtime(blendIn);
+                t = wait + blendIn;
+            }
+            if (Moon != null) Moon.MoonReturn(3f, 9f);
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, 3.0f - t));
             if (Braziers != null) { Braziers.SetStyle(FlameStyle.Fire, 0f); Braziers.IgniteAll(0.25f, 0, true); }
+            yield return new WaitForSecondsRealtime(1.4f);
+            skyShot = -1;
+            if (Ropes != null) Ropes.Dissolve(1.6f);
         }
 
         /// <summary>Todo como antes de la pelea (Kaito murió): braseros fríos, noche de siempre, abuelo atado, sin sombra viva.</summary>
@@ -172,6 +241,7 @@ namespace Nindo
         {
             introDone = torn = eclipsed = finale = false;
             StopAllCoroutines();
+            if (skyShot >= 0) { Game.Camera?.CancelShot(skyShot); skyShot = -1; }
             if (Braziers != null) Braziers.SetAll(false);
             if (Moon != null) Moon.ResetAll();
             if (Ropes != null) Ropes.Restore();

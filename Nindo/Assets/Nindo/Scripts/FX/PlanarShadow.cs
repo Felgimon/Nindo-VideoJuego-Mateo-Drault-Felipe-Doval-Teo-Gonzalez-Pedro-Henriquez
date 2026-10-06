@@ -52,7 +52,8 @@ namespace Nindo
         readonly List<(GameObject src, GameObject dst)> parts = new List<(GameObject, GameObject)>();
         readonly List<(Renderer src, Renderer dst)> rends = new List<(Renderer, Renderer)>();
         readonly List<(Renderer r, ShadowCastingMode mode)> suppressed = new List<(Renderer, ShadowCastingMode)>();
-        Renderer bladeProxy;
+        Renderer bladeProxy, bladeOwner;   // bladeOwner: la malla del doble que lleva el arma (la sigue al esconderse)
+        Mesh bladeMesh;
         ParticleSystem smoke, splash;
         Vector3 lightDir = DefaultLight, holePos, arenaCenter;
         float arenaRadius = 19f, groundY, pulse, pulseLen = 0.16f;
@@ -218,12 +219,15 @@ namespace Nindo
                 for (int i = 0; i < 4; i++) norms.Add(n);
                 tris.AddRange(new[] { k, k + 1, k + 2, k, k + 2, k + 3 });
             }
-            var mesh = new Mesh { name = "SombraHoja" };
-            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetTriangles(tris, 0);
-            mesh.RecalculateBounds();
+            bladeMesh = new Mesh { name = "SombraHoja" };
+            bladeMesh.SetVertices(verts); bladeMesh.SetNormals(norms); bladeMesh.SetTriangles(tris, 0);
+            bladeMesh.RecalculateBounds();
+            // el arma del doble: un renderer en la rama del arma o, si la hoja va pesada a la malla del cuerpo, la malla
+            bladeOwner = w.GetComponentInChildren<MeshRenderer>(true);
+            if (bladeOwner == null) foreach (var p in rends) if (p.dst is SkinnedMeshRenderer) { bladeOwner = p.dst; break; }
             var go = new GameObject("SombraHoja");
             go.transform.SetParent(w, false);
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshFilter>().sharedMesh = bladeMesh;
             var mr = go.AddComponent<MeshRenderer>();
             Dress(mr);
             return mr;
@@ -402,6 +406,7 @@ namespace Nindo
         {
             RestoreBodyShadow();
             if (mat != null) Destroy(mat);
+            if (bladeMesh != null) Destroy(bladeMesh);
         }
 
         // ================================================================== cada frame
@@ -447,7 +452,8 @@ namespace Nindo
             if (riseT < 1f) { riseT = riseDur > 0f ? Mathf.Clamp01(riseT + dt / riseDur) : 1f; rise = Mathf.Lerp(riseFrom, riseTo, Mathf.SmoothStep(0f, 1f, riseT)); }
             if (fadeT < 1f) { fadeT = fadeDur > 0f ? Mathf.Clamp01(fadeT + dt / fadeDur) : 1f; fade = Mathf.Lerp(fadeFrom, fadeTo, fadeT); }
             pulse = Mathf.Max(0f, pulse - dt / pulseLen);
-            if (bladeProxy != null) bladeProxy.enabled = rise < 0.3f && fade > 0.01f;
+            // la hoja ancha se esconde con el arma (teletransporte de Boss: renderers apagados 0.25 s)
+            if (bladeProxy != null) bladeProxy.enabled = rise < 0.3f && fade > 0.01f && (bladeOwner == null || bladeOwner.enabled);
             if (smoke != null)
             {
                 smoke.transform.SetPositionAndRotation(doubleRoot.position, doubleRoot.rotation);

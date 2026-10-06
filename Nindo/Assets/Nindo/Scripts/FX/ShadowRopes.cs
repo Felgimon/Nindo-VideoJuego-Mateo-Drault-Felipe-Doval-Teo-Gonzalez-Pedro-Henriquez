@@ -20,6 +20,7 @@ namespace Nindo
         public bool Bound { get; private set; }
 
         MeshRenderer rope;
+        Mesh ropeMesh;
         Material mat;
         Light glow;
         ParticleSystem motes;
@@ -94,14 +95,14 @@ namespace Nindo
             Tube(v, uv, t, new List<Vector3> { knot, knot + axis * 0.05f + side * 0.04f + Vector3.down * 0.18f, knot + axis * 0.04f + side * 0.09f + Vector3.down * 0.42f }, 0.022f, 5, false);
             Tube(v, uv, t, new List<Vector3> { knot, knot + axis * 0.06f - side * 0.02f + Vector3.down * 0.2f, knot + axis * 0.03f + side * 0.01f + Vector3.down * 0.5f }, 0.022f, 5, false);
 
-            var mesh = new Mesh { name = "CuerdasDeSombra" };
-            mesh.SetVertices(v); mesh.SetUVs(0, uv); mesh.SetTriangles(t, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
+            ropeMesh = new Mesh { name = "CuerdasDeSombra" };
+            ropeMesh.SetVertices(v); ropeMesh.SetUVs(0, uv); ropeMesh.SetTriangles(t, 0);
+            ropeMesh.RecalculateNormals();
+            ropeMesh.RecalculateBounds();
             var go = new GameObject("Cuerdas");
             go.transform.SetParent(transform, false);
             go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);   // la malla ya está en coordenadas de mundo
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshFilter>().sharedMesh = ropeMesh;
             rope = go.AddComponent<MeshRenderer>();
             mat = new Material(sh) { name = "Nindo_ShadowRope" };
             mat.SetFloat(IdSeed, Random.Range(0f, 50f));
@@ -208,7 +209,8 @@ namespace Nindo
                     motes.Emit(ep, 2);
                 }
             }
-            Game.Audio?.Play("shadow_rope_free", transform.position + Vector3.up, 0.9f);
+            // en el abuelo (la raíz de las cuerdas es el centro de la arena, a 18 m)
+            Game.Audio?.Play("shadow_rope_free", glow != null ? glow.transform.position : transform.position, 0.9f);
         }
 
         IEnumerator DissolveRoutine(float seconds)
@@ -246,6 +248,10 @@ namespace Nindo
             }
         }
 
-        void OnDestroy() { if (mat != null) Destroy(mat); }
+        void OnDestroy()
+        {
+            if (mat != null) Destroy(mat);
+            if (ropeMesh != null) Destroy(ropeMesh);
+        }
     }
 }
