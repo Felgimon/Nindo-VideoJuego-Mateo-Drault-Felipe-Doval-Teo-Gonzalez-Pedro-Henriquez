@@ -6,9 +6,9 @@ Debajo de cada cuadro una franja de color marca el tiempo del golpe: gris = anti
 dorado = pausa en el apex (cuando el jugador tiene que leer el aviso), rojo = golpe activo.
 """
 import bpy, math, os
-from mathutils import Vector, Euler, Matrix
+from mathutils import Vector
 import numpy as np
-from koi_common import REPO, P, L, materials as KC_materials
+from koi_common import REPO, P, materials as KC_materials
 
 DECK = 0.0
 _kaito = None

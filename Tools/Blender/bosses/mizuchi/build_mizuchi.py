@@ -3,7 +3,7 @@
 Un solo comando, determinista (sin auto-weights ni azar sin semilla):
   blender -b --factory-startup --python Tools/Blender/bosses/mizuchi/build_mizuchi.py -- [opciones]
 
-  --out DIR        carpeta de los renders de revisión (por defecto Tools/Blender/out/mizuchi)
+  --out DIR        carpeta de los renders de revisión (por defecto Tools/Blender/out/previews/mizuchi, ignorada por git)
   --sheets         hoja del modelo (vistas, cámara del juego, fase 1 y 2) + una hoja por clip
   --model-only     solo la hoja del modelo (iterar el modelado sin animar)
   --clips a,b      limita las hojas de clips a esos nombres
@@ -30,7 +30,7 @@ def opt(name, default=None):
     return argv[argv.index(name) + 1] if name in argv else default
 
 
-OUT = opt("--out", os.path.join(KC.TOOLS_BLENDER, "out", "mizuchi"))
+OUT = opt("--out", os.path.join(KC.TOOLS_BLENDER, "out", "previews", "mizuchi"))
 FBX = os.path.join(KC.REPO, "Nindo", "Assets", "Nindo", "Art", "Characters", "Mizuchi", "Mizuchi.fbx")
 ALL = not any(a.startswith("--") and a not in ("--out", "--p2") for a in argv)
 DO_SHEETS = ALL or "--sheets" in argv or "--model-only" in argv

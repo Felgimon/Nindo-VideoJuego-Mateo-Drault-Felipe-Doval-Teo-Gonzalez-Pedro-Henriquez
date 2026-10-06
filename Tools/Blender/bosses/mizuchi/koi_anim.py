@@ -28,14 +28,12 @@ def _back_out(u, s=1.2):
 
 EASE = {
     "lin": lambda u: u,
-    "snap": lambda u: (1.0 - 2.0 ** (-9.0 * u)) / (1.0 - 2.0 ** -9.0),   # sale disparado y frena: el latigazo
     "settle": _back_out,                                                  # se pasa un poco y vuelve
     "hold": lambda u: 0.5 - 0.5 * math.cos(math.pi * u),                  # seno: pausa viva
     "ease": lambda u: 2 * u * u if u < 0.5 else 1 - 2 * (1 - u) ** 2,
     "in": lambda u: u * u * u,
     "strike": lambda u: u ** 1.6,     # suelta de un golpe: acelera hasta el contacto sin saltos de un cuadro
     "out": lambda u: 1 - (1 - u) ** 2,
-    "step": lambda u: 0.0 if u < 1.0 else 1.0,
 }
 
 

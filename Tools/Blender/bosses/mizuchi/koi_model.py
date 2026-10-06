@@ -342,7 +342,7 @@ class Koi:
         self.mb = KoiBuilder(f"Body_P{phase}", bone_names())
 
     # --- tubo afinado a lo largo de una polilínea (bigotes, cuernos, cuerda)
-    def tube(self, pts, r0, r1, sides, color_fn, weight_fn, cap=True, closed=False, up=(0, 0, 1), twist=0.0):
+    def tube(self, pts, r0, r1, sides, color_fn, weight_fn, cap=True, closed=False, up=(0, 0, 1)):
         """'up' orienta las secciones; para caminos que pasan por la vertical (la cuerda que rodea el cuerpo)
         hay que darle un eje que nunca sea paralelo al camino, si no la sección se da vuelta a mitad."""
         mb = self.mb
@@ -356,9 +356,7 @@ class Koi:
             x, _, z = frame_from(d, Vector(up))
             t = i / (n - 1) if n > 1 else 0
             r = lerp(r0, r1, t)
-            # 'twist' rota la sección a lo largo del camino: las caras quedan en hélice (cuerda torcida)
-            a0 = 2 * math.pi * twist * i / sides
-            ring = [mb.v(p + (x * math.cos(2 * math.pi * k / sides + a0) + z * math.sin(2 * math.pi * k / sides + a0)) * r,
+            ring = [mb.v(p + (x * math.cos(2 * math.pi * k / sides) + z * math.sin(2 * math.pi * k / sides)) * r,
                          weight_fn(i, t)) for k in range(sides)]
             rings.append(ring)
         segs = n if closed else n - 1
@@ -844,7 +842,7 @@ class Koi:
         def cf(i, k):
             # dos cabos trenzados: rayas diagonales
             return "thatch_dark" if (i + k) % 3 == 0 else ("wheat_dark" if (i + k) % 3 == 1 else "straw")
-        # las rayas diagonales de cf ya dibujan los cabos torcidos; un 'twist' geométrico no cerraría el anillo
+        # las rayas diagonales de cf dibujan los cabos torcidos
         self.tube(pts, 0.15, 0.15, 6, cf, wf, closed=True, up=(0, 1, 0))
         # nudo arriba a la izquierda de la estaca: dos lazos y la vuelta del medio
         kc = surf(Y_ROPE - 0.06, math.radians(68)) + surf_n(Y_ROPE - 0.06, math.radians(68)) * 0.1
