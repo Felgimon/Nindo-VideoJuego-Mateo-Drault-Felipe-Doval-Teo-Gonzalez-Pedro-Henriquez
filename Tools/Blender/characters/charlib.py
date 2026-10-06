@@ -79,7 +79,8 @@ def default_pose(path):
 def set_pose(arm, pose):
     """Pone la pose por defecto (de default_pose) sin acción activa, en orden de jerarquía."""
     bones, objm = pose
-    arm.animation_data.action = None
+    if arm.animation_data:
+        arm.animation_data.action = None
     arm.matrix_world = objm
     for pb in arm.pose.bones:          # pose.bones viene padre antes que hijo
         if pb.name in bones:
