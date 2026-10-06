@@ -208,6 +208,7 @@ namespace Nindo
             Destroy(scytheProp);
             yield return new WaitForSecondsRealtime(0.9f);
             P.SetKatanaVisible(true);
+            CharacterFactory.SetBandana(P.model, true, true);   // la cinta se le ata sola: vuelve su amarillo con un destello
             P.ScriptedPlay("Attack3");
             Game.FX.Screen.WhiteFlash(0.7f);
             Game.Camera.Shake(0.5f);

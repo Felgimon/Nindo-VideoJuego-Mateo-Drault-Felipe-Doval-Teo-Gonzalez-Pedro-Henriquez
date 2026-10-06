@@ -18,7 +18,32 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.5
     modelYaw: 90
-    materialOverrides: []
+    materialSwaps:
+    - material: Metal
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.6
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: Glint
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.7
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: Dorado
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.45
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: OjoBrillo
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.3
+      emission: {r: 0.6, g: 0.6, b: 0.6, a: 1}
+      clearBaseMap: 0
+    - material: AmarilloBandana
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.25
+      emission: {r: 0.3, g: 0.2, b: 0.03, a: 1}
+      clearBaseMap: 0
     stateNames:
     - Attack1
     - Attack2
@@ -46,7 +71,7 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
     height: 1.6
     modelYaw: 90
-    materialOverrides: []
+    materialSwaps: []
     stateNames:
     - Attack1
     - Attack2
@@ -74,7 +99,27 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: af122ddaa0ad524ad3c947730fe1632a, type: 2}
     height: 1.7
     modelYaw: 90
-    materialOverrides: []
+    materialSwaps:
+    - material: Metal
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.6
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: Glint
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.7
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: Plateado
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.45
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: OjosNinja
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.3
+      emission: {r: 0.3, g: 0.36, b: 0.46, a: 1}
+      clearBaseMap: 0
     stateNames:
     - Attack1
     - Attack2
@@ -102,7 +147,17 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
     height: 2.5
     modelYaw: 180
-    materialOverrides: []
+    materialSwaps:
+    - material: Pelo
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.4
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: Pollera
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.15
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 1
     stateNames:
     - Attack1
     - Attack2
@@ -125,7 +180,37 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: dbac39bfe9be5fd41a31f29a324081f6, type: 3}
     controller: {fileID: 9100000, guid: 9670f8c607c12d6033d22ad74703b944, type: 2}
     height: 3.2
-    materialOverrides: []
+    materialSwaps:
+    - material: RojoOjosMiniJefe
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.3
+      emission: {r: 4.0, g: 0.55, b: 0.3, a: 1}
+      clearBaseMap: 0
+    - material: Glint
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.4
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: OroMiniJefe
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.5
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 0
+    - material: ArmaduraMiniJefe
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.1
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 1
+    - material: CueroMiniJefe
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.15
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 1
+    - material: MartilloMiniJefe
+      color: {r: 1, g: 1, b: 1, a: 0}
+      smoothness: 0.1
+      emission: {r: 0, g: 0, b: 0, a: 1}
+      clearBaseMap: 1
     stateNames:
     - Idle
     - Combo1
@@ -153,7 +238,7 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
     modelYaw: 180
-    materialOverrides: []
+    materialSwaps: []
     stateNames:
     - Idle
     - Kidnap
@@ -165,7 +250,7 @@ MonoBehaviour:
     controller: {fileID: 9100000, guid: be45274efe33497904d9a5dacd0d55a7, type: 2}
     height: 1.45
     modelYaw: 0
-    materialOverrides: []
+    materialSwaps: []
     stateNames:
     - Idle
     - Kidnap

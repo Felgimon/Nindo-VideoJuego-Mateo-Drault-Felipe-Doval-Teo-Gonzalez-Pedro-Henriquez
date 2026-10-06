@@ -14,9 +14,110 @@ namespace Nindo
     {
         static readonly Dictionary<string, Material[]> tintCache = new Dictionary<string, Material[]>();
         static readonly Dictionary<Material, Material> liftCache = new Dictionary<Material, Material>();
+        static readonly Dictionary<(Material, NindoContent.CharacterEntry), Material> litCache = new Dictionary<(Material, NindoContent.CharacterEntry), Material>();
+        static Shader litShader;
+        static bool litSearched;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { tintCache.Clear(); liftCache.Clear(); }
+        static void Reset() { tintCache.Clear(); liftCache.Clear(); litCache.Clear(); litShader = null; litSearched = false; }
+
+        /// <summary>Brillo (Blinn-Phong) de los materiales sin ajuste propio: tela y piel casi mates.</summary>
+        public const float DefaultSmoothness = 0.15f;
+
+        /// <summary>Slots de la bandana de Kaito y del pelo con que se tapa antes de recibirla (export_kaito.py).</summary>
+        public const string BandanaSlot = "AmarilloBandana", HairSlot = "Pelo";
+
+        static Shader LitShader
+        {
+            get
+            {
+                if (!litSearched)
+                {
+                    litSearched = true;
+                    litShader = Shader.Find("Nindo/CharacterLit");
+                    if (litShader != null && !litShader.isSupported) litShader = null;
+                    if (litShader == null) Debug.LogWarning("[Nindo] No compila Nindo/CharacterLit: los personajes quedan con los materiales del FBX.");
+                }
+                return litShader;
+            }
+        }
+
+        /// <summary>Nombre del material como está en el FBX: sin " (Instance)" ni el ".001" de los nombres repetidos.</summary>
+        public static string MaterialBaseName(string n)
+        {
+            if (n.EndsWith(" (Instance)")) n = n.Substring(0, n.Length - 11);
+            int dot = n.Length - 4;
+            if (dot > 0 && n[dot] == '.' && char.IsDigit(n[dot + 1]) && char.IsDigit(n[dot + 2]) && char.IsDigit(n[dot + 3])) n = n.Substring(0, dot);
+            return n;
+        }
+
+        /// <summary>
+        /// Pasa cada material del modelo a Nindo/CharacterLit (rim frío de noche, emisión para el filo 'Glint')
+        /// aplicando los ajustes por nombre de NindoContent (MaterialSwap) y registra los slots en CharacterGlint.
+        /// Cacheado por (material, personaje): todas las instancias comparten materiales (SRP Batcher).
+        /// </summary>
+        static void ConvertMaterials(GameObject inst, NindoContent.CharacterEntry entry, CharacterGlint glint)
+        {
+            var shader = LitShader;
+            foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!(r is SkinnedMeshRenderer || r is MeshRenderer)) continue;
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    string name = MaterialBaseName(mats[i].name);
+                    if (shader != null) { mats[i] = ToCharacterLit(mats[i], name, entry, shader); changed = true; }
+                    glint.Register(r, i, name, mats[i]);
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
+
+        static Material ToCharacterLit(Material src, string name, NindoContent.CharacterEntry entry, Shader shader)
+        {
+            if (litCache.TryGetValue((src, entry), out var m)) return m;
+            var swap = entry?.Swap(name);
+            Color c = src.HasProperty("_BaseColor") ? src.GetColor("_BaseColor") : src.HasProperty("_Color") ? src.GetColor("_Color") : Color.white;
+            string texProp = src.HasProperty("_BaseMap") ? "_BaseMap" : src.HasProperty("_MainTex") ? "_MainTex" : null;
+            Texture tex = texProp != null ? src.GetTexture(texProp) : null;
+            Color e = src.HasProperty("_EmissionColor") && src.IsKeywordEnabled("_EMISSION") ? src.GetColor("_EmissionColor") : Color.black;
+            float smooth = DefaultSmoothness;
+            if (swap != null)
+            {
+                if (swap.color.a > 0f) c = swap.color;
+                if (swap.clearBaseMap) tex = null;
+                smooth = swap.smoothness;
+                if (swap.emission.maxColorComponent > 0f) e = swap.emission;
+            }
+            c.a = 1f; e.a = 1f;
+            m = new Material(shader) { name = name };
+            m.SetColor("_BaseColor", c);
+            if (tex != null)
+            {
+                m.SetTexture("_BaseMap", tex);
+                m.SetTextureScale("_BaseMap", src.GetTextureScale(texProp));
+                m.SetTextureOffset("_BaseMap", src.GetTextureOffset(texProp));
+            }
+            m.SetFloat("_Smoothness", smooth);
+            m.SetColor("_EmissionColor", e);
+            litCache[(src, entry)] = m;
+            return m;
+        }
+
+        /// <summary>
+        /// La bandana de Kaito: hasta que la recibe (prólogo) su slot toma el color del pelo y se lee como
+        /// pelo; al atársele sola (StoryDirector.BandanaAwakening) vuelve su amarillo con un destello.
+        /// </summary>
+        public static void SetBandana(Transform model, bool visible, bool flash)
+        {
+            var g = model != null ? model.GetComponentInChildren<CharacterGlint>() : null;
+            if (g == null) return;
+            if (visible) g.SetSlotColor(BandanaSlot, null);
+            else if (g.TryGetSlotColor(HairSlot, out var hair)) g.SetSlotColor(BandanaSlot, hair);
+            if (flash) g.Pulse(BandanaSlot, new Color(3.2f, 2.3f, 0.6f), 1.6f);
+        }
 
         /// <summary>Piso de brillo (canal más alto, sRGB) del color base de los personajes. Los trajes del
         /// equipo usan negro puro o casi (Negro = 0,0,0; GrisOscuro = 0.04): de noche no reciben luz y desde
@@ -91,14 +192,8 @@ namespace Nindo
             animator.applyRootMotion = false;
             if (animator.GetComponent<AnimationEventSink>() == null) animator.gameObject.AddComponent<AnimationEventSink>();
 
-            if (entry != null && entry.materialOverrides != null && entry.materialOverrides.Length > 0)
-                foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
-                {
-                    var mats = r.sharedMaterials;
-                    for (int i = 0; i < mats.Length && i < entry.materialOverrides.Length; i++)
-                        if (entry.materialOverrides[i] != null) mats[i] = entry.materialOverrides[i];
-                    r.sharedMaterials = mats;
-                }
+            // antes que LiftBlacks y que HitFlash/KatanaRig miren los renderers: todos ven ya los materiales finales
+            ConvertMaterials(inst, entry, inst.AddComponent<CharacterGlint>());
             LiftBlacks(inst);
 
             float targetHeight = (entry != null ? entry.height : 1.6f) * scaleMul;
@@ -196,6 +291,7 @@ namespace Nindo
             cc.radius = 0.35f; cc.height = 1.45f; cc.center = new Vector3(0, 0.75f, 0);
             cc.stepOffset = 0.4f; cc.slopeLimit = 50f; cc.skinWidth = 0.04f; cc.minMoveDistance = 0f;
             var anim = BuildModel("kaito", root.transform);
+            if (anim != null) SetBandana(anim.transform, Game.Save != null && Game.Save.HasFlag(Flags.KatanaObtained), false);
             if (layer >= 0) foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
             var pc = root.AddComponent<PlayerController>();
             pc.animator = anim;

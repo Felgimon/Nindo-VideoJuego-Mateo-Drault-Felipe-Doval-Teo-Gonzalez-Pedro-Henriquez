@@ -3,62 +3,7 @@ guid: dbac39bfe9be5fd41a31f29a324081f6
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: ArmaduraMiniJefe
-    second: {fileID: 2100000, guid: fc7c44167ac4b4845be539a039c6b1d0, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: BocaMiniJefe
-    second: {fileID: 2100000, guid: b7c96dc07856ad64cb0773cbd536d7b3, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: CuerdaMiniJefe
-    second: {fileID: 2100000, guid: e787584deee0eb04ba6d02537a122edf, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: CueroMiniJefe
-    second: {fileID: 2100000, guid: 224387bcb227bc64d85cc283fcd2dc9b, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: MartilloMiniJefe
-    second: {fileID: 2100000, guid: 46a6db7dab49f8441a38f6a7ecd834d2, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: NegroMiniJefe
-    second: {fileID: 2100000, guid: 1d8cd336e7e0c5942887568412ca57c8, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: PielMiniJefe
-    second: {fileID: 2100000, guid: 71789a1faa4880f46ba9f3ef5807b6b9, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: RojoOjosMiniJefe
-    second: {fileID: 2100000, guid: 752f6f2b37fb4bc45ab55d7fa857d7da, type: 2}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: fabric_leather_01_diff_4k
-    second: {fileID: 2800000, guid: bcfd925204f064b4aa148299e6552690, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: plastered_stone_wall_diff_4k
-    second: {fileID: 2800000, guid: 5354b5b590d21cf4ba08b7f8a89b4cd6, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: rock_boulder_dry_diff_4k
-    second: {fileID: 2800000, guid: 104a14ff614849245896336e19eefcbc, type: 3}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -694,6 +694,36 @@ def yaml_entries_audio(entries):
     return ("\n" + out) if out else " []\n"
 
 
+# Ajustes por nombre de material de los personajes del equipo al pasar a Nindo/CharacterLit
+# (CharacterFactory.ToCharacterLit). Los colores ya vienen planos en los FBX (Tools/Blender/characters/export_*.py):
+# acá va lo que el FBX no lleva bien: brillo del acero, emisión de ojos y la limpieza de texturas viejas.
+# material: (smoothness, emisión HDR (r, g, b) o None, quitar textura base)
+CHAR_SWAPS = {
+    "kaito": {"Metal": (0.6, None, False), "Glint": (0.7, None, False), "Dorado": (0.45, None, False),
+              "OjoBrillo": (0.3, (0.6, 0.6, 0.6), False),
+              # la bandana brilla apenas por sí sola: es mágica y es lo que identifica a Kaito de noche
+              "AmarilloBandana": (0.25, (0.3, 0.2, 0.03), False)},
+    "ninja": {"Metal": (0.6, None, False), "Glint": (0.7, None, False), "Plateado": (0.45, None, False),
+              "OjosNinja": (0.3, (0.3, 0.36, 0.46), False)},
+    "sumo": {"Pelo": (0.4, None, False), "Pollera": (0.15, None, True)},
+    "goro": {"RojoOjosMiniJefe": (0.3, (4.0, 0.55, 0.3), False), "Glint": (0.4, None, False), "OroMiniJefe": (0.5, None, False),
+             "ArmaduraMiniJefe": (0.1, None, True), "CueroMiniJefe": (0.15, None, True), "MartilloMiniJefe": (0.1, None, True)},
+}
+
+
+def material_swaps(cid):
+    rows = ""
+    for mat, (smooth, emi, clear) in CHAR_SWAPS.get(cid, {}).items():
+        e = emi or (0, 0, 0)
+        rows += f"""
+    - material: {mat}
+      color: {{r: 1, g: 1, b: 1, a: 0}}
+      smoothness: {smooth}
+      emission: {{r: {e[0]}, g: {e[1]}, b: {e[2]}, a: 1}}
+      clearBaseMap: {1 if clear else 0}"""
+    return rows or " []"
+
+
 def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
     os.makedirs(P_RES, exist_ok=True)
     path = os.path.join(P_RES, "NindoContent.asset")
@@ -726,7 +756,7 @@ def content_asset(mats, ctrls, props, zones, manifest, sprites, fonts_g, audio):
     controller: {ref(cg, 9100000, 2)}
     height: {h}
     modelYaw: {yaw}
-    materialOverrides: []
+    materialSwaps:{material_swaps(cid)}
     stateNames:{names}
     stateLengths:{secs}""")
         return "\n".join(rows)
