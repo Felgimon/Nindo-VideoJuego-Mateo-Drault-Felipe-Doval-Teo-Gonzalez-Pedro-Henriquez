@@ -237,6 +237,9 @@ namespace Nindo
         public bool Ready => ready;
         /// <summary>Dónde está la mano derecha (la de la sal) en este frame.</summary>
         public Vector3 HandR => ready ? armR.end.position : transform.position;
+        /// <summary>Cuánto brillan ahora las manos/el pie del golpe (0..1): lo demás que brilla en el cuerpo (la tsuna
+        /// del Ōzeki) se apaga mientras tanto para no competir con el aviso.</summary>
+        public float GlowK { get; private set; }
 
         /// <summary>
         /// Una pose fuera de un golpe (sin daño ni aviso): carga 'windup' segundos, suelta en ~0.1 s y vuelve.
@@ -505,6 +508,7 @@ namespace Nindo
             Color c = (danger ? TellStyle.Crimson : TellStyle.Gold) * Mathf.Lerp(1.2f, 3.5f, k * k);
             Glow(ref glowA, ref glowRA, a, c, k);
             Glow(ref glowB, ref glowRB, b, c, k);
+            GlowK = a != null || b != null ? Mathf.Lerp(0.6f, 1f, k) : 0f;
         }
 
         void Glow(ref Transform g, ref MeshRenderer r, Transform at, Color c, float k)
@@ -550,6 +554,7 @@ namespace Nindo
         {
             if (glowRA != null) glowRA.enabled = false;
             if (glowRB != null) glowRB.enabled = false;
+            GlowK = 0f;
         }
     }
 }

@@ -265,11 +265,13 @@ namespace Nindo
             var harpoon = Hit("Attack3", 16, 0.5f, 0.7f, range: 3.2f, kind: AttackKind.Heavy, lunge: 2.4f, kb: 1.2f, apex: NinjaApex3);
             harpoon.windup = 0.75f; harpoon.name = "Arpón";
             Remove(c, "Estocada");
+            // alcance real: 3.2 + 2.4 de embestida + el radio de Kaito = 5.95 m; arranca a 5.5 como mucho (si no, el
+            // anillo se cerraba sobre un golpe que no llegaba y enseñaba un parry falso)
             Add(c, new AttackPattern { name = "Marea", steps = new[] { a1, whirl }, weight = 1.6f, maxRange = 2.8f },
-                   new AttackPattern { name = "Arpón", steps = new[] { harpoon }, weight = 1.2f, minRange = 2.8f, maxRange = 6f, cooldown = 4f });
+                   new AttackPattern { name = "Arpón", steps = new[] { harpoon }, weight = 1.2f, minRange = 2.8f, maxRange = 5.5f, cooldown = 4f });
         }
 
-        /// <summary>Ninja del bambú: acrobático; entra de un salto desde 4-7 m y después de un combo se repliega.</summary>
+        /// <summary>Ninja del bambú: acrobático; entra de un salto desde 4-6.5 m y después de un combo se repliega.</summary>
         public static void NinjaBambooMoves(EnemyConfig c)
         {
             var a1 = Hit("Attack1", 12, 0.6f, 0.78f, telegraph: 0.12f, apex: NinjaApex1);
@@ -281,7 +283,9 @@ namespace Nindo
             var hop = Hit("Spotted", 0, 0.15f, 0.6f, lunge: 0f, telegraph: 0.12f);
             hop.special = "hop_back"; hop.specialParam = 3f; hop.name = "Repliegue";
             Remove(c, "Estocada");
-            Add(c, new AttackPattern { name = "Salto", steps = new[] { leap }, weight = 1.5f, minRange = 3.8f, maxRange = 7.5f, cooldown = 3.5f },
+            // alcance real del salto: 2.4 + 4.4 + 0.35 = 7.15 m. El patrón se elige el primer frame que entra en rango
+            // (corriendo hacia Kaito arranca casi siempre en el borde): a 6.6 queda medio metro de margen
+            Add(c, new AttackPattern { name = "Salto", steps = new[] { leap }, weight = 1.5f, minRange = 3.8f, maxRange = 6.6f, cooldown = 3.5f },
                    new AttackPattern { name = "Golpe y repliegue", steps = new[] { a1, a2, hop }, weight = 1.6f, maxRange = 2.8f });
         }
 

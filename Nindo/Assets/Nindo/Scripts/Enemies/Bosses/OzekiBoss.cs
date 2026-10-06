@@ -15,7 +15,7 @@ namespace Nindo
     ///    Se esquiva con dash cuando la onda llega (el anillo se cierra con ella) o corriendo afuera del disco.
     ///  * TACHIAI (rojo): agachado con los puños en el piso y sale disparado. El bambú joven del claro lo frena:
     ///    si Kaito se pone detrás de una mata, el Ōzeki la rompe, tropieza y queda abierto.
-    ///  * Fase 2 (50 %): pisa el shiko, la tsuna se enciende en oro y tira SAL al aire (el ritual de purificar el
+    ///  * Fase 2 (50 %): pisa el shiko, la tsuna se enciende en blanco y tira SAL al aire (el ritual de purificar el
     ///    dohyō): no pega y queda abierto un momento. Después repite la sal cada tanto como respiro.
     /// Todo pasa por la línea de tiempo del paso (el anillo nunca miente) y las poses salen de SumoPoser.
     /// </summary>
@@ -38,9 +38,13 @@ namespace Nindo
         // ---------------------------------------------------------------- onda del shiko
         bool waveLive, waveHit, waveOwnedByStep;
         Vector3 waveCenter;
-        float waveR, waveMax;
+        float waveR, waveMax, kPrev;   // kPrev: distancia de Kaito al centro el frame anterior (para el cruce)
         AttackDef waveAttack;
         ShockRing ring;
+
+        // ---------------------------------------------------------------- agarre (carril fijo desde la suelta)
+        bool grabFixed;
+        Vector3 grabO, grabD;
 
         // ---------------------------------------------------------------- tachiai
         bool laneFixed, crashed;
@@ -54,6 +58,7 @@ namespace Nindo
         float tsunaW, tsunaTarget;
         readonly Vector3[] tsunaPts = new Vector3[28];
         static Material tsunaMat;
+        static readonly Color TsunaColor = new Color(1f, 0.94f, 0.82f);
 
         // ---------------------------------------------------------------- bambú joven del claro
         class Stalk
@@ -89,7 +94,7 @@ namespace Nindo
         {
             base.ResetEnemy();
             seenPhase = 0;
-            introBeat = stompPending = forceSalt = saltOpen = crashOpen = crashToasted = false;
+            introBeat = stompPending = forceSalt = saltOpen = crashOpen = crashToasted = saltPause = false;
             waveLive = waveHit = false;
             laneFixed = crashed = false;
             if (ring != null) ring.Hide();
@@ -124,7 +129,7 @@ namespace Nindo
                 if (ring != null) ring.Hide();
                 tsunaTarget = 1f;
                 forceSalt = true;
-                Game.FX?.Shockwave(transform.position, 4f, TellStyle.Gold);
+                Game.FX?.Shockwave(transform.position, 4f, TsunaColor);
                 Game.UI?.ShowToast(StoryText.OzekiLine("fase2"), UIFactory.Crimson, 2.4f);
                 if (poser != null) { poser.PlayBeat("Shiko I", 0.5f); stompPending = true; }
             }
@@ -165,7 +170,7 @@ namespace Nindo
         protected override void OnStepStarted(AttackDef a)
         {
             base.OnStepStarted(a);
-            laneFixed = crashed = false;
+            laneFixed = crashed = grabFixed = false;
             crashStalk = -1;
             if (a.special == "shiko")
             {
@@ -201,21 +206,22 @@ namespace Nindo
             }
         }
 
-        /// <summary>Cuándo llega la onda a Kaito: lo que falta para el pisotón más el viaje desde el borde del cuerpo
-        /// (infinito si Kaito está afuera del disco o la onda ya pasó).</summary>
+        /// <summary>Cuándo llega la onda a Kaito: lo que falta para el pisotón más el viaje desde el borde del cuerpo.
+        /// Antes del pisotón nunca es infinito (afuera del disco cuenta hasta el borde: puede volver a entrar); después,
+        /// infinito si Kaito quedó afuera del disco o la onda ya se resolvió. Si Kaito cruzó el frente por su cuenta
+        /// este frame da 0: el cruce lo resuelve TickWave (no se puede cortar el aviso antes de ver si pegó).</summary>
         float ShikoEta(AttackDef a)
         {
             if (target == null || stepHit) return float.PositiveInfinity;
             if (!specialFired)
             {
-                float d = CombatMath.FlatDistance(target.transform.position, transform.position);
-                if (d > a.specialParam) return float.PositiveInfinity;
+                float d = Mathf.Min(CombatMath.FlatDistance(target.transform.position, transform.position), a.specialParam);
                 return Mathf.Max(0f, tl.T - stepClock) + Mathf.Max(0f, d - WaveStart) / WaveSpeed;
             }
             if (!waveLive || waveHit || !waveOwnedByStep) return float.PositiveInfinity;
             float dw = CombatMath.FlatDistance(target.transform.position, waveCenter);
-            if (dw < waveR || dw > waveMax) return float.PositiveInfinity;
-            return (dw - waveR) / WaveSpeed;
+            if (dw > waveMax) return float.PositiveInfinity;
+            return Mathf.Max(0f, dw - waveR) / WaveSpeed;
         }
 
         float TachiaiEta(AttackDef a)
@@ -250,14 +256,18 @@ namespace Nindo
                     return true;
                 }
                 case "grab":
-                    area = new TellArea { lane = true, origin = transform.position, forward = transform.forward.Flat().normalized,
-                                          size = GrabReach(a), width = 3.2f };
+                    // desde la suelta el carril queda donde se soltó (el empujón del agarre no lo arrastra): lo que se
+                    // dibuja es exactamente lo que agarra
+                    area = new TellArea { lane = true, origin = grabFixed ? grabO : transform.position,
+                                          forward = grabFixed ? grabD : transform.forward.Flat().normalized,
+                                          size = GrabReach(a), width = GrabWidth };
                     return true;
                 default: return base.HitAreaFor(a, out area);
             }
         }
 
         float GrabReach(AttackDef a) => a.range * Mathf.Max(1f, config.scale * 0.85f) + a.lunge;
+        const float GrabWidth = 3.2f;
 
         protected override void TickSpecial(AttackDef a, float dt)
         {
@@ -269,9 +279,14 @@ namespace Nindo
                         specialFired = true;
                         Stomp(a, true);
                     }
-                    // la onda no lo va a alcanzar (pasó, o Kaito salió del disco corriendo): el aviso se deshace, no
-                    // destella como un golpe que salió
-                    if (!waveHit && float.IsInfinity(ShikoEta(a))) EndTell(TellOutcome.Cancelled);
+                    // la onda ya no lo va a alcanzar (Kaito quedó afuera del disco, o corrió más rápido que el frente
+                    // hasta el borde): el aviso se deshace sin destello y la onda queda desarmada. Sin aviso no hay
+                    // golpe: si vuelve a entrar mientras el frente se sigue abriendo, no le pega
+                    if (specialFired && !waveHit && float.IsInfinity(ShikoEta(a)))
+                    {
+                        EndTell(TellOutcome.Cancelled);
+                        waveHit = true;
+                    }
                     break;
 
                 case "tachiai":
@@ -279,8 +294,16 @@ namespace Nindo
                     break;
 
                 case "grab":
+                    if (!grabFixed && stepClock >= tl.ReleaseTime)
+                    {
+                        grabFixed = true;
+                        grabO = transform.position;
+                        grabD = transform.forward.Flat().normalized;
+                    }
+                    // agarra con la misma forma que dibuja el carril rojo (un arco de 100° llegaba casi 3 m de costado,
+                    // afuera del carril: el tachiai enseña a salir de costado y esto lo desmentía)
                     if (!stepHit && stepNorm >= a.activeStart && stepNorm <= a.activeEnd && target != null
-                        && CombatMath.InArc(transform, target.transform.position, a.range * Mathf.Max(1f, config.scale * 0.85f), a.arc, target.Radius)
+                        && HitAreaFor(a, out var grabArea) && grabArea.Contains(target.transform.position, target.Radius * 0.5f)
                         && Mathf.Abs(target.transform.position.y - transform.position.y) < 2.5f)
                     {
                         stepHit = true;
@@ -315,6 +338,7 @@ namespace Nindo
             if (!damaging) return;
             waveLive = true; waveHit = false; waveOwnedByStep = true;
             waveCenter = c; waveR = 0f; waveMax = a.specialParam; waveAttack = a;
+            kPrev = target != null ? CombatMath.FlatDistance(target.transform.position, c) : float.PositiveInfinity;
             if (ring == null) ring = ShockRing.Create();
             ring.Show(c);
         }
@@ -327,14 +351,18 @@ namespace Nindo
             waveR = prev <= 0f ? WaveStart : Mathf.Min(waveMax, waveR + WaveSpeed * dt);
             if (!waveHit && target != null && target.IsAlive && IsAlive)
             {
-                // un solo golpe por onda, en el instante en que el frente cruza a Kaito (como un golpe normal: el dash
-                // en el cierre del anillo lo cubre); si se dio vuelta corriendo más rápido que la onda, la cuenta sigue
+                // un solo golpe por onda, en el frame en que Kaito pasa de afuera a adentro del frente (como un golpe
+                // normal: el dash en el cierre del anillo lo cubre). Se compara contra dónde estaba él el frame
+                // anterior: corriendo hacia el Ōzeki se acerca 13 m/s al frente y salteaba la franja de un frame la
+                // mitad de las veces. Si corre hacia afuera más rápido que la onda, la cuenta sigue.
+                // Solo pega con su aviso vivo: un rugido, un cambio de paso o un aviso cortado la desarman
                 float d = CombatMath.FlatDistance(target.transform.position, waveCenter);
-                if (d > prev && d <= waveR)
+                if ((prev <= 0f || kPrev > prev) && d <= waveR)
                 {
                     waveHit = true;
-                    HitPlayer(waveAttack, waveCenter);
+                    if (waveOwnedByStep && InTell) HitPlayer(waveAttack, waveCenter);
                 }
+                kPrev = d;
             }
             if (ring != null) ring.Tick(waveR, waveMax);
             if (waveR >= waveMax - 1e-3f)
@@ -363,7 +391,12 @@ namespace Nindo
                 Game.FX?.DustTrail(transform.position);
             }
             // se corrió del carril, ya pasó de largo o se escondió detrás del bambú: el aviso se deshace (no fue un golpe)
-            if (!stepHit && float.IsInfinity(TachiaiEta(a))) EndTell(TellOutcome.Cancelled);
+            // y la carrera sigue de largo sin poder pegar: sin aviso no hay golpe, aunque Kaito vuelva a meterse adelante
+            if (!stepHit && float.IsInfinity(TachiaiEta(a)))
+            {
+                EndTell(TellOutcome.Cancelled);
+                stepHit = true;
+            }
         }
 
         void FixLane(AttackDef a)
@@ -467,16 +500,26 @@ namespace Nindo
         protected override void BecomeExhausted()
         {
             bool broken = Imbalance >= config.maxImbalance - 0.01f;
+            saltPause = !broken && saltOpen;
             base.BecomeExhausted();
             // la postura quebrada da la ventana entera; la sal y el choque, una corta
-            if (!broken && saltOpen) stateDuration = SaltOpenTime;
+            if (saltPause)
+            {
+                stateDuration = SaltOpenTime;
+                // después de la sal se queda parado, erguido y con la guardia baja: abierto pero no mareado (la barra de
+                // postura no está llena y no tiene que parecer que Kaito se la quebró)
+                anim.Play(config.animLocomotion, 0.2f);
+            }
             else if (!broken && crashOpen) stateDuration = CrashOpenTime;
         }
+
+        bool saltPause;
+        protected override bool ExhaustedFeedback => !saltPause;
 
         protected override void OnExhaustionEnded()
         {
             if (saltOpen) Imbalance = savedImbalance;
-            saltOpen = crashOpen = false;
+            saltOpen = crashOpen = saltPause = false;
             base.OnExhaustionEnded();
         }
 
@@ -505,13 +548,16 @@ namespace Nindo
                 tsunaPts[i] = c + (right * (Mathf.Cos(ang) * 1.44f) + fwd * (Mathf.Sin(ang) * 1.3f)) * u;
             }
             tsuna.SetPositions(tsunaPts);
-            // late lento, como un brasero: se lee encendida sin parpadear
+            // late lento, como un brasero: se lee encendida sin parpadear. Blanco papel (la soga sagrada, la sal), no
+            // dorado: el dorado es "desviá ahora" y la mano que pega se enciende a centímetros de la cintura. Mientras
+            // una mano o el pie brillan por un golpe, la soga baja casi del todo para no competir con el aviso
             float pulse = 0.85f + 0.15f * Mathf.Sin(Time.time * 4f);
-            Color g = new Color(1f, 0.72f, 0.24f) * (2.6f * pulse * tsunaW); g.a = tsunaW;
+            float quiet = 1f - 0.7f * poser.GlowK;
+            Color g = TsunaColor * (1.15f * pulse * tsunaW * quiet); g.a = tsunaW;
             tsuna.startColor = tsuna.endColor = g;
             tsuna.widthMultiplier = 0.17f * u;
             aura.transform.position = c + fwd * (1.6f * u);
-            aura.intensity = 2.2f * pulse * tsunaW;
+            aura.intensity = 1.6f * pulse * tsunaW * quiet;
             aura.range = 6f * u;
         }
 
@@ -532,7 +578,7 @@ namespace Nindo
             lg.transform.SetParent(transform, false);
             aura = lg.AddComponent<Light>();
             aura.type = LightType.Point;
-            aura.color = new Color(1f, 0.74f, 0.36f);
+            aura.color = TsunaColor;
             aura.shadows = LightShadows.None;
         }
 
@@ -558,6 +604,9 @@ namespace Nindo
                 var go = Instantiate(prefab, p, Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f), transform.parent);
                 go.name = "BambuJoven" + i;
                 go.transform.localScale = go.transform.localScale * 1.3f;
+                // como el bambú joven del mundo (WorldBuilder): se disuelve si tapa a Kaito. Acá importa más que en
+                // ningún lado: la pelea le pide esconderse detrás de una mata justo cuando viene una embestida roja
+                if (go.GetComponent<Occluder>() == null) go.AddComponent<Occluder>();
                 stalks.Add(new Stalk { t = go.transform, pos = go.transform.position, rot = go.transform.rotation, scale = go.transform.localScale });
             }
         }

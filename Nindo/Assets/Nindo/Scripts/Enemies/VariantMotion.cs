@@ -71,8 +71,8 @@ namespace Nindo
         // adornos de los golpes: la pose del modelo que dejó CharacterFactory y si este paso ya la movió
         Vector3 basePos;
         Quaternion baseRot;
-        bool moved;
-        float lastClock;
+        bool rotDirty;
+        float lastClock, curLift, curYaw;
 
         void Start()
         {
@@ -125,7 +125,7 @@ namespace Nindo
             if (watch != null && !watch.isVisible) return;
             // un hueso que el Animator no escribió este frame (cullado, sin curva) vuelve a su pose antes de sumar
             Restore(lower); Restore(upper); Restore(head); Restore(shoulderL); Restore(shoulderR);
-            Flourish();
+            Flourish(dt);
             if (weight <= 0.001f) return;
 
             var root = enemy.transform;
@@ -162,19 +162,40 @@ namespace Nindo
         }
 
         /// <summary>Los golpes de zona en el cuerpo entero (sin clips nuevos), atados a Enemy.Timeline.</summary>
-        void Flourish()
+        void Flourish(float dt)
         {
             var a = enemy.IsAlive && enemy.State == EnemyState.Attack ? enemy.CurrentAttack : null;
-            if (a == null)
+            if (a == null || !FlourishPose(a, out float lift, out float yaw))
             {
-                if (moved) { transform.localPosition = basePos; transform.localRotation = baseRot; moved = false; }
+                // cortado en el aire o a mitad del giro (parry, aturdido, muerte): cae y endereza en un instante, no
+                // en un frame. Muerto, el giro es de Enemy.DeathRoutine (lo voltea desde donde quedó): solo baja
+                curLift = Mathf.MoveTowards(curLift, 0f, dt * 4f);
+                if (!enemy.IsAlive) curYaw = 0f;
+                else curYaw = Mathf.MoveTowardsAngle(curYaw, 0f, dt * 720f);
+                if (curLift > 0f || rotDirty) Write(enemy.IsAlive);
                 return;
             }
+            curLift = lift; curYaw = yaw;
+            Write(true);
+        }
+
+        void Write(bool rotation)
+        {
+            transform.localPosition = basePos + Vector3.up * (curLift / Mathf.Max(0.01f, transform.parent != null ? transform.parent.lossyScale.y : 1f));
+            if (!rotation) return;
+            transform.localRotation = baseRot * Quaternion.Euler(0f, curYaw, 0f);
+            rotDirty = Mathf.Abs(Mathf.DeltaAngle(curYaw, 0f)) > 0.01f;
+        }
+
+        /// <summary>Altura y giro del cuerpo entero para el paso en curso (false si este golpe no tiene adorno que mueva
+        /// el modelo; los efectos del instante del golpe salen igual).</summary>
+        bool FlourishPose(AttackDef a, out float lift, out float yaw)
+        {
             var tl = enemy.Timeline;
             float t = enemy.StepClock, T = tl.T;
             bool struck = lastClock < T && t >= T;
             lastClock = t;
-            float lift = 0f, yaw = 0f;
+            lift = 0f; yaw = 0f;
             switch (a.name)
             {
                 case "Salto":
@@ -219,12 +240,7 @@ namespace Nindo
                     if (struck && flavor == MotionFlavor.Mountain) Game.FX?.SmokePuff(enemy.transform.position + enemy.transform.forward * 1.3f, 2.2f);
                     break;
             }
-            if (lift > 0.001f || Mathf.Abs(yaw) > 0.01f || moved)
-            {
-                transform.localPosition = basePos + Vector3.up * (lift / Mathf.Max(0.01f, transform.parent != null ? transform.parent.lossyScale.y : 1f));
-                transform.localRotation = baseRot * Quaternion.Euler(0f, yaw, 0f);
-                moved = lift > 0.001f || Mathf.Abs(yaw) > 0.01f;
-            }
+            return lift > 0.001f || Mathf.Abs(yaw) > 0.01f;
         }
 
         static void Restore(Bone b)

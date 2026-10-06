@@ -111,7 +111,7 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
   más lentos y pesados, el ninja cierra un combo con un tajo de arriba **imparable**; el sumo pisa
   un shiko imparable que levanta nieve. Lago: el ninja gira un remolino de 360° y tira el arpón
   desde lejos; el sumo empuja a dos manos y te saca lejos. Bambú: el ninja entra de un salto
-  desde 4-7 m y se repliega después del combo; el sumo se corre de costado y embiste.
+  desde 4-6.5 m y se repliega después del combo; el sumo se corre de costado y embiste.
 * **Sumos**: sus clips casi no se mueven desde arriba, así que cada golpe lleva una pose
   procedural atada al aviso (`Enemies/SumoPoser`): la mano atrás antes de la bofetada, la
   pierna arriba en el shiko, agachado con los puños en el piso antes de embestir.

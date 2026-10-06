@@ -660,7 +660,13 @@ namespace Nindo
             if (State != EnemyState.Attack) return;   // lo desviaron (Recoil) o cambió de fase
             // el golpe ya salió (pegó o no): el aviso termina. Una embestida que no lo tocó (Kaito salió del carril
             // o ya pasó de largo) se deshace como cortada: se corrió a tiempo
-            if (tellActive && float.IsInfinity(ComputeStrikeEta(a))) EndTell(a.special == "charge" && !stepHit ? TellOutcome.Cancelled : TellOutcome.Struck);
+            if (tellActive && float.IsInfinity(ComputeStrikeEta(a)))
+            {
+                bool dodged = a.special == "charge" && !stepHit;
+                // sin aviso no hay golpe: la carrera sigue de largo pero ya no pega si Kaito vuelve a meterse en el carril
+                if (dodged) stepHit = true;
+                EndTell(dodged ? TellOutcome.Cancelled : TellOutcome.Struck);
+            }
 
             if (stepNorm > a.activeEnd + 0.05f) trail?.Stop();
             if (stepNorm >= 1f) NextStep();
@@ -946,10 +952,15 @@ namespace Nindo
             exhaustedHits = 0;
             SetState(EnemyState.Exhausted);
             stateDuration = config.exhaustedTime;
+            if (!ExhaustedFeedback) return;
             anim.Play(config.animExhausted, 0.12f);
             Game.FX?.Exhausted(this);
             Game.Audio?.Play("exhausted", transform.position, 0.8f);
         }
+
+        /// <summary>¿Este agotamiento se muestra como postura quebrada (clip mareado, chispas, sonido)? Una pausa que el
+        /// jefe se da solo (el ritual de la sal del Ōzeki) queda abierta sin mentir que Kaito le quebró la guardia.</summary>
+        protected virtual bool ExhaustedFeedback => true;
 
         void TickExhausted(float dt)
         {

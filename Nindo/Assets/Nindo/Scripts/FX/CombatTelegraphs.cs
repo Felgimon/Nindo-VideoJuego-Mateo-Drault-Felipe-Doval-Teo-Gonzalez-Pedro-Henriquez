@@ -95,8 +95,9 @@ namespace Nindo
             if (e != null && drawing.TryGetValue(e, out var t)) Finish(t, outcome);
         }
 
-        /// <summary>¿Se dibuja el aviso de este golpe? (Opciones; el prólogo enseña con el anillo, siempre se ve)</summary>
-        static bool Shown(Enemy e)
+        /// <summary>¿Se dibuja el aviso de este golpe? (Opciones; el prólogo enseña con el anillo, siempre se ve).
+        /// También lo consulta la marca fuera de cuadro (ThreatIndicators): su ensō chico es el mismo aviso.</summary>
+        public static bool Shown(Enemy e)
         {
             if (e.InParryPractice) return true;
             return e.StepKind == AttackKind.Unblockable ? Settings.ShowUnblockableAids : Settings.ShowParryAids;
