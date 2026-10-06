@@ -404,7 +404,7 @@ namespace Nindo
         {
             if (!parryWatching) return;
             parryLanded = true;
-            Game.UI.ShowToast(perfect ? "¡Parry perfecto!" : "¡Parry!", UIFactory.Gold);
+            Game.UI.ShowCallout(perfect ? "¡Parry perfecto!" : "¡Parry!", UIFactory.Gold);
         }
 
         // ================================================================== triggers del mapa
@@ -558,7 +558,7 @@ namespace Nindo
         IEnumerator SealRoutine(SealId seal)
         {
             string id = seal == SealId.Montana ? "seal_mountain" : seal == SealId.Lago ? "seal_lake" : "seal_bamboo";
-            Game.UI.ShowToast($"Sello obtenido ({Game.Save.SealCount}/3)", UIFactory.Gold, 2.5f);
+            Game.UI.ShowSealObtained(seal);
             P.RestoreAll();
             yield return new WaitForSecondsRealtime(0.6f);
             yield return Say(id);

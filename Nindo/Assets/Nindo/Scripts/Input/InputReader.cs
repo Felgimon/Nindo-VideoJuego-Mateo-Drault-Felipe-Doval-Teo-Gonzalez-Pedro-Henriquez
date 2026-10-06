@@ -236,38 +236,95 @@ namespace Nindo
         }
 
         // ---------------------------------------------------------------- glyphs
-        public string Glyph(Act a)
+        /// <summary>Familia de botones que se muestra: 0 teclado y mouse, 1 mando Xbox / genérico, 2 PlayStation.</summary>
+        public int GlyphFamily { get; private set; }
+        /// <summary>Cambia cada vez que cambia la familia (los textos con teclas se rehacen al verlo distinto).</summary>
+        public int GlyphVersion { get; private set; }
+
+        void LateUpdate()
         {
+            int fam = 0;
+#if ENABLE_INPUT_SYSTEM
             if (UsingGamepad)
             {
+                // por el layout (DualShock4GamepadHID, DualSenseGamepadHID...): sin depender del plugin de Sony
+                string layout = Gamepad.current != null ? Gamepad.current.layout : "";
+                fam = layout.Contains("DualShock") || layout.Contains("DualSense") ? 2 : 1;
+            }
+#endif
+            if (fam != GlyphFamily) { GlyphFamily = fam; GlyphVersion++; }
+        }
+
+        /// <summary>
+        /// Símbolo de la acción en el dispositivo que se está usando. Uno solo: antes salía "□ / X" para
+        /// cualquier mando (mezclaba PlayStation y Xbox) y "Click izq. / J" en teclado. La UI lo dibuja como
+        /// tecla (UIFactory.KeyCap / RichKeys): □ ○ △ × en los de PlayStation, A B X Y en los demás.
+        /// </summary>
+        public string Glyph(Act a)
+        {
+            if (GlyphFamily == 2)
                 switch (a)
                 {
-                    case Act.Attack: return "□ / X";
-                    case Act.Parry: return "L1 / LB";
-                    case Act.Dash: return "○ / B";
+                    case Act.Attack: return "□";
+                    case Act.Parry: return "L1";
+                    case Act.Dash: return "○";
                     case Act.Lock: return "R3";
-                    case Act.Finisher: return "△ / Y";
-                    case Act.Interact: return "△ / Y";
-                    case Act.Ability1: return "R2 / RT";
-                    case Act.Ability2: return "L2 / LT";
-                    case Act.Pause: return "Start";
-                    case Act.LockNext: return "Stick der.";
-                    default: return a.ToString();
+                    case Act.Finisher: case Act.Interact: return "△";
+                    case Act.Ability1: return "R2";
+                    case Act.Ability2: return "L2";
+                    case Act.Pause: return "Options";
+                    case Act.LockNext: case Act.LockPrev: return "Stick der.";
+                    case Act.Submit: return "×";
+                    case Act.Cancel: return "○";
                 }
-            }
+            else if (GlyphFamily == 1)
+                switch (a)
+                {
+                    case Act.Attack: return "X";
+                    case Act.Parry: return "LB";
+                    case Act.Dash: return "B";
+                    case Act.Lock: return "RS";
+                    case Act.Finisher: case Act.Interact: return "Y";
+                    case Act.Ability1: return "RT";
+                    case Act.Ability2: return "LT";
+                    case Act.Pause: return "Menu";
+                    case Act.LockNext: case Act.LockPrev: return "Stick der.";
+                    case Act.Submit: return "A";
+                    case Act.Cancel: return "B";
+                }
+            else
+                switch (a)
+                {
+                    case Act.Attack: return "Clic izq.";
+                    case Act.Parry: return "Clic der.";
+                    case Act.Dash: return "Espacio";
+                    case Act.Lock: return "Q";
+                    case Act.Finisher: return "F";
+                    case Act.Interact: return "E";
+                    case Act.Ability1: return "1";
+                    case Act.Ability2: return "2";
+                    case Act.Pause: return "Esc";
+                    case Act.LockNext: case Act.LockPrev: return "Rueda";
+                    case Act.Submit: return "Enter";
+                    case Act.Cancel: return "Esc";
+                }
+            return a.ToString();
+        }
+
+        /// <summary>Segunda tecla de la misma acción, si hay (la tarjeta de controles de la pausa muestra las dos).</summary>
+        public string GlyphAlt(Act a)
+        {
+            if (GlyphFamily == 2) return a == Act.Attack ? "R1" : a == Act.Dash ? "×" : null;
+            if (GlyphFamily == 1) return a == Act.Attack ? "RB" : a == Act.Dash ? "A" : null;
             switch (a)
             {
-                case Act.Attack: return "Click izq. / J";
-                case Act.Parry: return "Click der. / K";
-                case Act.Dash: return "Espacio";
-                case Act.Lock: return "Q";
-                case Act.Finisher: return "F";
-                case Act.Interact: return "E";
-                case Act.Ability1: return "1";
-                case Act.Ability2: return "2";
-                case Act.Pause: return "Esc";
-                case Act.LockNext: return "Rueda";
-                default: return a.ToString();
+                case Act.Attack: return "J";
+                case Act.Parry: return "K";
+                case Act.Dash: return "Shift";
+                case Act.Lock: return "Tab";
+                case Act.Ability1: return "U";
+                case Act.Ability2: return "I";
+                default: return null;
             }
         }
     }

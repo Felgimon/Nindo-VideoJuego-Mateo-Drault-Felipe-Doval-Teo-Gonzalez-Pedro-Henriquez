@@ -90,6 +90,14 @@ namespace Nindo
         public static bool SlowMotionEnabled { get => PlayerPrefs.GetInt("nindo.slowmo", 1) == 1; set => PlayerPrefs.SetInt("nindo.slowmo", value ? 1 : 0); }
         public static bool Rumble { get => PlayerPrefs.GetInt("nindo.rumble", 1) == 1; set => PlayerPrefs.SetInt("nindo.rumble", value ? 1 : 0); }
         public static int Quality { get => PlayerPrefs.GetInt("nindo.quality", -1); set => PlayerPrefs.SetInt("nindo.quality", value); }
+        /// <summary>
+        /// Avisos de combate (Opciones): 2 = completos, 1 = solo los imparables, 0 = ninguno. Para quien ya
+        /// lee los golpes y quiere la pantalla limpia. Lo consultan los avisos (ensō, marcas sobre los enemigos)
+        /// con <see cref="ShowParryAids"/> / <see cref="ShowUnblockableAids"/>.
+        /// </summary>
+        public static int CombatAids { get => Mathf.Clamp(PlayerPrefs.GetInt("nindo.aids", 2), 0, 2); set => PlayerPrefs.SetInt("nindo.aids", Mathf.Clamp(value, 0, 2)); }
+        public static bool ShowParryAids => CombatAids >= 2;
+        public static bool ShowUnblockableAids => CombatAids >= 1;
         public static bool Fullscreen { get => Screen.fullScreen; set => Screen.fullScreen = value; }
         public static void Save() => PlayerPrefs.Save();
     }

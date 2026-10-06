@@ -339,7 +339,7 @@ namespace Nindo
         {
             if (Spirit + 0.01f < cost)
             {
-                Game.UI?.DenySpirit();
+                Game.UI?.DenySpirit(cost);
                 Game.Audio?.Play("denied", null, 0.5f);
                 return false;
             }
@@ -382,7 +382,7 @@ namespace Nindo
             Game.Camera?.Punch(-5f, 0.35f);
             Game.Camera?.Shake(0.45f);
             Game.Time?.SlowMotion(0.35f, 0.45f, 0.02f, 0.3f);
-            Game.UI?.ShowToast("¡FILO DE IRA!", new Color(1f, 0.45f, 0.2f));
+            Game.UI?.ShowCallout("¡FILO DE IRA!", new Color(1f, 0.45f, 0.2f));
             Game.Input?.Rumble(0.6f, 0.8f, 0.35f);
             anim.SetSpeed(config.rageSpeedMul);
         }

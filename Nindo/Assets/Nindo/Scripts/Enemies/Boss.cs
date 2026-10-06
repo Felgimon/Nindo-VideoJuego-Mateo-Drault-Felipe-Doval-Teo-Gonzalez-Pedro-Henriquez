@@ -148,7 +148,7 @@ namespace Nindo
             Game.Camera?.Shake(0.7f);
             Game.Camera?.Punch(-4f, 0.5f);
             Game.FX?.Shockwave(transform.position, 6f, new Color(1f, 0.4f, 0.3f));
-            Game.UI?.ShowToast($"{title} se enfurece", new Color(1f, 0.5f, 0.4f));
+            Game.UI?.BossEnraged(this);
             if (target != null && CombatMath.FlatDistance(target.transform.position, transform.position) < 5f)
                 target.Push((target.transform.position - transform.position), 3f);
             config.attackCooldown *= 0.75f;
