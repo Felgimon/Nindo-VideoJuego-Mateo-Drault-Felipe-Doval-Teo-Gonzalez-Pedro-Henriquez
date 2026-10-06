@@ -295,6 +295,7 @@ namespace Nindo
             var anim = BuildModel("kaito", root.transform);
             if (anim != null) SetBandana(anim.transform, Game.Save != null && Game.Save.HasFlag(Flags.KatanaObtained), false);
             if (layer >= 0) foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+            if (anim != null) CharacterKits.DressPlayer(anim.transform);     // colas de la bandana (antes que HitFlash)
             var pc = root.AddComponent<PlayerController>();
             pc.animator = anim;
             pc.model = anim != null ? anim.transform : null;
@@ -337,6 +338,7 @@ namespace Nindo
             root.transform.SetPositionAndRotation(pos, rot);
 
             var anim = CharacterFactory.BuildModel(CharacterFor(archetype), root.transform, cfg.scale);
+            EnemyVariants.Apply(archetype, cfg, anim, pos);     // kit de la zona (apaga el tinte si lo viste)
             if (cfg.tintStrength > 0f) CharacterFactory.Tint(anim.transform, cfg.id, cfg.tint, cfg.tintStrength, archetype.StartsWith("kage"));
             if (layer >= 0) foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
 

@@ -66,6 +66,8 @@ namespace Nindo
 
         [Header("Personajes")]
         public CharacterEntry[] characters = new CharacterEntry[0];
+        [Tooltip("Kits de accesorios por zona (Art/Characters/Kits, Tools/Blender/characters/kits): los viste CharacterKits")]
+        public PropEntry[] kits = new PropEntry[0];
 
         [Header("Mundo")]
         public GameObject[] zones = new GameObject[0];
@@ -122,12 +124,12 @@ namespace Nindo
 
         // búsquedas por clave con diccionarios (se arman la primera vez que se usan)
         System.Collections.Generic.Dictionary<string, CharacterEntry> charMap;
-        System.Collections.Generic.Dictionary<string, GameObject> propMap;
+        System.Collections.Generic.Dictionary<string, GameObject> propMap, kitMap;
         System.Collections.Generic.Dictionary<string, AudioEntry> sfxMap, musicMap, ambMap;
 
         void OnValidate() => ClearCache();
         void OnEnable() => ClearCache();
-        public void ClearCache() { charMap = null; propMap = null; sfxMap = musicMap = ambMap = null; }
+        public void ClearCache() { charMap = null; propMap = null; kitMap = null; sfxMap = musicMap = ambMap = null; }
 
         static System.Collections.Generic.Dictionary<string, T> Map<TE, T>(TE[] arr, Func<TE, string> key, Func<TE, T> val)
         {
@@ -155,6 +157,12 @@ namespace Nindo
         {
             propMap ??= Map(props, p => p.id, p => p.model);
             return id != null && propMap.TryGetValue(id, out var m) ? m : null;
+        }
+
+        public GameObject Kit(string id)
+        {
+            kitMap ??= Map(kits, k => k.id, k => k.model);
+            return id != null && kitMap.TryGetValue(id, out var m) ? m : null;
         }
 
         public AudioEntry Sfx(string key)

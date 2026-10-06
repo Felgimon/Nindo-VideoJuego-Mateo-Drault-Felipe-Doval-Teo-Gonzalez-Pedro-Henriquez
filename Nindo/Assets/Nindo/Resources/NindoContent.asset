@@ -257,6 +257,35 @@ MonoBehaviour:
     stateLengths:
     - 0.0333
     - 2.4667
+  kits:
+  - id: kaito_bandana
+    model: {fileID: 919132149155446097, guid: ca9a3f83c9c07ac24716e40606d17627, type: 3}
+  - id: ninja_bamboo
+    model: {fileID: 919132149155446097, guid: d18be71c810e8a88006bf5c69dd4cec6, type: 3}
+  - id: ninja_bamboo_elite
+    model: {fileID: 919132149155446097, guid: baf900e00beae83c175531e6a30c4435, type: 3}
+  - id: ninja_default
+    model: {fileID: 919132149155446097, guid: 0d6c51da18ce6d856adf0c58b85725a4, type: 3}
+  - id: ninja_elite
+    model: {fileID: 919132149155446097, guid: fbf828faf1aa765590246c27f6dbd8c8, type: 3}
+  - id: ninja_lake
+    model: {fileID: 919132149155446097, guid: 88261a5f3eff66e9ab5423b91a02ca0f, type: 3}
+  - id: ninja_lake_elite
+    model: {fileID: 919132149155446097, guid: a93bf1fecd8698a062eba0595f38e8bf, type: 3}
+  - id: ninja_mountain
+    model: {fileID: 919132149155446097, guid: cf8e33dda99e83cc1e7fa6271bc3e5b1, type: 3}
+  - id: ninja_mountain_elite
+    model: {fileID: 919132149155446097, guid: db283999204b2dc58a5e3a9e2ffdb2f7, type: 3}
+  - id: ozeki
+    model: {fileID: 919132149155446097, guid: bcfe96788c41f218690d6f04b20e2acf, type: 3}
+  - id: sumo_bamboo
+    model: {fileID: 919132149155446097, guid: 2fd98f4ddf04e043442a78542ff810a5, type: 3}
+  - id: sumo_default
+    model: {fileID: 919132149155446097, guid: 92dfa54f1a2c6de48b6567e9054698a3, type: 3}
+  - id: sumo_lake
+    model: {fileID: 919132149155446097, guid: 535ec01cb60a1c891926a198d2fbb94d, type: 3}
+  - id: sumo_mountain
+    model: {fileID: 919132149155446097, guid: 67922fd6ce27b94136d4439eec05b966, type: 3}
   zones:
   - {fileID: 919132149155446097, guid: 48325740ec032fec89b449ccce6bc26f, type: 3}
   - {fileID: 919132149155446097, guid: 6425a65ff005d48864f10290b6d60d9c, type: 3}
