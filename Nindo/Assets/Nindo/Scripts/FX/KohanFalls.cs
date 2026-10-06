@@ -148,7 +148,7 @@ namespace Nindo
         bool lowQuality;
         float qualityTimer, volumeTimer, volumeTarget, gustTimer, gust, gustDur, gustAngle;
 
-        Material curtainMat, poolMat, ribbonMat, sprayMat, moonbowMat;
+        Material curtainMat, poolMat, ribbonMat, moonbowMat;
         Material[] mistMats;
         Transform[] mistSheets;
         Vector2[] mistScroll;
@@ -614,13 +614,12 @@ namespace Nindo
         // ------------------------------------------------------------------ partículas
         void BuildParticles()
         {
-            sprayMat = FallsAssets.Spray;
-            bool meshFx = sprayMat != null;      // sin el shader de rocío: puntos blandos de siempre
-
-            // 1) grumos que caen del labio (octaedros estirados) + corona de gotas al tocar el agua
-            clumps = System("Clumps", meshFx ? sprayMat : FXMaterials.Alpha, 170, meshFx ? FallsAssets.Clump : null, gravity: 1f);
-            SizeOverLife(clumps, 0.7f, 1.35f);
-            Fade(clumps, 1f, 0.85f, 1f);
+            // 1) grumos que caen del labio + corona de gotas al tocar el agua. Eran octaedros facetados de hasta
+            //    2.6 m: delante de las cortinas y al pie se leían como cristales de hielo y carámbanos. Gotas blandas
+            //    estiradas por la velocidad: arriba casi puntos, abajo (29 m/s) vetas de ~1.5 m que se ven caer
+            clumps = System("Clumps", FXMaterials.Alpha, 170, null, gravity: 1f);
+            Stretch(clumps, 0.05f, 1f);
+            SizeOverLife(clumps, 0.7f, 1.3f);
             crowns = System("ImpactCrowns", FXMaterials.Alpha, 260, null, clumps.transform);
             {
                 var m = crowns.main;
@@ -642,9 +641,11 @@ namespace Nindo
             // 2) hervor del pozo: chorritos facetados que saltan y se achican al caer. Antes crecían (x1.4) y
             //    vivían más de un segundo casi quietos arriba del pozo: blancos, redondos y grandes se leían como
             //    montones de nieve. El agua se lee por el movimiento: rápidos, estirados hacia arriba y efímeros
-            boil = System("PlungeBoil", meshFx ? sprayMat : FXMaterials.Alpha, 120, meshFx ? FallsAssets.Ico : null, gravity: 1.2f);
-            SizeOverLife(boil, 1f, 0.2f);
-            Fade(boil, 1f, 0.75f, 0f);
+            //    (gotas blandas estiradas: los icosaedros facetados, aun chicos y rápidos, eran piedras de hielo)
+            boil = System("PlungeBoil", FXMaterials.Alpha, 140, null, gravity: 1.2f);
+            Stretch(boil, 0.07f, 1f);
+            SizeOverLife(boil, 1f, 0.25f);
+            Fade(boil, 0.95f, 0.85f, 0f);
             // 3) nube de rocío: la banda blanca que asoma detrás de la baranda norte desde el juego, pegada a la
             //    caída (con bloques de 5 m sobre la plataforma tapaba la pelea). Eran icosaedros facetados opacos y
             //    tramados: desde la cámara de juego se leían como piedras nevadas arriba de la baranda, por más chicos
@@ -1078,10 +1079,8 @@ namespace Nindo
                 // vive exactamente lo que tarda en caer (sale del labio sin velocidad vertical): muere en el agua y la
                 // corona sale de ahí. Un ±2 % acá eran ±1.7 m de altura a 29 m/s: coronas en el aire o bajo el agua
                 startLifetime = fall,
-                // finos y largos: con 1.8 de alto parecían diamantes de hielo quietos delante de la cortina
-                startSize3D = new Vector3(0.75f, 2.6f, 0.75f) * UnityEngine.Random.Range(0.3f, 0.75f),
-                rotation3D = new Vector3(0f, UnityEngine.Random.Range(0f, 360f), 0f),
-                startColor = Color.white,
+                startSize = UnityEngine.Random.Range(0.25f, 0.55f),
+                startColor = Color.Lerp(new Color(1f, 1f, 1f, 0.9f), new Color(WaterTint.r, WaterTint.g, WaterTint.b, 0.8f), UnityEngine.Random.value * 0.5f),
             };
             clumps.Emit(ep, 1);
         }
@@ -1090,15 +1089,12 @@ namespace Nindo
         {
             LipSample(out _, out var dir, out _, out var foot);
             Vector3 up = Quaternion.AngleAxis(UnityEngine.Random.Range(-15f, 15f), Vector3.Cross(Vector3.up, dir)) * Quaternion.AngleAxis(UnityEngine.Random.Range(-15f, 15f), dir) * Vector3.up;
-            float size = UnityEngine.Random.Range(0.3f, 0.85f);
             var ep = new ParticleSystem.EmitParams
             {
                 position = foot + dir * UnityEngine.Random.Range(-0.6f, 0.8f) + Vector3.Cross(Vector3.up, dir) * UnityEngine.Random.Range(-0.6f, 0.6f),
                 velocity = (up + dir * 0.25f).normalized * UnityEngine.Random.Range(4.5f, 8.5f),
                 startLifetime = UnityEngine.Random.Range(0.55f, 0.85f),
-                // estirado hacia arriba y apenas inclinado: un chorrito, no una piedra
-                startSize3D = new Vector3(size, size * 1.8f, size),
-                rotation3D = new Vector3(UnityEngine.Random.Range(-20f, 20f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(-20f, 20f)),
+                startSize = UnityEngine.Random.Range(0.3f, 0.7f),
                 // de blanco a agua del pozo: todo blanco parejo era nieve
                 startColor = Color.Lerp(Color.white, WaterTint, UnityEngine.Random.value * 0.75f),
             };
@@ -1203,23 +1199,18 @@ namespace Nindo
         }
     }
 
-    /// <summary>Mallas compartidas de las partículas de agua (facetadas, como el resto del mundo).</summary>
+    /// <summary>Malla y material de los salpicones facetados del jefe (WaterSplash). La cascada usa gotas blandas:
+    /// con mallas facetadas el hervor y los grumos se leían como hielo.</summary>
     static class FallsAssets
     {
-        static Mesh clump, ico, blob;
+        static Mesh ico;
         static Material spray, splashSpray;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { clump = ico = blob = null; spray = splashSpray = null; }
+        static void Reset() { ico = null; spray = splashSpray = null; }
 
-        /// <summary>Octaedro estirado en Y (8 caras): grumo de agua que cae.</summary>
-        public static Mesh Clump => clump != null ? clump : (clump = Octahedron());
-
-        /// <summary>Icosaedro (20 caras): hervor y espuma.</summary>
+        /// <summary>Icosaedro (20 caras): espuma de los salpicones.</summary>
         public static Mesh Ico => ico != null ? ico : (ico = Icosphere("WaterIco", 0, 0f, 1));
-
-        /// <summary>Icosaedro subdividido y deformado (80 caras): nube de rocío.</summary>
-        public static Mesh Blob => blob != null ? blob : (blob = Icosphere("WaterBlob", 1, 0.22f, 7));
 
         /// <summary>Material de rocío (shader Nindo/Spray); null si no compiló.</summary>
         public static Material Spray
@@ -1253,13 +1244,6 @@ namespace Nindo
                 }
                 return splashSpray;
             }
-        }
-
-        static Mesh Octahedron()
-        {
-            var v = new[] { new Vector3(0, 0.5f, 0), new Vector3(0.5f, 0, 0), new Vector3(0, 0, 0.5f), new Vector3(-0.5f, 0, 0), new Vector3(0, 0, -0.5f), new Vector3(0, -0.5f, 0) };
-            int[] f = { 0, 2, 1, 0, 3, 2, 0, 4, 3, 0, 1, 4, 5, 1, 2, 5, 2, 3, 5, 3, 4, 5, 4, 1 };
-            return Flat("WaterClump", v, f);
         }
 
         static Mesh Icosphere(string name, int subdiv, float jitter, int seed)

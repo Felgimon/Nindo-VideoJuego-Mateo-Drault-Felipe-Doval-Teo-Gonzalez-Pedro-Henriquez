@@ -550,7 +550,8 @@ namespace Nindo
                 float tilt = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.5f) / (D - 1.2f)));
                 Vector3 pos = arena - toFalls * Mathf.Lerp(3f, 8.5f, k) + side * Mathf.Lerp(-3.5f, 1.5f, k);
                 pos.y = deck + Mathf.Lerp(1.6f, 4.2f, k);
-                Vector3 look = Vector3.Lerp(plunge + Vector3.up * 3f, lip + Vector3.down * 5f, tilt);
+                // termina con el labio a un cuarto del borde de arriba: mirándolo de frente, medio cuadro era cielo negro
+                Vector3 look = Vector3.Lerp(plunge + Vector3.up * 3f, lip + Vector3.down * 13f, tilt);
                 return new Pose(pos, Quaternion.LookRotation(look - pos));
             }, () => 50f, 1.1f, D, 1.1f);
             yield return new WaitForSecondsRealtime(D);
