@@ -523,6 +523,7 @@ namespace Nindo
 
         void OnZoneEntered(Zone z)
         {
+            UpdateObjective();   // el objetivo depende de la zona (en la tierra de un guardián dice a quién vencer)
             if (z.id != "lago_cascada" || Game.InCutscene || Game.Save.HasFlag(FallsSeenFlag)) return;
             var f = KohanFalls.Instance;
             if (f == null || P == null || (Game.Combat != null && Game.Combat.InCombat)) return;

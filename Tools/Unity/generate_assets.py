@@ -1009,7 +1009,6 @@ MonoBehaviour:
   vfxDamaged: {vfx('Damaged')}
   vfxSlay: {vfx('Slay')}
   vfxSlash: {vfx('vfxGraph_Slash')}
-  vfxLines: {vfx('LinesAttack')}
   vfxAura: {vfx('Aura')}
   sfx:{yaml_entries_audio(sfx)}  music:{yaml_entries_audio(mus_entries)}  ambience:{yaml_entries_audio(amb_entries)}  healthFill: {sprite(sprites['Health'][1])}
   healthFrame: {sprite(sprites['Health'][0])}

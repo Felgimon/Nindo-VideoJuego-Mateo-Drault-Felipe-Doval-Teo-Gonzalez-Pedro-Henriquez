@@ -96,7 +96,8 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
   un corte liviano: hay que desviar o esquivar.
 * **Aviso de cada golpe**: un anillo de tinta (ensō) se dibuja alrededor del atacante y se
   cierra justo cuando hay que apretar; un toc de madera (hyōshigi) suena a tiempo para
-  reaccionar de oído. Dorado = parry; rojo dentado = no se desvía, dash.
+  reaccionar de oído. Dorado = parry; rojo dentado = no se desvía, dash. En el último tercio de
+  segundo el **filo** del arma se enciende del mismo color (en el sumo, la mano o el pie que pega).
 * **Ataques imparables (anillo rojo dentado + zona roja, y un rombo rojo con ">>" sobre el
   enemigo)**: no se desvían; se esquivan con el dash cuando el anillo se cierra. La esquiva perfecta también ralentiza el tiempo (como mucho
   una vez cada 6 s).
@@ -106,6 +107,19 @@ Debug.Log(Nindo.AutoPilot.Stats);   // parries, daño recibido, ejecuciones...
 * **Filo de Ira**: jugar bien (parries, golpes, sin recibir daño) lo carga; lleno, la katana se
   prende fuego y pega más fuerte durante 9 s, y cada golpe lo estira un poco. Matar cura un poco.
 * Los enemigos atacan por turnos (*tokens*) para que las peleas grupales se lean bien.
+* **Variantes de zona**: además del kit y del modo de moverse, cada zona pelea distinto. Montaña:
+  más lentos y pesados, el ninja cierra un combo con un tajo de arriba **imparable**; el sumo pisa
+  un shiko imparable que levanta nieve. Lago: el ninja gira un remolino de 360° y tira el arpón
+  desde lejos; el sumo empuja a dos manos y te saca lejos. Bambú: el ninja entra de un salto
+  desde 4-6.5 m y se repliega después del combo; el sumo se corre de costado y embiste.
+* **Sumos**: sus clips casi no se mueven desde arriba, así que cada golpe lleva una pose
+  procedural atada al aviso (`Enemies/SumoPoser`): la mano atrás antes de la bofetada, la
+  pierna arriba en el shiko, agachado con los puños en el piso antes de embestir.
+* **Ōzeki** (jefe del bambú, `Enemies/Bosses/OzekiBoss`): bofetadas doradas en ritmo, agarre
+  rojo (los brazos abiertos), shiko rojo cuya onda se abre por el piso hasta 8 m (dash cuando
+  llega o salir del disco) y tachiai rojo; las matas de bambú joven del claro frenan la
+  embestida y lo dejan abierto. A la mitad se le enciende la tsuna, tira sal (no pega: es un
+  respiro para castigarlo) y alarga los combos.
 * **Cámara de combate**: baja a 45° y fijada nunca queda a menos de 19 m ni gira (los controles
   no cambian de dirección); con Kaito casi centrado se ven ~5 m detrás de él. Lo que tapa a
   Kaito, al fijado, al jefe o a quien está por pegar se disuelve con una trama (hueco en cono,
@@ -144,8 +158,9 @@ El HUD es **solo** el arte del equipo: la **bandana roja** (vida) y el **dragón
 * Sin kanji ni símbolos japoneses: los sellos de los títulos de zona son pictogramas en rojo.
   Las teclas se dibujan según el dispositivo (teclado, Xbox o PlayStation).
 * **Opciones**: volúmenes, sacudida, cámara lenta, vibración, pantalla completa, calidad y
-  **Marcas en enemigos** (todas / solo imparables / ninguna, `Settings.CombatAids`): solo las
-  marcas de la UI sobre los enemigos; los anillos ensō y las zonas del piso se ven siempre.
+  **Avisos de combate** (todos / solo imparables / ninguno, `Settings.CombatAids`): los anillos
+  ensō con sus zonas del piso y las marcas sobre los enemigos. El filo encendido, las poses y
+  los sonidos del aviso quedan siempre; la práctica del prólogo dibuja los anillos igual.
 
 ---
 
@@ -158,7 +173,8 @@ Nindo/Assets/Nindo/
     Input/        InputReader (teclado + mando, buffer de inputs)
     Combat/       tipos de ataque, CombatDirector (tokens), CharacterAnimator (CrossFade por código)
     Player/       PlayerController (+ .Combat), PlayerConfig
-    Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…)
+    Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…), variantes de zona,
+                  poses del sumo (SumoPoser); Bosses/ con los jefes propios (OzekiBoss)
     Camera/       CameraDirector (tomas mezclables, fijado, perfiles de jefe, golpe de FOV, oído sobre
                   Kaito), CameraOcclusion (disolución de lo que tapa, shader Nindo/Occluder Fade)
     FX/           partículas, hit-stop, post-proceso en runtime (URP Volume)

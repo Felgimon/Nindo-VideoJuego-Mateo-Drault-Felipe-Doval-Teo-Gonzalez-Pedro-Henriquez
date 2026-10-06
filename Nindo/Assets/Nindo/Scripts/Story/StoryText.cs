@@ -174,7 +174,9 @@ namespace Nindo
                     };
                 case "ozeki_intro":
                     return new List<DialogueLine> {
-                        L("Ōzeki", "¡El bambú se dobla pero no se quiebra! ¡Pero vos sí te vas a quebrar!"),
+                        L("Ōzeki", "¡Alto ahí! Este claro es mi dohyō, y nadie lo pisa sin luchar conmigo."),
+                        L("Ōzeki", "El bambú se dobla pero no se quiebra. Vos sí te vas a quebrar."),
+                        L(Kaito, "Ya vamos a ver quién se dobla primero."),
                     };
                 case "kage_intro":
                     return new List<DialogueLine> {
@@ -187,7 +189,7 @@ namespace Nindo
                 case "seal_lake":
                     return new List<DialogueLine> { L(Kaito, "El Sello del Agua. Ya casi.") };
                 case "seal_bamboo":
-                    return new List<DialogueLine> { L(Kaito, "El Sello del Bambú.") };
+                    return new List<DialogueLine> { L(Kaito, "El Sello del Bambú. Hasta el campeón terminó doblándose.") };
                 case "ending":
                     return new List<DialogueLine> {
                         L(Abuelo, "Kaito... viniste. Sabía que la bandana te elegiría."),
@@ -202,23 +204,59 @@ namespace Nindo
             }
         }
 
+        /// <summary>
+        /// Gritos del Ōzeki en plena pelea (salen como aviso debajo del HUD, una vez cada uno): al encenderse la tsuna
+        /// en la fase 2 y la primera vez que su embestida termina contra el bambú.
+        /// </summary>
+        public static string OzekiLine(string beat)
+        {
+            switch (beat)
+            {
+                case "fase2": return "Ōzeki: «¡Basta de jugar! ¡Que la sal limpie mi dohyō!»";
+                case "choque": return "Ōzeki: «¡Grr! ¡Bambú maldito!»";
+                default: return "";
+            }
+        }
+
+        /// <summary>
+        /// Objetivo del HUD según lo que de verdad pasó y dónde está Kaito. Antes era un camino fijo: si la muralla no
+        /// quedaba marcada como abierta (guardado viejo, o se llegó por otro lado) decía "seguí el rastro hacia el
+        /// norte" en todas las zonas, aunque ya tuviera sellos. Ahora lo más avanzado manda (un sello implica la
+        /// muralla y la puerta del dojo) y en la zona de un guardián que falta vencer dice a quién y dónde.
+        /// </summary>
         public static string Objective(SaveData s)
         {
             if (!s.HasFlag(Flags.KatanaObtained)) return "Desatá la cinta de la guadaña";
             if (!s.HasFlag(Flags.Encounter("intro"))) return "Defendete";
-            if (!s.HasFlag(Flags.WallGateOpen)) return "Seguí el rastro de los secuestradores hacia el norte";
-            if (!s.HasFlag(Flags.DojoGateSeen)) return "Atravesá el Jardín del Clan hasta el dojo";
-            if (s.SealCount < 3)
+            if (s.HasFlag(Flags.FinalBossDone)) return "";
+            if (s.HasFlag(Flags.DojoOpen)) return "Entrá al dojo y rescatá al abuelo";
+            if (s.SealCount >= 3) return "Volvé a la puerta del dojo con los tres sellos";
+            string zone = Zone.Current != null ? Zone.Current.id : "";
+            bool pastWall = s.HasFlag(Flags.WallGateOpen) || s.HasFlag(Flags.DojoGateSeen) || s.SealCount > 0 || PastTheWall(zone);
+            if (!pastWall)
+                return s.HasFlag(Flags.ForestSeen) ? "Cruzá la muralla del clan Kurokage" : "Seguí el rastro de los secuestradores hacia el bosque";
+            // en la tierra de un guardián: qué falta ahí
+            switch (zone)
             {
-                var missing = new List<string>();
-                if (!s.HasSeal(SealId.Montana)) missing.Add("Montaña (oeste)");
-                if (!s.HasSeal(SealId.Lago)) missing.Add("Lago (este)");
-                if (!s.HasSeal(SealId.Bambu)) missing.Add("Bambú (noreste)");
-                return $"Conseguí los sellos ({s.SealCount}/3): " + string.Join(", ", missing);
+                case "montana": if (!s.HasSeal(SealId.Montana)) return Guardian(s, "goro", "Vencé a Gorō en la cumbre de Kodoyama", "Tomá el Sello de la Montaña"); break;
+                case "lago":
+                case "lago_cascada": if (!s.HasSeal(SealId.Lago)) return Guardian(s, "mizuchi", "Vencé a Mizuchi en la Cascada Kohan", "Tomá el Sello del Agua"); break;
+                case "bambu": if (!s.HasSeal(SealId.Bambu)) return Guardian(s, "ozeki", "Vencé al Ōzeki en el claro del bambú", "Tomá el Sello del Bambú"); break;
             }
-            if (!s.HasFlag(Flags.DojoOpen)) return "Volvé a la puerta del dojo con los tres sellos";
-            if (!s.HasFlag(Flags.FinalBossDone)) return "Rescatá al abuelo";
-            return "";
+            if (!s.HasFlag(Flags.DojoGateSeen) && s.SealCount == 0) return "Atravesá el Jardín del Clan hasta el dojo";
+            var missing = new List<string>();
+            if (!s.HasSeal(SealId.Montana)) missing.Add("Montaña (oeste)");
+            if (!s.HasSeal(SealId.Lago)) missing.Add("Lago (este)");
+            if (!s.HasSeal(SealId.Bambu)) missing.Add("Bambú (noreste)");
+            return $"Conseguí los sellos ({s.SealCount}/3): " + string.Join(", ", missing);
         }
+
+        // las zonas que quedan del otro lado de la muralla (llegar a cualquiera ya es haberla cruzado)
+        static bool PastTheWall(string zone) =>
+            zone == "jardin" || zone == "dojo" || zone == "montana" || zone == "lago" || zone == "lago_cascada" || zone == "bambu";
+
+        // el guardián ya cayó pero el sello sigue en el piso (se cerró el juego antes de tomarlo): eso es lo que falta
+        static string Guardian(SaveData s, string boss, string fight, string pickUp) =>
+            (s.HasFlag(Flags.Boss(boss)) ? pickUp : fight) + $" ({s.SealCount}/3 sellos)";
     }
 }

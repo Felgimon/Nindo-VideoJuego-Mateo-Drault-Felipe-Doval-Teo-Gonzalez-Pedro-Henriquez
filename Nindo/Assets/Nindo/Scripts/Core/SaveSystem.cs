@@ -91,10 +91,10 @@ namespace Nindo
         public static bool Rumble { get => PlayerPrefs.GetInt("nindo.rumble", 1) == 1; set => PlayerPrefs.SetInt("nindo.rumble", value ? 1 : 0); }
         public static int Quality { get => PlayerPrefs.GetInt("nindo.quality", -1); set => PlayerPrefs.SetInt("nindo.quality", value); }
         /// <summary>
-        /// Marcas en enemigos (Opciones): 2 = todas, 1 = solo la del imparable, 0 = ninguna. Para quien ya lee
-        /// los golpes y quiere la pantalla limpia. Hoy lo consultan las marcas de la UI ("!", escudo, rombo rojo)
-        /// con <see cref="ShowParryAids"/> / <see cref="ShowUnblockableAids"/>; los anillos ensō y las zonas del
-        /// piso (FX/CombatTelegraphs) no lo miran.
+        /// Avisos de combate (Opciones): 2 = todos, 1 = solo los del imparable, 0 = ninguno. Para quien ya lee
+        /// los golpes y quiere la pantalla limpia. Lo consultan con <see cref="ShowParryAids"/> /
+        /// <see cref="ShowUnblockableAids"/> las marcas de la UI ("!", escudo, rombo rojo) y los anillos ensō con sus
+        /// zonas del piso (FX/CombatTelegraphs). El filo encendido, las poses y los sonidos del aviso quedan siempre.
         /// </summary>
         public static int CombatAids { get => Mathf.Clamp(PlayerPrefs.GetInt("nindo.aids", 2), 0, 2); set => PlayerPrefs.SetInt("nindo.aids", Mathf.Clamp(value, 0, 2)); }
         public static bool ShowParryAids => CombatAids >= 2;

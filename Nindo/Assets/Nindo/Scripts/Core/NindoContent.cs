@@ -101,7 +101,6 @@ namespace Nindo
         public VisualEffectAsset vfxDamaged;
         public VisualEffectAsset vfxSlay;
         public VisualEffectAsset vfxSlash;
-        public VisualEffectAsset vfxLines;
         public VisualEffectAsset vfxAura;
 
         [Header("Audio")]

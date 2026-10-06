@@ -201,7 +201,7 @@ def _alert(i):
 
 @sfx("danger")
 def _danger(i):
-    # aviso de ataque imparable (危): golpe grave metálico + campana disonante + latigazo
+    # aviso de ataque imparable (rojo): golpe grave metálico + campana disonante + latigazo
     d = 1.3
     rev = whoosh(0.45, 300, 4000, 0.95, 1.0, seed=130)
     b1 = bell(146.8, d, 0.7, 1.4, seed=131)

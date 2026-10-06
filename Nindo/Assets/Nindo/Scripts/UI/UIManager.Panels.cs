@@ -633,10 +633,9 @@ namespace Nindo
             Row(UIFactory.OptionSlider("Shake", optionsCard, "Sacudida de cámara", Settings.ScreenShake, v => Settings.ScreenShake = v, size));
             Row(UIFactory.OptionSelector("SlowMo", optionsCard, "Cámara lenta", new[] { "Reducida", "Sí" }, Settings.SlowMotionEnabled ? 1 : 0, i => Settings.SlowMotionEnabled = i == 1, size));
             Row(UIFactory.OptionSelector("Rumble", optionsCard, "Vibración", new[] { "No", "Sí" }, Settings.Rumble ? 1 : 0, i => Settings.Rumble = i == 1, size));
-            // solo las marcas sobre los enemigos ("!", escudo, rombo rojo): los anillos ensō y las zonas del piso
-            // quedan siempre (son la lectura del golpe). Si el combate llega a usar Settings.ShowParryAids /
-            // ShowUnblockableAids para los anillos, la opción puede volver a llamarse "Avisos de combate"
-            Row(UIFactory.OptionSelector("Aids", optionsCard, "Marcas en enemigos", new[] { "Ninguna", "Solo imparables", "Todas" }, Settings.CombatAids, i => Settings.CombatAids = i, size));
+            // los anillos ensō, sus zonas en el piso y las marcas sobre los enemigos ("!", escudo, rombo rojo); el filo
+            // encendido y los sonidos del aviso quedan siempre
+            Row(UIFactory.OptionSelector("Aids", optionsCard, "Avisos de combate", new[] { "Ninguno", "Solo imparables", "Todos" }, Settings.CombatAids, i => Settings.CombatAids = i, size));
             Row(UIFactory.OptionSelector("Fullscreen", optionsCard, "Pantalla completa", new[] { "No", "Sí" }, Screen.fullScreen ? 1 : 0, i => Settings.Fullscreen = i == 1, size));
             Row(UIFactory.OptionSelector("Quality", optionsCard, "Calidad", QualitySettings.names, QualitySettings.GetQualityLevel(), i => { QualitySettings.SetQualityLevel(i, true); Settings.Quality = i; }, size));
             var back = UIFactory.MenuItem("Back", optionsCard, "Volver", new Vector2(300, 66), CloseOptions, 36f);

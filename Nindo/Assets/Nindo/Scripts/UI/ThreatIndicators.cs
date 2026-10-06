@@ -85,7 +85,7 @@ namespace Nindo
         /// <summary>¿Avisa fuera de cuadro? Le asigna (o mantiene) una marca.</summary>
         void Consider(Enemy e, Camera cam, float now)
         {
-            if (e == null || !e.IsAlive || !e.InTell) return;
+            if (e == null || !e.IsAlive || !e.InTell || !CombatTelegraphs.Shown(e)) return;
             Vector3 v = cam.WorldToViewportPoint(e.AimPoint);
             bool offscreen = v.z <= 0f || v.x < 0.04f || v.x > 0.96f || v.y < 0.04f || v.y > 0.96f;
             if (!offscreen) return;

@@ -429,6 +429,31 @@ def occ_add(x, z, r):
     OCC.setdefault((int(math.floor(x / 8)), int(math.floor(z / 8))), []).append((x, z, r))
 
 
+# plantas que van en el agua o en su borde a propósito
+WATER_PLANTS = {"lily_pads", "reeds_patch"}
+WET_SKIPPED = [0]
+
+
+def wet(x, z, r):
+    """¿El pie de la decoración (radio r) queda bajo el agua? Se mide sobre la malla TRIANGULADA (lo que dibuja
+    Unity): con celdas de 2.5 m la orilla del estanque y de los arroyos (1.6 m de talud) se interpola más baja que
+    la altura analítica y el pasto que H() daba seco quedaba sumergido. Mira el centro y cuatro puntos del borde."""
+    if T.in_lake(x, z):
+        return True
+    near_stream = T.stream_dist(x, z) < 3.0 + r
+    near_lake = T.poly_dist(x, z, W.LAKE) < 8.0 + r
+    if not (near_stream or near_lake):
+        return False
+    for dx, dz in ((0, 0), (r, 0), (-r, 0), (0, r), (0, -r)):
+        g = mesh_H(x + dx, z + dz)
+        if g is None:
+            continue
+        if (near_stream and g < W.WATER_STREAM + 0.04) or (near_lake and g < W.WATER_LAKE + 0.04):
+            WET_SKIPPED[0] += 1
+            return True
+    return False
+
+
 def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True, ground=True):
     """ground=True: 'y' es relativa a H (o None = H) y se corrige a la malla triangulada.
     ground=False: altura absoluta (agua, '@altura', parches de arroz)."""
@@ -445,8 +470,10 @@ def place(pid, x, z, yaw=0.0, scale=1.0, y=None, radius=None, block=True, ground
         if g is None:
             return                      # fuera de la malla (borde norte): no colgar props en el vacío
         y += g - H(x, z)                # misma altura relativa a H, pero sobre lo que pisa Unity
-    # el patio de losas del dojo no lleva pasto ni piedras encima (igual ocupa su lugar: el sorteo no cambia)
-    if not (base in DECOR and W.on_courtyard(x, z, 0.3)):
+    # el patio de losas del dojo no lleva pasto ni piedras encima, y la decoración de tierra no cae adentro del agua
+    # (las matas en grupito se abren hasta 0.7 m del punto sorteado y quedaban flotando en el estanque); igual
+    # ocupan su lugar: el sorteo no cambia
+    if not (base in DECOR and (W.on_courtyard(x, z, 0.3) or (ground and base not in WATER_PLANTS and wet(x, z, prop_radius(base) * scale * 0.6)))):
         (DECOR_PLACED if base in DECOR else PLACED).append((base, x, z, yaw, scale, y))
     if block:
         occ_add(x, z, (radius if radius is not None else prop_radius(base)) * scale)
@@ -653,7 +680,7 @@ def scatter():
                     n_cover += 1
             z += step
         x += step
-    print(f"cover {n_cover}")
+    print(f"cover {n_cover} (decoración fuera del agua: {WET_SKIPPED[0]})")
     # cultivos
     for r in W.PADDIES:
         for xx in range(int(r[0]) + 1, int(r[2]), 2):
