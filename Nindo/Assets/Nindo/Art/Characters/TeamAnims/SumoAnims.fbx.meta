@@ -265,11 +265,69 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
+      name: HitHeavy
+      takeName: Scene
+      internalID: 897095119025423331
+      firstFrame: 375
+      lastFrame: 387
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
       name: Parried
       takeName: Scene
       internalID: 346151160062679533
-      firstFrame: 375
-      lastFrame: 402
+      firstFrame: 397
+      lastFrame: 407
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: ParriedPerfect
+      takeName: Scene
+      internalID: 615314516482495462
+      firstFrame: 417
+      lastFrame: 432
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -297,8 +355,8 @@ ModelImporter:
       name: Exhausted
       takeName: Scene
       internalID: 939843710656363540
-      firstFrame: 412
-      lastFrame: 460
+      firstFrame: 442
+      lastFrame: 490
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -323,11 +381,40 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
+      name: ExhaustedHit
+      takeName: Scene
+      internalID: 287116879871449973
+      firstFrame: 500
+      lastFrame: 512
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
       name: Spotted
       takeName: Scene
       internalID: 705353586745703052
-      firstFrame: 470
-      lastFrame: 494
+      firstFrame: 522
+      lastFrame: 546
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -355,8 +442,8 @@ ModelImporter:
       name: Death
       takeName: Scene
       internalID: 1140251036633141690
-      firstFrame: 504
-      lastFrame: 549
+      firstFrame: 556
+      lastFrame: 601
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

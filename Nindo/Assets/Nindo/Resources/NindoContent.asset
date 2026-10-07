@@ -132,7 +132,9 @@ MonoBehaviour:
     - Death
     - Idle
     - Thrust
+    - HitHeavy
     - Parried
+    - ParriedPerfect
     - ExhaustedHit
     stateLengths:
     - 0.8
@@ -146,8 +148,10 @@ MonoBehaviour:
     - 1.1
     - 2.0
     - 1.3333
-    - 0.6
+    - 0.5333
     - 0.3333
+    - 0.5
+    - 0.4
   - id: sumo
     model: {fileID: 919132149155446097, guid: 6e6d595635ec9544d83855ca6d060fbb, type: 3}
     controller: {fileID: 9100000, guid: 2034372f887e01ef4d7d283612f2c20a, type: 2}
@@ -173,7 +177,10 @@ MonoBehaviour:
     - Exhausted
     - Spotted
     - Idle
+    - HitHeavy
     - Parried
+    - ParriedPerfect
+    - ExhaustedHit
     - Death
     stateLengths:
     - 0.9
@@ -184,7 +191,10 @@ MonoBehaviour:
     - 1.6
     - 0.8
     - 3.0
-    - 0.9
+    - 0.4
+    - 0.3333
+    - 0.5
+    - 0.4
     - 1.5
   - id: goro
     model: {fileID: 919132149155446097, guid: dbac39bfe9be5fd41a31f29a324081f6, type: 3}
@@ -232,7 +242,10 @@ MonoBehaviour:
     - Parried
     - Spotted
     - Intro
+    - ExhaustedHit
+    - ParriedPerfect
     - Hit
+    - HitHeavy
     - Death
     stateLengths:
     - 2.6667
@@ -242,9 +255,12 @@ MonoBehaviour:
     - 2.0
     - 2.2
     - 2.0
-    - 1.2
+    - 0.3333
     - 1.4
     - 2.5667
+    - 0.4
+    - 0.5
+    - 0.5
     - 0.5
     - 2.0
   - id: grandpa

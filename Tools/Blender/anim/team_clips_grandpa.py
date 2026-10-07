@@ -53,16 +53,20 @@ def clips(ch):
     return [idle(), walk(ch), bound(), freed()]
 
 
+IDLE_N = 75
+
+
+def idle_pose(f):
+    a = 2.0 * math.pi * f / IDLE_N
+    b = 2.0 * math.pi * 2.0 * f / IDLE_N
+    return P(hips=(0.01 * math.sin(a), 0.02, -0.03 - 0.006 * (0.5 - 0.5 * math.cos(b))), breath=0.5 - 0.5 * math.cos(b),
+             spine=(16.0 - 2.0 * math.sin(b), 1.5 * math.sin(a), 0.0),
+             head=(-18.0 + 5.0 * math.sin(b + 0.5), 0.0, 14.0 * math.sin(a + 1.0)))
+
+
 def idle():
-    n = 75
-    keys = []
-    for f in range(0, n + 1, 15):
-        a = 2.0 * math.pi * f / n
-        b = 2.0 * math.pi * 2.0 * f / n
-        keys.append(Key(f, P(hips=(0.01 * math.sin(a), 0.02, -0.03 - 0.006 * (0.5 - 0.5 * math.cos(b))), breath=0.5 - 0.5 * math.cos(b),
-                             spine=(16.0 - 2.0 * math.sin(b), 1.5 * math.sin(a), 0.0),
-                             head=(-18.0 + 5.0 * math.sin(b + 0.5), 0.0, 14.0 * math.sin(a + 1.0))), "sine"))
-    return T.TeamClip("Idle", n, keys, loop=True, feet=PLANTED, notes="encorvado, manos atrás, respira y mira alrededor")
+    keys = [Key(f, idle_pose(f), "sine") for f in range(0, IDLE_N + 1, 15)]
+    return T.TeamClip("Idle", IDLE_N, keys, loop=True, feet=PLANTED, notes="encorvado, manos atrás, respira y mira alrededor")
 
 
 def walk(ch):
@@ -117,7 +121,11 @@ def freed():
     BOW = dict(UP, hips=(0.0, 0.07, -0.05), hips_rot=(36.0, 0.0, 0.0), spine=(18.0, 0.0, 0.0), head=(8.0, 0.0, 0.0),
                hand_r=(-0.10, -0.16, 0.50), hand_l=(0.10, -0.16, 0.50))
     keys = [Key(0, B), Key(12, RUB, "inout"), Key(20, dict(RUB, hand_r=(-0.02, -0.22, 0.76), hand_l=(0.02, -0.20, 0.72)), "sine"),
-            Key(28, RUB, "sine"), Key(40, UP, "inout"), Key(54, BOW, "inout"), Key(66, BOW, "sine"), Key(78, UP, "inout"), Key(n, P(), "sine")]
-    feet = {"r": [FR(0, dx=0.02), FR(30, dx=0.02), FR(38, lift=0.03)], "l": [FL(0, dx=-0.02), FL(33, dx=-0.02), FL(41, lift=0.03)]}
-    return T.TeamClip("Freed", n, keys, feet=feet, notes="libre: se frota las muñecas y le hace una reverencia a Kaito",
-                      timing=dict(sheet=[0, 12, 28, 40, 54, 66, 78, 90]))
+            Key(28, RUB, "sine"), Key(40, UP, "inout"), Key(54, BOW, "inout"), Key(66, BOW, "sine"), Key(78, UP, "inout"),
+            Key(n, idle_pose(0), "sine")]
+    # f0-f14: pasitos en el lugar mientras NPC.TurnTo lo da vuelta hacia Kaito (antes giraba 180° de golpe); termina en
+    # el cuadro 0 de Idle, que es adonde lo devuelve NPC.PlayThen (si no, quedaba como una estatua)
+    feet = {"r": [FR(0, dx=0.02), FR(5, dx=0.02, lift=0.03), FR(10, dx=0.02), FR(14, dx=0.02, lift=0.03), FR(30, dx=0.02), FR(38, lift=0.03)],
+            "l": [FL(0, dx=-0.02), FL(5, dx=-0.02), FL(10, dx=-0.02, lift=0.03), FL(33, dx=-0.02), FL(41, lift=0.03)]}
+    return T.TeamClip("Freed", n, keys, feet=feet, notes="libre: pasitos mientras se da vuelta, se frota las muñecas y le hace una reverencia",
+                      timing=dict(sheet=[0, 5, 12, 28, 40, 54, 66, 78, 90], chain=[(n, "Idle", 0, 0.02)]))

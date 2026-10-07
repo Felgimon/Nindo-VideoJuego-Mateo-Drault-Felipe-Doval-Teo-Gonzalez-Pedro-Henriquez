@@ -24,7 +24,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.7,
+    "lowest_weapon_cm": 69.7
    }
   },
   "Walk": {
@@ -46,7 +48,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.2,
+    "lowest_weapon_cm": 69.2
    },
    "root_velocity_mps": 2.0
   },
@@ -83,7 +87,9 @@
        0.94
       ]
      ]
-    }
+    },
+    "lowest_body_cm": -0.3,
+    "lowest_weapon_cm": 67.0
    },
    "root_velocity_mps": 5.0
   },
@@ -130,6 +136,7 @@
     "hip_drop_cm": 0.0,
     "hold_tip_mps": 1.59,
     "peak_frame": 14,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 0.67,
     "game_hold_s": 0.158,
     "contact_tip_m": [
@@ -140,7 +147,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.3,
+    "lowest_weapon_cm": 44.4
    }
   },
   "Attack2": {
@@ -151,7 +160,7 @@
    "loop": false,
    "timing": {
     "kind": "light",
-    "apex": 8,
+    "apex": 7,
     "contact": 10,
     "active": [
      10,
@@ -159,18 +168,18 @@
     ],
     "hold": [
      5,
-     8
+     7
     ],
     "lunge": 0.8,
     "windup": 0.42,
     "state": "Attack2"
    },
    "normalized": {
-    "apex": 0.3636,
+    "apex": 0.3182,
     "contact": 0.4545,
     "hold": [
      0.2273,
-     0.3636
+     0.3182
     ],
     "active": [
      0.4545,
@@ -184,13 +193,14 @@
      "legs": 0.0
     },
     "hip_drop_cm": 0.0,
-    "hold_tip_mps": 1.65,
+    "hold_tip_mps": 1.99,
     "peak_frame": 10,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 0.42,
-    "game_hold_s": 0.065,
+    "game_hold_s": 0.083,
     "contact_tip_m": [
      -0.46,
-     -1.57,
+     -1.66,
      1.39
     ],
     "floor_skate_cm": {
@@ -198,12 +208,14 @@
       [
        12,
        22,
-       1.6,
-       1.06
+       1.82,
+       1.29
       ]
      ],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.7,
+    "lowest_weapon_cm": 5.6
    }
   },
   "Attack3": {
@@ -214,26 +226,26 @@
    "loop": false,
    "timing": {
     "kind": "heavy",
-    "apex": 15,
+    "apex": 13,
     "contact": 17,
     "active": [
      17,
      21
     ],
     "hold": [
-     9,
-     15
+     8,
+     13
     ],
     "lunge": 1.4,
     "windup": 0.5,
     "state": "Attack3"
    },
    "normalized": {
-    "apex": 0.4412,
+    "apex": 0.3824,
     "contact": 0.5,
     "hold": [
-     0.2647,
-     0.4412
+     0.2353,
+     0.3824
     ],
     "active": [
      0.5,
@@ -247,19 +259,22 @@
      "legs": 0.0
     },
     "hip_drop_cm": 0.0,
-    "hold_tip_mps": 1.12,
-    "peak_frame": 17,
-    "game_T_s": 0.63,
+    "hold_tip_mps": 1.03,
+    "peak_frame": 15,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 0.593,
     "game_hold_s": 0.0,
     "contact_tip_m": [
      -0.06,
-     -2.11,
+     -2.22,
      1.26
     ],
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.1,
+    "lowest_weapon_cm": 5.4
    }
   },
   "Thrust": {
@@ -270,59 +285,62 @@
    "loop": false,
    "timing": {
     "kind": "heavy",
-    "apex": 19,
+    "apex": 11,
     "contact": 21,
     "active": [
      21,
      25
     ],
     "hold": [
-     10,
-     17
+     9,
+     11
     ],
     "lunge": 3.2,
     "windup": 0.7,
     "state": "Thrust"
    },
    "normalized": {
-    "apex": 0.475,
+    "apex": 0.275,
     "contact": 0.525,
     "hold": [
-     0.25,
-     0.425
+     0.225,
+     0.275
     ],
     "active": [
      0.525,
      0.625
     ]
    },
-   "notes": "estocada voladora; aviso: muy agachado, hoja en la cadera",
+   "notes": "estocada voladora; aviso: muy agachado, hoja abierta en la cadera",
    "lint": {
     "reach_miss_cm": {
-     "hands": 0.9,
+     "hands": 0.8,
      "legs": 0.0
     },
-    "hip_drop_cm": 0.0,
-    "hold_tip_mps": 0.7,
-    "peak_frame": 20,
-    "game_T_s": 0.787,
-    "game_hold_s": 0.0,
+    "hip_drop_cm": 7.8,
+    "hold_tip_mps": 1.75,
+    "peak_frame": 21,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 0.7,
+    "game_hold_s": 0.06,
     "contact_tip_m": [
      -0.08,
-     -3.95,
+     -4.01,
      0.68
     ],
     "floor_skate_cm": {
      "r": [
       [
-       25,
+       26,
        32,
-       0.93,
-       0.65
+       0.94,
+       0.67
       ]
      ],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.8,
+    "lowest_weapon_cm": 42.6
    }
   },
   "Guard": {
@@ -344,7 +362,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.8,
+    "lowest_weapon_cm": 94.6
    }
   },
   "Counter": {
@@ -372,7 +392,9 @@
       ]
      ],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.7,
+    "lowest_weapon_cm": 70.4
    }
   },
   "Hit": {
@@ -383,57 +405,152 @@
    "loop": false,
    "timing": {},
    "normalized": {},
-   "notes": "golpe recibido: cabeza y pecho atrás, un paso atrás con el retroceso",
+   "notes": "golpe recibido: cabeza y pecho atrás, un paso atrás con el empujón (0.375 m)",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
      "legs": 0.0
     },
-    "hip_drop_cm": 0.0,
+    "hip_drop_cm": 0.8,
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": 70.4
    }
   },
-  "Parried": {
+  "HitHeavy": {
    "first": 362,
-   "last": 380,
-   "frames": 18,
-   "seconds": 0.6,
+   "last": 378,
+   "frames": 16,
+   "seconds": 0.5333,
    "loop": false,
    "timing": {
     "sheet": [
      2,
      5,
-     9,
-     12
+     8,
+     11,
+     16
     ]
    },
    "normalized": {},
-   "notes": "parry recibido: brazo de la espada despedido arriba y afuera, dos pasos atrás",
+   "notes": "golpe pesado recibido: despedido 1.6 m, cae y trastabilla",
    "lint": {
     "reach_miss_cm": {
-     "hands": 0.2,
+     "hands": 0.4,
      "legs": 0.0
     },
-    "hip_drop_cm": 6.8,
+    "hip_drop_cm": 0.0,
     "floor_skate_cm": {
      "r": [
       [
        7,
-       18,
-       0.63,
+       9,
+       1.01,
+       0.62
+      ]
+     ],
+     "l": []
+    },
+    "lowest_body_cm": -1.2,
+    "lowest_weapon_cm": 70.0
+   }
+  },
+  "Parried": {
+   "first": 388,
+   "last": 398,
+   "frames": 10,
+   "seconds": 0.3333,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     4,
+     6,
+     9
+    ],
+    "chain": [
+     [
+      9.6,
+      "Attack1",
+      0,
+      0.1
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry recibido: brazo de la espada despedido arriba y afuera, salto atrás; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 4.0,
+    "floor_skate_cm": {
+     "r": [
+      [
+       6,
+       10,
+       0.61,
        0.44
       ]
      ],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": 70.2
+   }
+  },
+  "ParriedPerfect": {
+   "first": 408,
+   "last": 423,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     6,
+     8,
+     14
+    ],
+    "chain": [
+     [
+      14.4,
+      "Attack1",
+      0,
+      0.1
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry perfecto: despedido 0.8 m con los dos pies en el aire, trastabilla; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 3.1,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [
+      [
+       6,
+       15,
+       1.56,
+       0.8
+      ]
+     ],
+     "l": []
+    },
+    "lowest_body_cm": -0.7,
+    "lowest_weapon_cm": 69.8
    }
   },
   "Exhausted": {
-   "first": 390,
-   "last": 438,
+   "first": 433,
+   "last": 481,
    "frames": 48,
    "seconds": 1.6,
    "loop": true,
@@ -450,33 +567,46 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.5,
+    "lowest_weapon_cm": 2.0
    }
   },
   "ExhaustedHit": {
-   "first": 448,
-   "last": 458,
-   "frames": 10,
-   "seconds": 0.3333,
+   "first": 491,
+   "last": 503,
+   "frames": 12,
+   "seconds": 0.4,
    "loop": false,
-   "timing": {},
+   "timing": {
+    "chain": [
+     [
+      12,
+      "Exhausted",
+      0,
+      0.02
+     ]
+    ]
+   },
    "normalized": {},
-   "notes": "sacudón estando quebrado; vuelve a la pose de Exhausted",
+   "notes": "sacudón estando quebrado, dos pasitos atrás; vuelve al primer cuadro de Exhausted",
    "lint": {
     "reach_miss_cm": {
-     "hands": 1.5,
+     "hands": 1.4,
      "legs": 0.0
     },
     "hip_drop_cm": 0.0,
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": 2.0
    }
   },
   "Spotted": {
-   "first": 468,
-   "last": 486,
+   "first": 513,
+   "last": 531,
    "frames": 18,
    "seconds": 0.6,
    "loop": false,
@@ -492,12 +622,14 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.2,
+    "lowest_weapon_cm": 70.2
    }
   },
   "Death": {
-   "first": 496,
-   "last": 529,
+   "first": 541,
+   "last": 574,
    "frames": 33,
    "seconds": 1.1,
    "loop": false,
@@ -529,7 +661,9 @@
       ]
      ],
      "l": []
-    }
+    },
+    "lowest_body_cm": -2.3,
+    "lowest_weapon_cm": 3.3
    }
   }
  },

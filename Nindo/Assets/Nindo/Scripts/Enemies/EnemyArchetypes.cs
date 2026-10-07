@@ -11,8 +11,8 @@ namespace Nindo
     {
         // apex = fin de la pausa del aviso y activeStart = cuadro de contacto de los clips nuevos (TeamAnims/*Anims.fbx.json,
         // 'normalized': Tools/Blender/anim/build_team_anims.py falla si estos números no coinciden con el clip)
-        const float NinjaApex1 = 0.50f, NinjaApex2 = 0.364f, NinjaApex3 = 0.441f, NinjaApexThrust = 0.475f;
-        const float SumoApex1 = 0.556f, SumoApex2 = 0.481f, SumoApex3 = 0.571f, SumoApexSpecial = 0.233f;
+        const float NinjaApex1 = 0.50f, NinjaApex2 = 0.318f, NinjaApex3 = 0.382f, NinjaApexThrust = 0.275f;
+        const float SumoApex1 = 0.556f, SumoApex2 = 0.407f, SumoApex3 = 0.571f, SumoApexSpecial = 0.233f;
 
         static AttackDef Hit(string state, float dmg, float aStart, float aEnd, float range = 2.3f, float arc = 110f,
             AttackKind kind = AttackKind.Light, float lunge = 0.8f, float telegraph = 0f, float speed = 1f, float kb = 0.6f, float apex = -1f)

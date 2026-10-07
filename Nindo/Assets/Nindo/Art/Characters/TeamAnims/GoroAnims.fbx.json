@@ -24,7 +24,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 12.9
    }
   },
   "Walk": {
@@ -46,7 +48,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 12.9
    },
    "root_velocity_mps": 2.0
   },
@@ -69,7 +73,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 29.0
    },
    "root_velocity_mps": 3.8
   },
@@ -117,17 +123,20 @@
     "hip_drop_cm": 2.3,
     "hold_tip_mps": 1.28,
     "peak_frame": 22,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 0.886,
     "game_hold_s": 0.0,
     "contact_tip_m": [
      -0.03,
      -2.65,
-     0.81
+     0.93
     ],
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": -2.5
    }
   },
   "Combo2": {
@@ -174,6 +183,7 @@
     "hip_drop_cm": 0.0,
     "hold_tip_mps": 1.76,
     "peak_frame": 19,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 0.768,
     "game_hold_s": 0.0,
     "contact_tip_m": [
@@ -184,7 +194,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.4
    }
   },
   "Combo3": {
@@ -231,17 +243,20 @@
     "hip_drop_cm": 0.0,
     "hold_tip_mps": 1.84,
     "peak_frame": 17,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 0.69,
     "game_hold_s": 0.0,
     "contact_tip_m": [
      -0.03,
      -2.64,
-     0.76
+     0.88
     ],
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": -1.1
    }
   },
   "Heavy": {
@@ -288,17 +303,20 @@
     "hip_drop_cm": 20.8,
     "hold_tip_mps": 1.63,
     "peak_frame": 40,
+    "prerelease_glide_cm": 0.0,
     "game_T_s": 1.422,
     "game_hold_s": 0.0,
     "contact_tip_m": [
      -0.02,
      -2.51,
-     0.79
+     0.97
     ],
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -2.1,
+    "lowest_weapon_cm": -3.0
    }
   },
   "Spin": {
@@ -344,7 +362,7 @@
      "legs": 0.0
     },
     "hip_drop_cm": 0.0,
-    "hold_tip_mps": 1.38,
+    "hold_tip_mps": 0.86,
     "peak_frame": 56,
     "game_T_s": 0.95,
     "game_hold_s": 0.26,
@@ -356,7 +374,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 1.9
    }
   },
   "StunSpin": {
@@ -378,46 +398,29 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 1.8
    }
   },
-  "Parried": {
+  "ExhaustedHit": {
    "first": 503,
-   "last": 539,
-   "frames": 36,
-   "seconds": 1.2,
+   "last": 515,
+   "frames": 12,
+   "seconds": 0.4,
    "loop": false,
    "timing": {
-    "sheet": [
-     3,
-     7,
-     14,
-     24
+    "chain": [
+     [
+      12,
+      "StunSpin",
+      0,
+      0.02
+     ]
     ]
    },
    "normalized": {},
-   "notes": "parry recibido: el martillo rebota arriba",
-   "lint": {
-    "reach_miss_cm": {
-     "hands": 0.0,
-     "legs": 0.0
-    },
-    "hip_drop_cm": 8.8,
-    "floor_skate_cm": {
-     "r": [],
-     "l": []
-    }
-   }
-  },
-  "Hit": {
-   "first": 549,
-   "last": 564,
-   "frames": 15,
-   "seconds": 0.5,
-   "loop": false,
-   "timing": {},
-   "normalized": {},
-   "notes": "sacudón sin moverse del lugar",
+   "notes": "mareado: se tambalea con el golpe; vuelve al cuadro 0 de StunSpin",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
@@ -427,12 +430,136 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 4.4
+   }
+  },
+  "Parried": {
+   "first": 525,
+   "last": 535,
+   "frames": 10,
+   "seconds": 0.3333,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     4,
+     6,
+     9
+    ],
+    "chain": [
+     [
+      9.6,
+      "Combo1",
+      0,
+      0.12
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry recibido: el martillo rebota arriba y cae adelante; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.9
+   }
+  },
+  "ParriedPerfect": {
+   "first": 545,
+   "last": 560,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     6,
+     8,
+     14
+    ],
+    "chain": [
+     [
+      14.4,
+      "Combo1",
+      0,
+      0.12
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry perfecto: el martillo se va atrás por encima de la cabeza, dos pasos atrás; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 5.1,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.9
+   }
+  },
+  "Hit": {
+   "first": 570,
+   "last": 585,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "sacudón; se acomoda los 4 cm del empujón",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 14.8
+   }
+  },
+  "HitHeavy": {
+   "first": 595,
+   "last": 610,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "golpe pesado: sacudón y un paso atrás",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 13.9
    }
   },
   "Spotted": {
-   "first": 574,
-   "last": 616,
+   "first": 620,
+   "last": 662,
    "frames": 42,
    "seconds": 1.4,
    "loop": false,
@@ -448,12 +575,14 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 6.3
    }
   },
   "Death": {
-   "first": 626,
-   "last": 686,
+   "first": 672,
+   "last": 732,
    "frames": 60,
    "seconds": 2.0,
    "loop": false,
@@ -480,7 +609,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.8,
+    "lowest_weapon_cm": 0.6
    }
   }
  },

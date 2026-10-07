@@ -24,7 +24,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
    }
   },
   "Walk": {
@@ -46,7 +48,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
    },
    "root_velocity_mps": 0.8
   },
@@ -69,7 +73,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
    }
   },
   "Freed": {
@@ -81,6 +87,7 @@
    "timing": {
     "sheet": [
      0,
+     5,
      12,
      28,
      40,
@@ -88,10 +95,18 @@
      66,
      78,
      90
+    ],
+    "chain": [
+     [
+      90,
+      "Idle",
+      0,
+      0.02
+     ]
     ]
    },
    "normalized": {},
-   "notes": "libre: se frota las muñecas y le hace una reverencia a Kaito",
+   "notes": "libre: pasitos mientras se da vuelta, se frota las muñecas y le hace una reverencia",
    "lint": {
     "reach_miss_cm": {
      "hands": 0.0,
@@ -101,7 +116,9 @@
     "floor_skate_cm": {
      "r": [],
      "l": []
-    }
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
    }
   }
  },

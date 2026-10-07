@@ -23,7 +23,7 @@ for p in (HERE, os.path.join(ROOT, "Tools", "Blender"), os.path.join(ROOT, "Tool
 sys.dont_write_bytecode = True
 
 import bpy
-from mathutils import Vector
+from mathutils import Vector, Matrix
 import nindo_anim as NA
 import team_rig as T
 
@@ -54,8 +54,10 @@ def check(ok, msg, warn=False):
 
 # ------------------------------------------------------------------------------- golpes del juego
 def archetype_hits(func_names):
-    """Hit("Estado", ...) de las funciones dadas de EnemyArchetypes.cs: {estado: [(activeStart, activeEnd, apex), ...]}.
-    Los apex con nombre (NinjaApex1 = 0.50f) se resuelven con las constantes del archivo."""
+    """Hit("Estado", ...) de las funciones dadas de EnemyArchetypes.cs:
+    {estado: [(activeStart, activeEnd, apex, función, embestida, velocidad), ...]}.
+    Los apex con nombre (NinjaApex1 = 0.50f) se resuelven con las constantes del archivo; embestida y velocidad, con
+    los valores por omisión de Hit() (0.8 m, 1)."""
     src = open(ARCHETYPES, encoding="utf-8").read()
     consts = {m.group(1): float(m.group(2)) for m in re.finditer(r"(\w+)\s*=\s*([\d.]+)f", src)}
     out = {}
@@ -70,7 +72,9 @@ def archetype_hits(func_names):
             if am:
                 v = am.group(1).rstrip("f")
                 apex = consts.get(v, None) if not re.match(r"[\d.]+$", v) else float(v)
-            out.setdefault(st, []).append((a0, a1, apex, fn))
+            lm = re.search(r"lunge:\s*([\d.]+)f", rest)
+            sm = re.search(r"speed:\s*([\d.]+)f", rest)
+            out.setdefault(st, []).append((a0, a1, apex, fn, float(lm.group(1)) if lm else 0.8, float(sm.group(1)) if sm else 1.0))
     return out
 
 
@@ -174,16 +178,117 @@ def lint(ch, clip, frames, ctrls, roots, drops, misses, hits):
         check(ap < peak <= act[1] + 1, f"{clip.name}: la punta va más rápido en el golpe (pico f{peak}, golpe f{ap}-f{act[1]})")
         # el golpe del juego: activeStart = contacto / largo (±1 cuadro), apex = fin de la pausa
         st = t.get("state", clip.name)
-        for a0, a1, apex, fn in hits.get(st, []):
+        for a0, a1, apex, fn, hl, hs in hits.get(st, []):
             ok = abs(a0 - a / n) <= 1.0 / n + 1e-3 and (apex is None or abs(apex - ap / n) <= 1.0 / n + 1e-3)
             check(ok, f"{clip.name}: {fn}() Hit(\"{st}\") activo {a0:.2f}-{a1:.2f} apex {apex} vs clip contacto "
                       f"{a / n:.3f} apex {ap / n:.3f}")
+            # las variantes que reusan el clip con otra embestida: los pies quedan corridos la diferencia, y si la
+            # embestida no entra en la suelta, el cuerpo se desliza durante la pausa (aviso, no falla: es su número)
+            if t.get("lunge") is not None and hl > 0.0:
+                g = prerelease_glide(n, ap, a, hl, hs)
+                check(g <= 0.02 and abs(hl - t["lunge"]) <= 0.1,
+                      f"{clip.name}: {fn}() embestida {hl:.2f} m (clip {t['lunge']:.2f}), {g * 100:.0f} cm antes de la suelta", warn=True)
+        # la embestida del clip tiene que arrancar en la suelta: si arranca antes, con cualquier pausa del juego en el
+        # apex (CombatDirector la estira hasta 0.6 s) el ninja se desliza con la pose quieta y los pies clavados
+        if t.get("lunge"):
+            g = prerelease_glide(n, ap, a, t["lunge"], 1.0)
+            rep["prerelease_glide_cm"] = round(g * 100.0, 1)
+            check(g <= 0.02, f"{clip.name}: la embestida de {t['lunge']:.1f} m arranca en la suelta ({g * 100:.0f} cm antes)")
+            # lo mismo medido con el reloj: con 0.45 s más de pausa, lo que avanzó hasta el apex (la pose congelada)
+            held, _ = T.lunge_travel(n, ap, a, t["lunge"], windup_min=t.get("windup", 0.55) + 0.45)
+            dh = max(held[:ap + 1])
+            check(dh <= 0.02, f"{clip.name}: con 0.45 s de pausa no avanza con la pose del apex quieta ({dh * 100:.1f} cm)")
         # con el reloj del juego: segundos desde que arranca el paso hasta el golpe
         tl = NA.StepTimeline(n, ap, a, windup_min=t.get("windup", 0.55))
         rep["game_T_s"] = round(tl.T, 3)
         rep["game_hold_s"] = round(tl.hold, 3)
         rep["contact_tip_m"] = [round(x, 2) for x in tip[a]]
     return rep
+
+
+def prerelease_glide(frames, apex, contact, lunge, speed):
+    """Metros que el transform avanza ANTES de la suelta (Enemy.BeginStep: la embestida termina en T + 0.05 * largo
+    del paso y no va a más de 12 m/s; si la suelta no alcanza, arranca antes). No depende de la pausa."""
+    tl = NA.StepTimeline(frames, apex, contact, windup_min=0.0, speed=speed)
+    room = tl.tR + 0.05 * tl.step_len
+    span = max(room, lunge / 12.0)
+    return lunge * (span - room) / span
+
+
+def body_points(ch, W):
+    """Todos los huesos y la punta del arma (m, marco de autoría, sin el avance del transform): para comparar poses."""
+    pts = [ch.Pc(W[n].translation) for n in ch.rig.names]
+    w = ch.weapon_info
+    if w and w["kind"] == "katana":
+        pts.append(ch.Pc(W[ch.spec["weapon"]["bone"]] @ w["tip_local"]))
+    elif w and w["kind"] == "club":
+        pts.append(ch.Pc(W[ch.spec["weapon"]["bone"]] @ Vector((0.0, w["head_center"] * ch.u, 0.0))))
+    return pts
+
+
+def pose_at(ch, frames, f):
+    """Puntos de body_points en un cuadro fraccionario (interpolados entre los dos enteros)."""
+    i = max(0, min(len(frames) - 1, int(math.floor(f))))
+    j = min(len(frames) - 1, i + 1)
+    a, b = body_points(ch, frames[i]), body_points(ch, frames[j])
+    s = f - i
+    return [p + (q - p) * s for p, q in zip(a, b)]
+
+
+def chain_checks(ch, baked_by_name):
+    """Cortes del juego que encadenan con otro clip (timing['chain'] = [(cuadro, clip, cuadro del otro, tolerancia m)]):
+    el retroceso del parry que corta Parried y arranca el paso siguiente, el sacudón que vuelve al loop de agotado,
+    el final del abuelo que vuelve al Idle. La pose en el corte tiene que ser la del otro clip (peor punto)."""
+    for name, (clip, frames) in baked_by_name.items():
+        for f, other, fo, tol in clip.timing.get("chain", []):
+            if other not in baked_by_name:
+                continue
+            a = pose_at(ch, frames, f)
+            b = pose_at(ch, baked_by_name[other][1], fo)
+            d = max((p - q).length for p, q in zip(a, b))
+            check(d <= tol, f"{name}: en f{f:g} empalma con {other} f{fo:g} (peor punto {d * 100:.1f} cm, tope {tol * 100:.0f})")
+
+
+def locomotion_weapon(ch, baked_by_name, states):
+    """El blend de locomoción mezcla cada hueso por separado: si el arma apunta para lados opuestos en dos hijos
+    vecinos, a mitad de mezcla se mete en el cuerpo o en el piso. Punta del arma a la misma fase, < 60 cm."""
+    w = ch.weapon_info
+    if not w:
+        return
+    bone = ch.spec["weapon"]["bone"]
+    local = w["tip_local"] if w["kind"] == "katana" else Vector((0.0, w["head_center"] * ch.u, 0.0))
+    for s0, s1 in zip(states, states[1:]):
+        if s0 not in baked_by_name or s1 not in baked_by_name:
+            continue
+        fa, fb = baked_by_name[s0][1], baked_by_name[s1][1]
+        worst = 0.0
+        for ph in (0.0, 0.25, 0.5, 0.75):
+            pa = ch.Pc(fa[int(round(ph * (len(fa) - 1)))][bone] @ local)
+            pb = ch.Pc(fb[int(round(ph * (len(fb) - 1)))][bone] @ local)
+            worst = max(worst, (pa - pb).length)
+        check(worst <= 0.6, f"locomoción: el arma de {s0} a {s1} a la misma fase ({worst * 100:.0f} cm)")
+        # la mezcla como la hace Unity (posición y giro LOCALES de cada hueso, interpolados): la punta a media mezcla
+        # no puede irse lejos del promedio de las dos (se metía en las piernas) ni bajar del piso
+        R = ch.rig
+        dev, low = 0.0, 9.0
+        for ph in (0.0, 0.25, 0.5, 0.75):
+            Wa, Wb = fa[int(round(ph * (len(fa) - 1)))], fb[int(round(ph * (len(fb) - 1)))]
+            la, lb = R.to_local(Wa), R.to_local(Wb)
+            for wgt in (0.25, 0.5, 0.75):
+                W = {}
+                for nm in R.names:
+                    (pa, qa), (pb, qb) = la[nm], lb[nm]
+                    if qa.dot(qb) < 0.0:
+                        qb = -qb
+                    L = Matrix.Translation(pa.lerp(pb, wgt)) @ qa.slerp(qb, wgt).to_matrix().to_4x4()
+                    par = R.parent[nm]
+                    W[nm] = (W[par] @ R.rel[nm] if par else R.rest[nm]) @ L
+                tip = ch.Pc(W[bone] @ local)
+                ref = ch.Pc(Wa[bone] @ local).lerp(ch.Pc(Wb[bone] @ local), wgt)
+                dev = max(dev, (tip - ref).length)
+                low = min(low, tip.z)
+        check(dev <= 0.3 and low >= 0.25, f"locomoción: a media mezcla {s0}-{s1} el arma sigue su camino (se aparta {dev * 100:.0f} cm, "
+                                          f"punta/cabeza a {low * 100:.0f} cm del piso)")
 
 
 def foot_vertices(ch):
@@ -204,42 +309,60 @@ def foot_vertices(ch):
     return out
 
 
-def floor_skate(ch, clip, first, roots, feet_v, floor_tol=0.01):
-    """Patinada CON el pie tocando el piso (revisión AK-03): en cada par de cuadros, de los vértices de la suela que
-    están a menos de 1 cm del piso en los dos, el que menos se corrió en el plano del piso (con el avance del transform
-    del juego sumado). Un pie apoyado que rueda sobre la punta o el talón tiene un vértice quieto: no cuenta; uno que se
-    arrastra entero sí. Devuelve {k: [(cuadro inicial, final, total cm, peor cm por cuadro)]} de las tiradas > 0.5 cm."""
+def mesh_pass(ch, clip, first, roots, feet_v, floor_tol=0.01):
+    """Una pasada por la malla deformada de cada cuadro (la acción ya escrita) con dos medidas:
+      * patinada CON el pie tocando el piso (revisión AK-03): en cada par de cuadros, de los vértices de la suela que
+        están a menos de 1 cm del piso en los dos, el que menos se corrió en el plano del piso (con el avance del
+        transform del juego sumado). Un pie que rueda sobre la punta o el talón tiene un vértice quieto: no cuenta; uno
+        que se arrastra entero sí. {k: [(cuadro inicial, final, total cm, peor cm por cuadro)]} de las tiradas > 0.5 cm;
+      * lo más hondo que se mete en el piso el cuerpo (mallas con skin) y el arma (piezas rígidas), en cm por cuadro."""
+    import numpy as np
     scn = bpy.context.scene
     n = clip.frames
-    pts = []
+    Rw = np.array(ch.Rcw, dtype=np.float64)
+    O = np.array(ch.O, dtype=np.float64)
+    A3 = ch.A.to_3x3()
+    feet_idx = {o.name: {k: np.array(idx) for k, lst in feet_v.items() for oo, idx in lst if oo is o} for o in ch.meshes}
+    pts, low_body, low_weapon, low_where = [], [], [], []
     for f in range(n + 1):
         scn.frame_set(first + f)
         dg = bpy.context.evaluated_depsgraph_get()
-        r = roots[f]
-        row = {}
-        for k, lst in feet_v.items():
-            ps = []
-            for o, idx in lst:
-                oe = o.evaluated_get(dg)
-                me = oe.to_mesh()
-                M = ch.Ai @ oe.matrix_world
-                ps += [ch.Pc(M @ me.vertices[i].co + r) for i in idx]
-                oe.to_mesh_clear()
-            row[k] = ps
-        pts.append(row)
-    pairs = [(f, f + 1) for f in range(n)]
+        shift = np.array(A3 @ roots[f], dtype=np.float64)
+        row = {k: [] for k in feet_v}
+        lb = lw = 9.0
+        where = ""
+        for o in ch.meshes:
+            oe = o.evaluated_get(dg)
+            me = oe.to_mesh()
+            co = np.empty(len(me.vertices) * 3)
+            me.vertices.foreach_get("co", co)
+            oe.to_mesh_clear()
+            M = np.array(oe.matrix_world, dtype=np.float64)
+            w = co.reshape(-1, 3) @ M[:3, :3].T + M[:3, 3] + shift
+            c = (w - O) @ Rw / ch.u                         # marco de autoría (m)
+            z = float(c[:, 2].min())
+            if o.vertex_groups:
+                if z < lb:
+                    lb, where = z, dominant_group(o, int(c[:, 2].argmin()))
+            else:
+                lw = min(lw, z)
+            for k, idx in feet_idx[o.name].items():
+                row[k].append(c[idx])
+        pts.append({k: np.concatenate(v) for k, v in row.items() if v})
+        low_body.append(lb)
+        low_weapon.append(lw)
+        low_where.append(where)
     out = {}
     for k in feet_v:
         runs, run = [], None
-        for a, b in pairs:
-            pa, pb = pts[a][k], pts[b][k]
-            dd = [Vector((pb[i].x - pa[i].x, pb[i].y - pa[i].y)).length for i in range(len(pa))
-                  if pa[i].z < floor_tol and pb[i].z < floor_tol]
-            if dd:
-                m = min(dd) * 100.0
+        for a in range(n):
+            pa, pb = pts[a][k], pts[a + 1][k]
+            on = (pa[:, 2] < floor_tol) & (pb[:, 2] < floor_tol)
+            if on.any():
+                m = float(np.min(np.hypot(pb[on, 0] - pa[on, 0], pb[on, 1] - pa[on, 1]))) * 100.0
                 if run is None:
-                    run = [a, b, 0.0, 0.0]
-                run[1] = b
+                    run = [a, a + 1, 0.0, 0.0]
+                run[1] = a + 1
                 run[2] += m
                 run[3] = max(run[3], m)
             elif run:
@@ -248,7 +371,29 @@ def floor_skate(ch, clip, first, roots, feet_v, floor_tol=0.01):
         if run:
             runs.append(run)
         out[k] = [(r0, r1, round(t, 2), round(w, 2)) for r0, r1, t, w in runs if t > 0.5]
-    return out
+    return out, [round(v * 100.0, 1) for v in low_body], [round(v * 100.0, 1) for v in low_weapon], low_where
+
+
+def dominant_group(o, vi):
+    """Hueso que más pesa en un vértice (para decir QUÉ se mete en el piso)."""
+    gs = o.data.vertices[vi].groups
+    return o.vertex_groups[max(gs, key=lambda g: g.weight).group].name if len(gs) else o.name
+
+
+def floor_checks(clip, low_body, low_weapon, low_where):
+    """Nada atraviesa el piso: el cuerpo nunca más de 3 cm (las suelas que ruedan rozan); el arma tampoco, salvo el
+    mordisco del golpe (hasta 6 cm, del contacto a 3 cuadros después: el martillo que pega en el piso)."""
+    t = clip.timing
+    bite = range(t["contact"], t["contact"] + 4) if "contact" in t else range(0)
+    wb = min(range(len(low_body)), key=lambda i: low_body[i])
+    check(low_body[wb] >= -3.0, f"{clip.name}: el cuerpo no se mete en el piso (f{wb} {low_body[wb]:.1f} cm)")
+    if low_body[wb] < -3.0:
+        print("       cuadro a cuadro (cm):", " ".join(f"{i}:{v:.0f}({low_where[i]})" for i, v in enumerate(low_body) if v < -3.0))
+    if min(low_weapon) < 800.0:          # sin arma queda en 900 (centinela)
+        bad = [(i, v) for i, v in enumerate(low_weapon) if v < (-6.0 if i in bite else -3.0)]
+        ww = min(range(len(low_weapon)), key=lambda i: low_weapon[i])
+        check(not bad, f"{clip.name}: el arma no se mete en el piso (f{ww} {low_weapon[ww]:.1f} cm"
+                       f"{'; ' + str(len(bad)) + ' cuadros de más' if bad else ''})")
 
 
 # ------------------------------------------------------------------------------- export
@@ -342,8 +487,11 @@ def main():
     # pies que patinan tocando el piso: se mide sobre la malla deformada por la acción ya escrita
     feet_v = foot_vertices(ch)
     for clip, _ in baked:
-        sk = floor_skate(ch, clip, ranges[clip.name][0], rootsa[clip.name], feet_v)
+        sk, lb, lw, lwh = mesh_pass(ch, clip, ranges[clip.name][0], rootsa[clip.name], feet_v)
         reports[clip.name]["floor_skate_cm"] = sk
+        reports[clip.name]["lowest_body_cm"] = min(lb)
+        reports[clip.name]["lowest_weapon_cm"] = min(lw) if min(lw) < 800 else None
+        floor_checks(clip, lb, lw, lwh)
         allow = clip.timing.get("slide_ok", 0.0)
         runs = [r for v in sk.values() for r in v]
         tot = max([r[2] for r in runs] or [0.0])
@@ -351,6 +499,11 @@ def main():
         where = "; ".join(f"{k} f{r[0]}-f{r[1]} {r[2]} cm" for k, v in sk.items() for r in v if r[2] > 1.0)
         check(tot <= max(3.0, allow) and per <= max(2.0, allow),
               f"{clip.name}: sin patinar con el pie en el piso (total {tot:.1f} cm, peor cuadro {per:.1f} cm{'; ' + where if where else ''})")
+    by_name = {c.name: (c, fr) for c, fr in baked}
+    chain_checks(ch, by_name)
+    lo = getattr(mod, "LOCOMOTION", None)
+    if lo:
+        locomotion_weapon(ch, by_name, [nm for nm, _ in lo])
     last = max(b for a, b in ranges.values())
     if EXPORT and not ONLY:
         if failures:

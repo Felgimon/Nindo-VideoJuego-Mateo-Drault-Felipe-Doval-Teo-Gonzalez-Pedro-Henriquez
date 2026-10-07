@@ -791,6 +791,13 @@ class TeamClip(NA.Clip):
         return c
 
 
+def knock_travel(n, meters, delay=0):
+    """Empujón que Enemy aplica al transform (golpe recibido, parry, sacudón): cada frame avanza min(1, dt*10) de lo
+    que falta, o sea que a 60 fps queda 5/6 por frame (90 % en 0.2 s). Metros hacia ADELANTE en cada cuadro del clip
+    (negativo = para atrás): los pies se autoran en el mundo y quedan clavados mientras lo empujan."""
+    return [-meters * (1.0 - (5.0 / 6.0) ** (2.0 * max(0.0, f - delay))) for f in range(n + 1)]
+
+
 def lunge_travel(frames, apex, contact, lunge, windup_min, speed=1.0, release_rate=1.6, hz=240.0):
     """Cuánto avanzó el transform del juego (m) en cada cuadro del clip durante un golpe con embestida, con el
     mismo reloj que Enemy.BeginStep/TickAttack: el avance va de la suelta (apex) a T + 0.05 * largo del paso a

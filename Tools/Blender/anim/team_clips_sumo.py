@@ -10,7 +10,9 @@ Lo que dice la auditoría (ANIM-07) y cómo se resolvió:
   * Special (tachiai, la embestida): agachado con los puños en el piso mirando para arriba (el aviso imparable), sale
     disparado y corre pisando corto mientras dura el carril (Enemy estira la fase activa con tl.sustain), frena
     derrapando con los brazos abiertos y vuelve a la guardia.
-  * Hit 0.4 s, Parried 0.9 s (la mano rebotada para arriba, dos pasos atrás), Exhausted con las manos en las rodillas,
+  * Hit / HitHeavy (cada uno con la distancia del empujón que le toca), Parried / ParriedPerfect (la mano rebotada para
+    arriba; terminan en la guardia en el cuadro en que Enemy corta el retroceso), Exhausted con las manos en las rodillas
+    y su ExhaustedHit,
     Death que cae sentado y después de espaldas como un árbol, Idle que respira con la panza, caminar y trotar
     abiertos (los pies clavados en el mundo).
 El esqueleto es el del equipo (manos y pies cuelgan de controles IK en la raíz): team_rig pone los controles pegados a
@@ -55,8 +57,10 @@ def FL(f, dy=0.0, dx=0.0, yaw=None, pitch=0.0, z=0.0, ease="inout", lift=None, r
 PLANTED = {"r": [FR(0)], "l": [FL(0)]}
 
 
-def knock_travel(n, meters, rate=10.0):
-    return [-meters * (1.0 - math.exp(-rate * f / T.FPS)) for f in range(n + 1)]
+# empujones del juego (Enemy): parry 0.4 m (perfecto 0.8; el parry no descuenta knockbackResist), los golpes de Kaito
+# sí: 0.35-0.4 m de los livianos x (1 - 0.7) = 0.11 m y 1.4-1.8 m de los pesados (HitHeavy) x 0.3 = 0.48 m
+PARRY_BACK, PERFECT_BACK, HIT_BACK, HEAVY_BACK = 0.4, 0.8, 0.11, 0.48
+knock_travel = T.knock_travel
 
 
 def mirror(d):
@@ -79,7 +83,7 @@ def clips(ch):
     out = [idle()]
     out += locomotion(ch)
     out += [attack1(), attack2(), attack3(), special()]
-    out += [hit(), parried(), exhausted(), spotted(), death()]
+    out += [hit(), hit_heavy(), parried(), parried_perfect(), exhausted(), exhausted_hit(), spotted(), death()]
     return out
 
 
@@ -182,8 +186,10 @@ def attack1():
 
 
 def attack2():
-    """La bofetada izquierda (segunda del tsuppari, encadenada): la derecha espejada con un aviso más corto."""
-    c = harite_r(27, 13, 16, 0.6, 0.5, "Attack2", "Attack2")
+    """La bofetada izquierda (segunda del tsuppari, encadenada): la derecha espejada con un aviso más corto. Apex en
+    f11 (5 cuadros de suelta): el agarre del Ōzeki (1.5 m) y el morote del lago (1.6 m) usan este clip y su embestida
+    tiene que entrar entera en la suelta (si no, se deslizan con la pose del apex quieta)."""
+    c = harite_r(27, 11, 16, 0.6, 0.5, "Attack2", "Attack2")
     keys = []
     for k in c.keys:
         f = k.frame if k.frame != 8 else 6           # aviso más corto: encadenado
@@ -286,35 +292,74 @@ def special():
 
 
 # ================================================================== reacciones
+def hit_clip(name, n, back, peak, reb, feet, notes):
+    keys = [Key(0, P()), Key(2, peak, "snap"), Key(6, reb, "inout"), Key(n, P(), "sine")]
+    return T.TeamClip(name, n, keys, travel=knock_travel(n, back), feet=feet, notes=notes)
+
+
 def hit():
-    """Golpe recibido (0.4 s): la cabeza y el pecho se sacuden atrás, la panza rebota adelante, un pie retrocede."""
-    n = 12
-    back = 0.2
+    """Golpe recibido (0.4 s): la cabeza y el pecho se sacuden atrás, la panza rebota adelante y se acomoda con el
+    empujón liviano (0.11 m: aguanta casi todo)."""
+    b = HIT_BACK
     PEAK = P(hips=(0.0, 0.08, -0.08), hips_rot=(-8.0, 0.0, 8.0), spine=(-12.0, 0.0, 6.0), head=(14.0, 0.0, 10.0),
              hand_r=(-0.78, -0.05, 1.30), hand_r_dir=(-0.5, 0.0, 0.85), hand_l=(0.74, 0.0, 1.22), hand_l_dir=(0.5, 0.0, 0.85))
     REB = P(hips=(0.0, 0.0, -0.13), hips_rot=(10.0, 0.0, -2.0), spine=(10.0, 0.0, -2.0), head=(-14.0, 0.0, -2.0))
-    keys = [Key(0, P()), Key(2, PEAK, "snap"), Key(6, REB, "inout"), Key(n, P(), "sine")]
-    feet = {"r": [FR(0), FR(1), FR(6, -back, ease="out"), FR(n, -back)], "l": [FL(0), FL(3, pitch=10.0), FL(9, -back, ease="out")]}
-    return T.TeamClip("Hit", n, keys, travel=knock_travel(n, back), feet=feet, notes="golpe recibido: sacudón atrás y rebote")
+    feet = {"r": [FR(0), FR(1), FR(6, -b, ease="out", lift=0.04)], "l": [FL(0), FL(3, pitch=10.0), FL(9, -b, ease="out", lift=0.04)]}
+    return hit_clip("Hit", 12, b, PEAK, REB, feet, "golpe recibido: sacudón atrás y rebote, se acomoda 0.11 m")
+
+
+def hit_heavy():
+    """Golpe pesado recibido (corte final y habilidades de Kaito: 0.48 m después de su resistencia; Enemy lo elige
+    cuando el empujón pasa de 1 m): se va para atrás con los brazos sueltos y da un paso pesado de cada pie."""
+    b = HEAVY_BACK
+    PEAK = P(hips=(0.0, 0.10, -0.09), hips_rot=(-14.0, 0.0, 10.0), spine=(-18.0, 0.0, 8.0), head=(20.0, 0.0, 12.0),
+             hand_r=(-0.86, 0.05, 1.42), hand_r_dir=(-0.6, 0.1, 0.8), hand_l=(0.82, 0.10, 1.36), hand_l_dir=(0.6, 0.1, 0.8),
+             fist_r=0.0, fist_l=0.0)
+    REB = P(hips=(0.0, 0.04, -0.15), hips_rot=(12.0, 0.0, -3.0), spine=(12.0, 0.0, -3.0), head=(-16.0, 0.0, -2.0))
+    feet = {"r": [FR(0), FR(5, -b, ease="out", lift=0.08)], "l": [FL(0), FL(8, -b, ease="out", lift=0.07)]}
+    return hit_clip("HitHeavy", 12, b, PEAK, REB, feet, "golpe pesado recibido: atrás con los brazos sueltos, dos pasos")
+
+
+PARRY_KNOCK = P(hips=(0.0, 0.12, -0.10), hips_rot=(-14.0, 0.0, -16.0), spine=(-16.0, 4.0, -10.0), head=(16.0, 0.0, -14.0),
+                hand_r=(-0.70, 0.30, 1.85), hand_r_dir=(-0.3, 0.4, 0.85), hand_r_palm=(0.0, -1.0, 0.0), elbow_r=(-1.0, 0.0, 0.0),
+                hand_l=(0.85, -0.10, 1.30), hand_l_dir=(0.6, 0.0, 0.8), hand_l_palm=(0.0, -1.0, 0.0), elbow_l=(1.0, 0.2, -0.2),
+                fist_r=0.0, fist_l=0.0)
+
+
+def parried_clip(name, n, settle, recoil, back, knock, hold, stumble, feet, notes):
+    """Parry recibido: Enemy.OnParried corta el clip a los parriedRecoil s (0.32; x1.5 el perfecto) y arranca el paso
+    siguiente con un cruce de 0.08 s: en el cuadro del corte tiene que estar en la guardia de los golpes ('chain')."""
+    hr = knock["hand_r"]
+    keys = [Key(0, P()), Key(2, knock, "snap"), Key(hold, dict(knock, hand_r=(hr[0] - 0.02, hr[1] + 0.04, hr[2] + 0.05)), "out"),
+            Key(hold + 2, stumble, "inout"), Key(settle, P(), "sine"), Key(n, P(), "sine")]
+    return T.TeamClip(name, n, keys, travel=knock_travel(n, back), feet=feet, notes=notes,
+                      timing=dict(sheet=[2, hold, hold + 2, settle], chain=[(round(recoil * T.FPS, 1), "Attack1", 0, 0.10)]))
 
 
 def parried():
-    """Le desviaron la bofetada (la recompensa del parry): el brazo que pegaba sale despedido arriba y afuera, el
-    cuerpo se va para atrás con la panza adelante y da dos pasos atrás; a los 0.35 s ya puede seguir el tsuppari."""
-    n = 27
-    back = 0.55
-    KNOCK = P(hips=(0.0, 0.12, -0.10), hips_rot=(-14.0, 0.0, -16.0), spine=(-16.0, 4.0, -10.0), head=(16.0, 0.0, -14.0),
-              hand_r=(-0.70, 0.30, 1.85), hand_r_dir=(-0.3, 0.4, 0.85), hand_r_palm=(0.0, -1.0, 0.0), elbow_r=(-1.0, 0.0, 0.0),
-              hand_l=(0.85, -0.10, 1.30), hand_l_dir=(0.6, 0.0, 0.8), hand_l_palm=(0.0, -1.0, 0.0), elbow_l=(1.0, 0.2, -0.2),
-              fist_r=0.0, fist_l=0.0)
-    STUMBLE = dict(KNOCK, hips=(0.0, 0.10, -0.15), hips_rot=(-4.0, 3.0, -8.0), spine=(-6.0, 3.0, -6.0), head=(6.0, 0.0, -8.0),
-                   hand_r=(-0.72, 0.10, 1.45), hand_l=(0.78, -0.12, 1.18))
-    keys = [Key(0, P()), Key(3, KNOCK, "snap"), Key(6, dict(KNOCK, hand_r=(-0.72, 0.34, 1.90)), "out"),
-            Key(12, STUMBLE, "inout"), Key(n, P(), "sine")]
-    feet = {"l": [FL(0), FL(1, pitch=12.0), FL(7, -back - 0.15, ease="out"), FL(10, -back - 0.15), FL(16, -back, lift=0.06)],
-            "r": [FR(0), FR(2), FR(10, -back, pitch=-8.0, ease="out"), FR(12, -back)]}
-    return T.TeamClip("Parried", n, keys, travel=knock_travel(n, back), feet=feet,
-                      notes="parry recibido: el brazo despedido arriba, dos pasos atrás", timing=dict(sheet=[3, 6, 12, 18]))
+    """Le desviaron la bofetada (parry común: 0.32 s, 0.4 m atrás): el brazo que pegaba sale despedido arriba y afuera,
+    el cuerpo se va para atrás con la panza adelante y salta atrás; en el corte (f9.6) ya puede seguir el tsuppari."""
+    b = PARRY_BACK
+    STUMBLE = dict(PARRY_KNOCK, hips=(0.0, 0.08, -0.13), hips_rot=(-2.0, 2.0, -6.0), spine=(-2.0, 2.0, -4.0), head=(2.0, 0.0, -6.0),
+                   hand_r=(-0.68, 0.0, 1.30), hand_l=(0.70, -0.16, 1.10))
+    feet = {"l": [FL(0), FL(5, -b, ease="out", lift=0.06)],
+            "r": [FR(0), FR(1), FR(7, -b, pitch=-8.0, ease="out", lift=0.06), FR(8, -b)]}
+    return parried_clip("Parried", 10, 9, 0.32, b, PARRY_KNOCK, 4, STUMBLE, feet,
+                        "parry recibido: el brazo despedido arriba, salto atrás; en guardia al corte")
+
+
+def parried_perfect():
+    """Parry perfecto (0.48 s, 0.8 m: Enemy lo elige si el controller lo tiene): los dos brazos arriba, la panza
+    adelante, despedido con los dos pies en el aire, cae pesado y trastabilla un paso; en guardia en el corte (f14.4)."""
+    b = PERFECT_BACK
+    KNOCK = dict(PARRY_KNOCK, hips=(0.0, 0.14, -0.06), hips_rot=(-20.0, 0.0, -20.0), spine=(-20.0, 4.0, -12.0), head=(22.0, 0.0, -16.0),
+                 hand_r=(-0.66, 0.34, 1.92), hand_l=(0.80, 0.0, 1.60), hand_l_dir=(0.4, 0.2, 0.9))
+    STUMBLE = dict(KNOCK, hips=(0.0, 0.10, -0.16), hips_rot=(-4.0, 3.0, -8.0), spine=(-6.0, 3.0, -6.0), head=(6.0, 0.0, -8.0),
+                   hand_r=(-0.72, 0.10, 1.45), hand_l=(0.78, -0.12, 1.18), hand_l_dir=(0.6, 0.0, 0.8))
+    feet = {"l": [FL(0), FL(5, -b + 0.15, ease="out", lift=0.10), FL(7, -b + 0.15), FL(12, -b, lift=0.04)],
+            "r": [FR(0), FR(7, -b, pitch=-8.0, ease="out", lift=0.10), FR(9, -b)]}
+    return parried_clip("ParriedPerfect", 15, 14, 0.48, b, KNOCK, 6, STUMBLE, feet,
+                        "parry perfecto: despedido 0.8 m con los brazos arriba, trastabilla; en guardia al corte")
 
 
 def exhausted_pose(a=0.0):
@@ -332,6 +377,22 @@ def exhausted():
     n = 48
     keys = [Key(f, exhausted_pose(2.0 * math.pi * f / n), "sine") for f in (0, 12, 24, 36, 48)]
     return T.TeamClip("Exhausted", n, keys, loop=True, feet=PLANTED, notes="agotado: manos en las rodillas, jadea")
+
+
+def exhausted_hit():
+    """Golpe recibido estando agotado (Enemy lo usa si existe y al terminar vuelve al loop): sin sacar las manos de
+    las rodillas, la cabeza y la panza se sacuden y se acomoda los 0.11 m del empujón; termina en el cuadro 0 de
+    Exhausted (con Hit se paraba en guardia en plena ventana de daño)."""
+    n = 12
+    b = HIT_BACK
+    E = exhausted_pose()
+    PEAK = dict(E, hips=(0.0, 0.12, -0.20), hips_rot=(12.0, 0.0, 6.0), spine=(6.0, 0.0, 4.0), head=(30.0, 0.0, 8.0),
+                hand_r=(-0.54, -0.38, 0.74), hand_l=(0.54, -0.38, 0.72), breath=1.0)
+    keys = [Key(0, E), Key(2, PEAK, "snap"), Key(5, dict(PEAK, hips=(0.0, 0.10, -0.22)), "out"), Key(n, E, "sine")]
+    feet = {"r": [FR(0), FR(1), FR(6, -b, ease="out", lift=0.04)], "l": [FL(0), FL(3), FL(8, -b, ease="out", lift=0.04)]}
+    return T.TeamClip("ExhaustedHit", n, keys, travel=knock_travel(n, b), feet=feet,
+                      notes="sacudón agotado sin sacar las manos de las rodillas; vuelve al cuadro 0 de Exhausted",
+                      timing=dict(chain=[(n, "Exhausted", 0, 0.02)]))
 
 
 def spotted():
@@ -361,22 +422,29 @@ def death():
     REC = P(hips=(0.0, 0.10, -0.08), hips_rot=(-10.0, 0.0, 6.0), spine=(-14.0, 0.0, 4.0), head=(18.0, 0.0, 6.0),
             hand_r=(-0.80, 0.0, 1.35), hand_r_dir=(-0.5, 0.0, 0.85), hand_l=(0.80, 0.05, 1.30), hand_l_dir=(0.5, 0.0, 0.85),
             fist_r=0.0, fist_l=0.0)
-    SIT = P(hips=(0.0, 0.10, -0.62), hips_rot=(-14.0, 0.0, 0.0), spine=(-8.0, 0.0, 0.0), head=(12.0, 0.0, 0.0),
+    SIT = P(hips=(0.0, 0.10, -0.60), hips_rot=(-14.0, 0.0, 0.0), spine=(-8.0, 0.0, 0.0), head=(12.0, 0.0, 0.0),
             knee_r=(-0.8, -0.6, 0.4), knee_l=(0.8, -0.6, 0.4),
             hand_r=(-0.82, 0.10, 0.62), hand_r_dir=(-0.4, 0.2, -0.9), hand_r_palm=(0.0, 0.0, -1.0), elbow_r=(-1.0, 0.3, 0.2),
             hand_l=(0.82, 0.10, 0.62), hand_l_dir=(0.4, 0.2, -0.9), hand_l_palm=(0.0, 0.0, -1.0), elbow_l=(1.0, 0.3, 0.2),
             fist_r=0.0, fist_l=0.0)
-    LIE = P(hips=(0.0, 0.18, -0.66), hips_rot=(-78.0, 0.0, 0.0), spine=(-6.0, 0.0, 0.0), head=(16.0, 0.0, 12.0),
+    LIE = P(hips=(0.0, 0.22, -0.22), hips_rot=(-72.0, 0.0, 0.0), spine=(-6.0, 0.0, 0.0), head=(16.0, 0.0, 12.0),
             knee_r=(-0.6, -0.5, 0.6), knee_l=(0.6, -0.5, 0.6),
-            hand_r=(-0.95, 0.45, 0.26), hand_r_dir=(-0.8, 0.5, 0.0), hand_r_palm=(0.0, 0.0, 1.0), elbow_r=(-1.0, 0.0, 0.3),
-            hand_l=(0.95, 0.45, 0.26), hand_l_dir=(0.8, 0.5, 0.0), hand_l_palm=(0.0, 0.0, 1.0), elbow_l=(1.0, 0.0, 0.3),
+            hand_r=(-0.95, 0.80, 0.36), hand_r_dir=(-0.8, 0.5, 0.0), hand_r_palm=(0.0, 0.0, 1.0), elbow_r=(-1.0, 0.0, 0.3),
+            hand_l=(0.95, 0.80, 0.36), hand_l_dir=(0.8, 0.5, 0.0), hand_l_palm=(0.0, 0.0, 1.0), elbow_l=(1.0, 0.0, 0.3),
             fist_r=0.2, fist_l=0.2)
     keys = [Key(0, P()), Key(3, REC, "snap"), Key(10, dict(REC, hips=(0.0, 0.14, -0.14)), "out"),
             Key(20, SIT, "in2"), Key(23, dict(SIT, hips=(0.0, 0.10, -0.58), spine=(4.0, 0.0, 0.0)), "out"),
-            Key(26, SIT, "sine"), Key(36, LIE, "in2"), Key(39, dict(LIE, hips=(0.0, 0.18, -0.63), head=(10.0, 0.0, 12.0)), "out"),
+            # rueda sobre la cola: la cadera sube mientras la espalda baja (si no, la espalda cruzaba el piso a mitad)
+            Key(26, SIT, "sine"), Key(28, dict(SIT, hips=(0.0, 0.12, -0.39), hips_rot=(-22.0, 0.0, 0.0), hand_r=(-0.86, 0.26, 0.74), hand_l=(0.86, 0.26, 0.74)), "in"), Key(31, dict(SIT, hips=(0.0, 0.16, -0.22), hips_rot=(-44.0, 0.0, 0.0), spine=(-8.0, 0.0, 0.0),
+                              hand_r=(-0.88, 0.40, 0.72), hand_l=(0.88, 0.40, 0.72)), "lin"),
+            Key(36, LIE, "out"), Key(39, dict(LIE, hips=(0.0, 0.22, -0.19), head=(10.0, 0.0, 12.0)), "out"),
             Key(n, LIE, "sine")]
     # la pierna derecha retrocede con el empujón; sentado, los pies quedan adelante con las rodillas arriba
-    feet = {"r": [FR(0), FR(2), FR(9, -0.62, ease="out"), FR(16, -0.62), FR(22, -0.62, dx=-0.05, pitch=-30.0)],
-            "l": [FL(0), FL(2, pitch=10.0), FL(10, -0.55, ease="out"), FL(22, -0.55, dx=0.05, pitch=-30.0)]}
+    # al irse de espaldas las piernas patalean para arriba (si los pies quedaban clavados, la cadera bajaba para
+    # alcanzarlos y la cola cruzaba el piso) y vuelven a caer con las rodillas arriba
+    feet = {"r": [FR(0), FR(2), FR(9, -0.62, ease="out"), FR(16, -0.62), FR(22, -0.62, dx=-0.05, pitch=-30.0), FR(26, -0.62, dx=-0.05, pitch=-30.0),
+                  FR(31, -0.52, dx=-0.08, pitch=-45.0, z=0.22, ease="out", lift=0.0), FR(38, -0.48, dx=-0.08, pitch=-30.0, ease="in", lift=0.0)],
+            "l": [FL(0), FL(2, pitch=10.0), FL(10, -0.55, ease="out"), FL(22, -0.55, dx=0.05, pitch=-30.0), FL(26, -0.55, dx=0.05, pitch=-30.0),
+                  FL(32, -0.47, dx=0.08, pitch=-45.0, z=0.18, ease="out", lift=0.0), FL(39, -0.44, dx=0.08, pitch=-30.0, ease="in", lift=0.0)]}
     return T.TeamClip("Death", n, keys, travel=slide, feet=feet, notes="muerte: cae sentado y después de espaldas",
                       timing=dict(sheet=[3, 10, 20, 26, 36, 45], slide_ok=6.0))
