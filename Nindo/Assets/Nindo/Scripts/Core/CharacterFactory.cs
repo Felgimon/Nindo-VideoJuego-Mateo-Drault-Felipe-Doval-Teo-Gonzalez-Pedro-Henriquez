@@ -385,7 +385,8 @@ namespace Nindo
                 case "mizuchi":
                     b.bossId = "mizuchi"; b.title = "Mizuchi"; b.subtitle = "El Gran Koi del Lago Kohan";
                     // "Roar" también en el reintento corto; la presentación entera (sale del pozo) es de MizuchiBoss
-                    b.introAnim = "Roar"; b.phaseAnim = "Roar"; b.musicKey = "boss_lake"; b.phaseThresholds = new[] { 0.55f, 0.25f };
+                    // fase 3 al 33 %: al 25 %, con el remate habilitado al 12 %, la cascada desatada duraba unos segundos
+                    b.introAnim = "Roar"; b.phaseAnim = "Roar"; b.musicKey = "boss_lake"; b.phaseThresholds = new[] { 0.55f, 0.33f };
                     b.phaseSpeedBonus = 0.08f;
                     break;
                 case "ozeki":
