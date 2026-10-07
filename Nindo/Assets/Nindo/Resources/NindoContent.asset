@@ -45,27 +45,51 @@ MonoBehaviour:
       emission: {r: 0.3, g: 0.2, b: 0.03, a: 1}
       clearBaseMap: 0
     stateNames:
+    - Idle
+    - Walk
+    - Jog
+    - Run
     - Attack1
     - Attack2
     - Attack3
+    - Dash
     - ParryStance
-    - ParrySuccess
+    - ParrySuccessR
+    - ParrySuccessL
+    - PerfectParry
     - Blocked
     - Hit
-    - Dash
+    - HitHeavy
+    - Death
     - Finisher
-    - Idle
+    - WindSlash
+    - Whirlwind
+    - Pray
+    - Interact
+    - ParrySuccess
     stateLengths:
+    - 2.4
+    - 0.6
+    - 0.4667
+    - 0.4
     - 0.4333
-    - 0.3
-    - 0.6333
-    - 0.1
-    - 0.2333
+    - 0.3667
+    - 0.6667
+    - 0.4667
+    - 0.5333
+    - 0.4
+    - 0.4
     - 0.4667
     - 0.4667
-    - 0.7667
+    - 0.3667
+    - 0.6667
+    - 1.4
     - 2.6667
-    - 1.9667
+    - 1.0333
+    - 1.0
+    - 1.3333
+    - 0.6667
+    - 0.4
   - id: kage
     model: {fileID: 919132149155446097, guid: 9f86c988b73612547b0ed90211033b12, type: 3}
     controller: {fileID: 9100000, guid: 5d89081a528ccd6f698c0a20385b0e53, type: 2}
@@ -73,27 +97,51 @@ MonoBehaviour:
     modelYaw: 90
     materialSwaps: []
     stateNames:
+    - Idle
+    - Walk
+    - Jog
+    - Run
     - Attack1
     - Attack2
     - Attack3
+    - Dash
     - ParryStance
-    - ParrySuccess
+    - ParrySuccessR
+    - ParrySuccessL
+    - PerfectParry
     - Blocked
     - Hit
-    - Dash
+    - HitHeavy
+    - Death
     - Finisher
-    - Idle
+    - WindSlash
+    - Whirlwind
+    - Pray
+    - Interact
+    - ParrySuccess
     stateLengths:
+    - 2.4
+    - 0.6
+    - 0.4667
+    - 0.4
     - 0.4333
-    - 0.3
-    - 0.6333
-    - 0.1
-    - 0.2333
+    - 0.3667
+    - 0.6667
+    - 0.4667
+    - 0.5333
+    - 0.4
+    - 0.4
     - 0.4667
     - 0.4667
-    - 0.7667
+    - 0.3667
+    - 0.6667
+    - 1.4
     - 2.6667
-    - 1.9667
+    - 1.0333
+    - 1.0
+    - 1.3333
+    - 0.6667
+    - 0.4
   - id: ninja
     model: {fileID: 919132149155446097, guid: 642c39cca7e4c9040ae0e8ba3072ec24, type: 3}
     controller: {fileID: 9100000, guid: af122ddaa0ad524ad3c947730fe1632a, type: 2}

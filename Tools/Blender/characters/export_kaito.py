@@ -2,6 +2,13 @@
 
 blender -b --python export_kaito.py -- [--write] [--src otro.fbx] [--out carpeta]
 
+Desde la fase B3 el FBX del repo tiene el esqueleto de juego y los clips de Tools/Blender/anim/kaito/build_kaito.py
+(una sola toma 'Scene'). Este script valida contra las tomas del equipo, así que se corre sobre el original:
+    git show d8fa5da:"Nindo/Assets/Animations teo/kaitooo.fbx" > kaito_equipo.fbx
+    blender -b --python export_kaito.py -- --src kaito_equipo.fbx --out TMP
+    blender -b --factory-startup --python ../anim/kaito/build_kaito.py -- --src TMP/kaitooo.fbx --export
+(build_kaito.py rehace el esqueleto de juego y reemplaza las tomas: el pulido de malla y materiales se conserva.)
+
 Kaito mira a +X en Blender (modelYaw 90 en NindoContent), Z arriba, 2.83 u = 1.5 m.
 Cambios (audit_models MODEL-02/04/09/12/13):
   - pelo en su propio material ('Pelo') con las caras que miran arriba en 'PeloBrillo': de noche la
@@ -31,6 +38,10 @@ COLORS = {
 
 o = C.args()
 src = o["src"] or os.path.join(C.ASSETS, REL)
+if list(C.fbxcheck.summary(src)["stacks"]) == ["Scene"]:
+    # el FBX de B3 (clips de build_kaito.py): validarlo contra sí mismo con las tomas del equipo no tiene sentido
+    print("kaitooo.fbx ya tiene los clips de build_kaito.py: correr con --src sobre el original del equipo (ver arriba)")
+    sys.exit(1)
 pose = C.default_pose(src)
 arm = C.load(src)
 poses = C.sample_poses(arm)

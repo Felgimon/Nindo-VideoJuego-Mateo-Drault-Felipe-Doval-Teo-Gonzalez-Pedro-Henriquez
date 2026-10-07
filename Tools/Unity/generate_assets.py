@@ -407,21 +407,26 @@ def fbx_clip_lengths(path):
 
 
 def controller(path, name, states, locomotion, loco_thresholds=None):
-    """states: {stateName: motionRef(str) | (motionRef, duración)}; locomotion: (idle, run) or None
-    (o más clips con sus umbrales de Speed en loco_thresholds, p. ej. Kokuyō: quieto, camina, acecha).
+    """states: {stateName: motionRef(str) | (motionRef, duración) | (motionRef, duración, velocidad)}; locomotion:
+    (idle, run) or None (o más clips con sus umbrales de Speed en loco_thresholds, p. ej. Kokuyō: quieto, camina,
+    acecha). La velocidad (Kaito: ciclos horneados con el doble de cuadros) va al estado y al hijo del blend tree.
     Devuelve (guid, {stateName: duración del clip}) para la tabla de NindoContent."""
     sm_id = stable_id(name, "sm")
     objs = []
     child_states = []
     state_ids = {}
     lengths = {}
+    speeds = {}
     states = dict(states)
     for sname, motion in list(states.items()):
         if isinstance(motion, tuple):
-            states[sname], ln = motion
+            states[sname], ln = motion[:2]
             if ln:
                 lengths[sname] = ln
+            if len(motion) > 2:
+                speeds[sname] = motion[2]
     if locomotion:
+        loco_scales = [m[2] if isinstance(m, tuple) and len(m) > 2 else 1 for m in locomotion]
         locomotion = [m[0] if isinstance(m, tuple) else m for m in locomotion]
         bt_id = stable_id(name, "bt")
         ths = loco_thresholds or (0, 1)
@@ -429,11 +434,11 @@ def controller(path, name, states, locomotion, loco_thresholds=None):
     m_Motion: {mot}
     m_Threshold: {th}
     m_Position: {{x: 0, y: 0}}
-    m_TimeScale: 1
+    m_TimeScale: {sc:g}
     m_CycleOffset: 0
     m_DirectBlendParameter: Speed
     m_Mirror: 0
-""" for mot, th in zip(locomotion, ths))
+""" for mot, th, sc in zip(locomotion, ths, loco_scales))
         objs.append(f"""--- !u!206 &{bt_id}
 BlendTree:
   m_ObjectHideFlags: 1
@@ -466,7 +471,7 @@ AnimatorState:
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
   m_Name: {sname}
-  m_Speed: 1
+  m_Speed: {speeds.get(sname, 1):g}
   m_CycleOffset: 0
   m_Transitions: []
   m_StateMachineBehaviours: []
@@ -610,12 +615,23 @@ def controllers():
     os.makedirs(P_ANIM, exist_ok=True)
     c = {}
     K = "Animations teo/"
-    c["kaito"] = controller(os.path.join(P_ANIM, "Kaito.controller"), "Kaito", {
-        "Attack1": clip(K + "Attackk1.anim"), "Attack2": clip(K + "Attackk2.anim"), "Attack3": clip(K + "Attackk3.anim"),
-        "ParryStance": clip(K + "TrueBlock.anim"), "ParrySuccess": clip(K + "Parried.anim"), "Blocked": clip(K + "Blockk.anim"),
-        "Hit": clip("Preiliminar Kaito/Stunned.anim"), "Dash": clip(K + "Dash.anim"), "Finisher": clip(K + "Finishing.anim"),
-        "Idle": clip(K + "Idle.anim"),
-    }, (clip(K + "Idle.anim"), clip(K + "AuraRun.anim")))
+    ki = kaito_info()
+    if ki:
+        # clips autorados de Tools/Blender/anim/kaito/build_kaito.py (toma única del FBX): un estado por clip, más
+        # los alias de los nombres que llama el código; la locomoción mezcla quieto / camina / trota / corre con
+        # umbrales en Speed = velocidad real / runSpeed (cada ciclo autorado a su velocidad: los pies no patinan)
+        g = ensure_guid(KAITO_FBX)
+        st = {n: (ref(g, stable_id("kaito", n), 3), round(r["seconds"], 4), r.get("time_scale", 1)) for n, r in ki["clips"].items()}
+        st.update({a: st[t] for a, t in KAITO_ALIASES.items() if t in st})
+        ths = [0] + [round(ki["clips"][n]["timing"]["ground_speed_mps"] / KAITO_RUN_SPEED, 4) for n in KAITO_LOCO[1:]]
+        c["kaito"] = controller(os.path.join(P_ANIM, "Kaito.controller"), "Kaito", st, [st[n] for n in KAITO_LOCO], ths)
+    else:
+        c["kaito"] = controller(os.path.join(P_ANIM, "Kaito.controller"), "Kaito", {
+            "Attack1": clip(K + "Attackk1.anim"), "Attack2": clip(K + "Attackk2.anim"), "Attack3": clip(K + "Attackk3.anim"),
+            "ParryStance": clip(K + "TrueBlock.anim"), "ParrySuccess": clip(K + "Parried.anim"), "Blocked": clip(K + "Blockk.anim"),
+            "Hit": clip("Preiliminar Kaito/Stunned.anim"), "Dash": clip(K + "Dash.anim"), "Finisher": clip(K + "Finishing.anim"),
+            "Idle": clip(K + "Idle.anim"),
+        }, (clip(K + "Idle.anim"), clip(K + "AuraRun.anim")))
     NB = "Characters/Ninja/body/"
     c["ninja"] = controller(os.path.join(P_ANIM, "Ninja.controller"), "Ninja", {
         "Attack1": clip(NB + "Attack 1.anim"), "Attack2": clip(NB + "animation/Attack 2.anim"), "Attack3": clip(NB + "animation/Attack 3.anim"),
@@ -722,6 +738,34 @@ def kit_metas(mats):
 def kit_guids():
     """id del kit (Kit_<id>.fbx) -> guid, para NindoContent.kits."""
     return {os.path.splitext(os.path.basename(p))[0][4:]: ensure_guid(p) for p in sorted(glob.glob(os.path.join(P_KITS, "Kit_*.fbx")))}
+
+
+# ============================================================================ Kaito (clips de la fase B3)
+KAITO_FBX = A("Animations teo/kaitooo.fbx")
+KAITO_LOCO = ("Idle", "Walk", "Jog", "Run")
+KAITO_RUN_SPEED = 6.2           # PlayerConfig.runSpeed: el Speed del Animator es velocidad / runSpeed
+# estados que el código (y Kage) llaman con el nombre viejo: ParrySuccess es el desvío hacia la derecha
+KAITO_ALIASES = {"ParrySuccess": "ParrySuccessR"}
+
+
+def kaito_info():
+    """kaitooo.fbx.json: clips (cuadros, loops, tiempos) que escribe Tools/Blender/anim/kaito/build_kaito.py."""
+    j = KAITO_FBX + ".json"
+    return json.load(open(j, encoding="utf-8")) if os.path.exists(j) else None
+
+
+def kaito_assets():
+    """.meta de kaitooo.fbx con los clips cortados de la toma única 'Scene' (el GUID no cambia: write_meta lo
+    conserva). Sin compresión de animación: los golpes de 1-2 cuadros y los pies clavados no aguantan la
+    reducción de claves."""
+    info = kaito_info()
+    if info is None:
+        return
+    clips = [dict(name=n, take=info.get("take", "Scene"), id=stable_id("kaito", n), first=r["first"], last=r["last"], loop=r["loop"])
+             for n, r in info["clips"].items()]
+    meta = model_meta(anim_type=2, import_anim=True, clips=clips, readable=False)
+    write_meta(KAITO_FBX, meta.replace("animationCompression: 1", "animationCompression: 0"), force=True)
+    write_meta(KAITO_FBX + ".json", TEXT_META)
 
 
 # ============================================================================ Kokuyō (jefe final)
@@ -1254,6 +1298,7 @@ def main():
     mats = materials(None)
     character_fbx_metas()
     kokuyo_assets(mats)
+    kaito_assets()
     ctrls = controllers()
     props, zones = model_metas(mats)
     kit_metas(mats)

@@ -541,7 +541,9 @@ class Clip:
             va = vb
         if vb is None:
             vb = va
-        if channel in SCALAR_CHANNELS:
+        # cualquier número suelto es un escalar (los canales propios de cada personaje no tienen que estar en
+        # SCALAR_CHANNELS)
+        if channel in SCALAR_CHANNELS or isinstance(va, (int, float)):
             return va + (vb - va) * s
         if channel in DIR_CHANNELS:
             return slerp_dir(va, vb, s)

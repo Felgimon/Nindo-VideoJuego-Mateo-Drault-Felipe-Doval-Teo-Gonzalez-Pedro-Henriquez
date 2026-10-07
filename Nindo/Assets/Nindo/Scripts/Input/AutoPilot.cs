@@ -24,6 +24,8 @@ namespace Nindo
     ///   waitcontrol [max]      espera a que no haya cinemática ni diálogo
     ///   goto X Z [max]         camina hasta el punto (x, z) del mundo (o hasta 'max' s)
     ///   kokuyo act N           en plena pelea con Kokuyō, salta al acto N (2, 3; 4 = última resistencia)
+    ///   pose ESTADO [vel]      Kaito toca ese estado de su Animator quieto (modo guionado) y vuelve: para revisar
+    ///                          clips en Play (p. ej. "pose Death; pose Finisher 1.7; pose WindSlash")
     /// ACT = nombre de <see cref="Act"/> (Attack, Parry, Dash, Lock, Finisher, Interact, Ability1,
     /// Ability2, Pause, LockNext, LockPrev, Submit, Cancel).
     /// Ej.: AutoPilot.Run("tap Submit x4 0.5; move 0 1 1.5; tap Attack x3 0.3; hold Parry 0.4")
@@ -230,6 +232,7 @@ namespace Nindo
                 case "down": InputReader.VirtualHold(ParseAct(t[1]), true); return null;
                 case "up": InputReader.VirtualHold(ParseAct(t[1]), false); return null;
                 case "talk": return Talk(F(t, 1, 15f));
+                case "pose": return PoseState(t[1], F(t, 2, 1f));
                 case "waitcontrol": return WaitControl(F(t, 1, 30f));
                 case "goto": return GoTo(F(t, 1, 0f), F(t, 2, 0f), F(t, 3, 20f));
                 case "bot":
@@ -274,6 +277,17 @@ namespace Nindo
         {
             yield return new WaitForSecondsRealtime(s);
             InputReader.VirtualMove = Vector2.zero;
+        }
+
+        /// <summary>Kaito quieto toca un estado de su Animator (modo guionado) y vuelve a la locomoción.</summary>
+        IEnumerator PoseState(string state, float speed)
+        {
+            var p = Game.Player;
+            if (p == null || !p.IsAlive) yield break;
+            p.EnterScripted();
+            p.Anim.Play(state, 0.1f, 0f, speed);
+            yield return new WaitForSeconds(p.Anim.Length(state, 1f) / Mathf.Max(0.1f, speed) + 0.4f);
+            p.ExitScripted();
         }
 
         static bool DialogueOpen => Game.UI != null && Game.UI.DialogueOpen;

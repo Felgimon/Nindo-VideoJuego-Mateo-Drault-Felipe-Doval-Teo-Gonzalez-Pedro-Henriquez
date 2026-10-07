@@ -19,7 +19,9 @@ namespace Nindo
         Vector3 lungeVelocity, carry; // avance del corte e inercia de la carrera (se suman)
         float cutStartedAt = -1f;     // tiempo real en que la hoja empezó a cortar (-1 = todavía no)
 
-        void StartAttack(int index)
+        /// <param name="startNorm">desde dónde arranca el clip (y su línea de tiempo): el contraataque sale de la carga
+        /// del Corte 1 (config.riposteStartNorm), que es la pose en que terminan los clips del desvío</param>
+        void StartAttack(int index, float startNorm = 0f)
         {
             var defs = config.combo;
             if (defs == null || defs.Length == 0) return;
@@ -27,7 +29,7 @@ namespace Nindo
             comboIndex = Mathf.Clamp(index, 0, defs.Length - 1);
             currentAttack = defs[comboIndex];
             attackLen = anim.Length(currentAttack.state, 0.45f) / Mathf.Max(0.05f, currentAttack.speed);
-            attackNorm = 0f;
+            attackNorm = startNorm;
             lungeDone = 0f;
             hitThisSwing.Clear();
             swingSoundPlayed = false;
@@ -42,7 +44,8 @@ namespace Nindo
             carry = transform.forward * Mathf.Max(0f, Vector3.Dot(run, transform.forward)) * config.attackMomentum;
             lungeVelocity = Vector3.zero;
             velocity = carry;
-            anim.Play(currentAttack.state, comboIndex == 0 ? 0.05f : 0.03f);
+            // el contraataque funde un poco más largo: puede salir desde el desvío (0.06 s), no solo desde la carga
+            anim.Play(currentAttack.state, startNorm > 0f ? 0.08f : comboIndex == 0 ? 0.05f : 0.03f, startNorm);
             Game.UI?.HideInteractPrompt();
         }
 
@@ -272,6 +275,7 @@ namespace Nindo
 
         // =============================================================== PARRY
         float lastParryWhiff = -9f;
+        bool parryLeft;
         float parryWindowMul = 1f;
         bool parryHadThreat;
         float CurrentParryWindow => config.parryWindow * parryWindowMul;
@@ -339,7 +343,10 @@ namespace Nindo
         {
             Game.FX?.Crescent?.Success();
             SetState(PlayerState.ParrySuccess);
-            anim.Play("ParrySuccess", 0.02f);
+            // el golpe siempre llega de frente (FaceInstant de abajo): los desvíos se alternan izquierda/derecha para
+            // que una cadena de parrys no repita el mismo gesto, y el perfecto tiene su floreo; sin esos clips, el de siempre
+            string parryClip = perfect ? "PerfectParry" : (parryLeft = !parryLeft) ? "ParrySuccessL" : "ParrySuccessR";
+            anim.Play(anim.HasState(parryClip) ? parryClip : "ParrySuccess", 0.02f);
             riposteUntil = Time.time + config.riposteWindow;
             Vector3 dir = info.direction.sqrMagnitude > 0.01f ? info.direction.Flat().normalized : -transform.forward;
             FaceInstant(-dir);
@@ -379,7 +386,7 @@ namespace Nindo
             if (input != null && stateTime > 0.06f)
             {
                 // contraataque inmediato o nuevo parry
-                if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0); return; }
+                if (input.Buffered(Act.Attack, 0.25f)) { input.Consume(Act.Attack); StartAttack(0, config.riposteStartNorm); return; }
                 if (input.Buffered(Act.Parry, config.defenseBuffer)) { input.Consume(Act.Parry); StartParry(); return; }
                 if (input.Buffered(Act.Dash, config.defenseBuffer)) { input.Consume(Act.Dash); if (TryDash()) return; }
                 if (input.Buffered(Act.Finisher, 0.12f) && TryFinisher()) { input.Consume(Act.Finisher); return; }
@@ -502,7 +509,9 @@ namespace Nindo
         // corto: clip x2.8 con cámara lenta 0.6 hasta el tajo → tajo a 0.75 s y control de vuelta a 1.0 s reales
         // (el cinemático: tajo a 1.85 s, fin a 2.5 s)
         const float CinematicFinisherSpeed = 1.7f, ShortFinisherSpeed = 2.8f;
-        const float FinisherStrikeAt = 0.68f, ShortFinisherEnd = 0.85f;
+        // ShortFinisherEnd = f72/80 del clip (kaitooo.fbx.json, Finisher 'short_end'): ya volvió a la guardia y el fundido
+        // a Locomotion no arrastra los pies
+        const float FinisherStrikeAt = 0.68f, ShortFinisherEnd = 0.9f;
         // después del remate: los que estaban cerca salen despedidos y esperan antes de atacar; Kaito queda
         // invulnerable un instante (el control volvía en medio del golpe de otro)
         const float FinisherRoomRadius = 4f, FinisherPush = 1.5f, FinisherAttackDelay = 0.8f, FinisherGrace = 0.6f;
@@ -629,6 +638,7 @@ namespace Nindo
         bool abilityFired;
         readonly List<Enemy> abilityVictims = new List<Enemy>(8);
         int whirlTicks;
+        bool abilityOwnClip;
 
         bool TryAbility(int index)
         {
@@ -650,11 +660,15 @@ namespace Nindo
             if (dir.sqrMagnitude < 0.01f) dir = transform.forward;
             FaceInstant(dir);
 
+            // clips propios (WindSlash / Whirlwind) autorados con los tiempos de TickWindSlash / TickWhirlwind; sin
+            // ellos, el Corte final estirado como antes
+            abilityOwnClip = anim.HasState(index == 1 ? "WindSlash" : "Whirlwind");
             if (index == 1)
             {
                 // Corte del Viento: la cámara se pone detrás de Kaito, el tiempo se frena, y zas.
                 abilityInvulnerable = true;
-                anim.Play("Attack3", 0.05f, 0f, 0.5f);
+                if (abilityOwnClip) anim.Play("WindSlash", 0.05f);
+                else anim.Play("Attack3", 0.05f, 0f, 0.5f);
                 abilityShot = Game.Camera != null ? Game.Camera.PlayAbilityShot(transform, CameraDirector.AbilityShot.OverShoulder, 1.15f) : -1;
                 Game.Time?.SlowMotion(0.2f, 0.55f, 0.05f, 0.15f);
                 Game.FX?.AbilityCharge(transform.position, false);
@@ -665,7 +679,8 @@ namespace Nindo
             {
                 // Torbellino de hojas: giro con daño en área, cámara baja orbitando
                 abilityInvulnerable = true;
-                anim.Play("Attack3", 0.05f, 0f, 0.8f);
+                if (abilityOwnClip) anim.Play("Whirlwind", 0.05f);
+                else anim.Play("Attack3", 0.05f, 0f, 0.8f);
                 abilityShot = Game.Camera != null ? Game.Camera.PlayAbilityShot(transform, CameraDirector.AbilityShot.LowOrbit, 1.1f) : -1;
                 Game.Time?.SlowMotion(0.35f, 0.3f, 0.03f, 0.15f);
                 Game.FX?.AbilityCharge(transform.position, true);
@@ -678,6 +693,8 @@ namespace Nindo
 
         void TickAbility(InputReader input, float dt)
         {
+            // el clip propio sigue el reloj de stateTime: la furia no lo acelera (SetState le pone su multiplicador)
+            if (abilityOwnClip) anim.SetSpeed(1f);
             if (abilityIndex == 1) TickWindSlash(dt);
             else TickWhirlwind(dt);
         }
@@ -695,7 +712,7 @@ namespace Nindo
                 // no atravesar paredes
                 if (Physics.SphereCast(abilityStart + Vector3.up * 0.8f, 0.3f, transform.forward, out var hit, config.windSlashDistance, WorldMask, QueryTriggerInteraction.Ignore))
                     abilityEnd = abilityStart + transform.forward * Mathf.Max(0f, hit.distance - 0.4f);
-                anim.Play("Dash", 0.02f, 0f, 1.6f);
+                if (!abilityOwnClip) anim.Play("Dash", 0.02f, 0f, 1.6f);
                 Game.FX?.AfterImages(model != null ? model : transform, travel + 0.05f, 0.02f, true);
                 Game.Audio?.Play("ability_wind", transform.position, 1f);
                 Game.Camera?.Punch(6f, 0.25f);
@@ -722,7 +739,7 @@ namespace Nindo
                 abilityVictims.Clear();
                 Game.Time?.HitStop(0.08f);
                 if (State != PlayerState.Ability) return;
-                anim.Play("Attack3", 0.05f, 0.55f, 1f);
+                if (!abilityOwnClip) anim.Play("Attack3", 0.05f, 0.55f, 1f);
             }
             if (stateTime > prep + travel + 0.55f) EndAbility();
         }
