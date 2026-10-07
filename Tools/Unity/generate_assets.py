@@ -863,7 +863,12 @@ def team_anim_metas():
                  for n, r in info["clips"].items()]
         body = model_meta(anim_type=2, import_anim=True, clips=clips, readable=False, import_materials=False,
                           global_scale=float(sc.group(1)) if sc else 1.0)
-        write_meta(p, body.replace("animationCompression: 1", "animationCompression: 0"), force=True)
+        # preserveHierarchy: el FBX de animación tiene un solo nodo raíz (Armature) y Unity lo aplana en la raíz del
+        # archivo: los clips quedaban grabados como "Root/..." con las curvas del Armature (escala 100, en cm) en la
+        # raíz. En el modelo, Model/Armature/Root/..., eso escalaba x100 todo el personaje y lo mandaba a decenas de
+        # metros (enemigos invisibles, solo la barra de vida) y los huesos no se animaban
+        body = body.replace("animationCompression: 1", "animationCompression: 0").replace("preserveHierarchy: 0", "preserveHierarchy: 1")
+        write_meta(p, body, force=True)
         write_meta(p + ".json", TEXT_META)
     ensure_folder_metas(P_TEAM_ANIMS)
 
