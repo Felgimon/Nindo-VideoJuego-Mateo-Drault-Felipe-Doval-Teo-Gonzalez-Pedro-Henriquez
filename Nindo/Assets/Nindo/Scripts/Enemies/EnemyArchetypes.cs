@@ -170,9 +170,11 @@ namespace Nindo
         /// </summary>
         public static EnemyConfig Mizuchi()
         {
+            // 720: con 500 el bot de pruebas lo liberaba en ~40 s de pelea y la fase 3 (la cascada a 1.6, los pilares)
+            // casi no llegaba a verse; los varados regalan mucho daño
             var c = new EnemyConfig
             {
-                id = "mizuchi", displayName = "Mizuchi", maxHealth = 500, runSpeed = 5f, walkSpeed = 2.4f, turnSpeed = 4.5f,
+                id = "mizuchi", displayName = "Mizuchi", maxHealth = 720, runSpeed = 5f, walkSpeed = 2.4f, turnSpeed = 4.5f,
                 // radio = medio cuerpo (1.95 m de ancho) más algo de aleta; altura 3 m: AimPoint a 1.65 m, el eje del cuerpo
                 radius = 1.3f, height = 3f, scale = 1f, maxImbalance = 4, exhaustedTime = 3.4f, guardTime = 1.2f,
                 poiseHits = 3, hyperArmor = true, knockbackResist = 0.95f, parriedRecoil = 0.4f, staggerTime = 0.3f,
