@@ -15,7 +15,7 @@ namespace Nindo
     ///   down ACT / up ACT      dejar mantenida / soltar
     ///   move X Y [seg]         mover con el "stick" (x derecha, y adelante); sin seg queda puesto
     ///   wait seg               esperar (tiempo real: no le afecta la cámara lenta)
-    ///   bot on|off             peleador automático: parry a los golpes que llegan, dash a los
+    ///   bot on [nivel]|off     peleador automático (nivel: experto -por defecto-, bueno, promedio): parry a los golpes que llegan, dash a los
     ///                          imparables, remata a los de postura quebrada (o casi muertos) y si no,
     ///                          ataca/se acerca (no le pega a una guardia).
     ///                          Defiende como una persona: no lee StrikeEta, reacciona al aviso
@@ -130,8 +130,21 @@ namespace Nindo
         readonly List<Enemy> botTargets = new List<Enemy>();
         // pulsaciones de defensa pendientes: (tiempo real en que se aprieta, acción)
         readonly List<KeyValuePair<float, Act>> pending = new List<KeyValuePair<float, Act>>();
-        /// <summary>Tiempo de reacción del bot a un aviso sonoro (media y desvío, s).</summary>
+        /// <summary>Tiempo de reacción del bot a un aviso sonoro (media y desvío, s) del nivel experto.</summary>
         public const float ReactionMean = 0.25f, ReactionSd = 0.04f;
+
+        /// <summary>
+        /// Nivel del bot. El experto (0.25 s, nunca falla) sirve para saber si un aviso se puede leer, pero no para
+        /// balancear: con él los jefes caían en 20-40 s. "bueno" y "promedio" se parecen a una persona: reaccionan
+        /// más lento y desparejo, a veces no ven el aviso, a veces confunden parry y dash, y a veces atacan aunque
+        /// el enemigo esté cargando un golpe.
+        /// </summary>
+        struct Skill { public float rtMean, rtSd, miss, wrong, greedy; }
+        static readonly Skill Expert = new Skill { rtMean = ReactionMean, rtSd = ReactionSd };
+        static readonly Skill Good = new Skill { rtMean = 0.28f, rtSd = 0.06f, miss = 0.1f, wrong = 0.05f, greedy = 0.1f };
+        static readonly Skill Average = new Skill { rtMean = 0.32f, rtSd = 0.08f, miss = 0.25f, wrong = 0.1f, greedy = 0.25f };
+        Skill skill = Expert;
+        public static string SkillName { get; private set; } = "experto";
 
         /// <summary>
         /// Sonó el "¡ya!" de un golpe: el bot aprieta un tiempo de reacción humano después (tiempo real, como
@@ -147,8 +160,10 @@ namespace Nindo
             if (!mine) return;
             // una persona lo oye cuando sale por los parlantes (latencia de salida) y su tecla entra uno o dos frames
             // después: el evento sale con el Play(), así que se suman las dos para medir lo mismo que ella
-            float rt = Mathf.Clamp(ReactionMean + Gaussian() * ReactionSd, 0.15f, 0.4f) + AudioManager.OutputLatency + 1f / 60f;
-            pending.Add(new KeyValuePair<float, Act>(Time.unscaledTime + rt, unblockable ? Act.Dash : Act.Parry));
+            if (Random.value < skill.miss) return;                              // no lo vio
+            float rt = Mathf.Clamp(skill.rtMean + Gaussian() * skill.rtSd, 0.15f, 0.55f) + AudioManager.OutputLatency + 1f / 60f;
+            bool dash = unblockable != (Random.value < skill.wrong);            // a veces se confunde de respuesta
+            pending.Add(new KeyValuePair<float, Act>(Time.unscaledTime + rt, dash ? Act.Dash : Act.Parry));
         }
 
         static float Gaussian()
@@ -202,7 +217,7 @@ namespace Nindo
             if (p.FinisherCandidate() != null) { InputReader.VirtualTap(Act.Finisher); BotFinishers++; nextBotAction = Time.unscaledTime + 1.2f; }
             // no empezar un ataque si alguien está por pegar (el anillo ya se está dibujando) ni contra una guardia
             // (una persona ve el rebote: el segundo golpe contra la guardia se lo devuelven)
-            else if (best < 2.6f && !threatened && pending.Count == 0 && nearest.State != EnemyState.Guard) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
+            else if (best < 2.6f && (!threatened || Random.value < skill.greedy * Time.unscaledDeltaTime * 4f) && pending.Count == 0 && nearest.State != EnemyState.Guard) { InputReader.VirtualTap(Act.Attack); BotAttacks++; nextBotAction = Time.unscaledTime + 0.32f; }
         }
 
         IEnumerator Loop()
@@ -237,6 +252,12 @@ namespace Nindo
                 case "goto": return GoTo(F(t, 1, 0f), F(t, 2, 0f), F(t, 3, 20f));
                 case "bot":
                     Bot = t.Length < 2 || t[1].ToLowerInvariant() != "off";
+                    if (Bot && inst != null)
+                    {
+                        string lv = t.Length > 2 ? t[2].ToLowerInvariant() : "experto";
+                        inst.skill = lv == "promedio" ? Average : lv == "bueno" ? Good : Expert;
+                        SkillName = lv == "promedio" || lv == "bueno" ? lv : "experto";
+                    }
                     if (!Bot) InputReader.VirtualMove = Vector2.zero;
                     return null;
                 case "kokuyo":
