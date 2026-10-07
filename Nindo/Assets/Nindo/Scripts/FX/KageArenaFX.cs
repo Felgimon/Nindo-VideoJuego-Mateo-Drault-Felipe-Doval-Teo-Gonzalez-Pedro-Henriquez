@@ -82,6 +82,8 @@ namespace Nindo
             Braziers.SetAll(defeated);
             var grandpa = Game.World.Point("npc_grandpa_dojo");
             if (!defeated) Ropes = ShadowRopes.Bind(post, grandpa, transform);
+            // atado: la espalda contra el poste y las manos atrás (clip 'Bound' de TeamAnims/GrandpaAnims.fbx)
+            if (Ropes != null) grandpa.GetComponent<NPC>()?.Play("Bound", 0f);
             Ready = true;
         }
 

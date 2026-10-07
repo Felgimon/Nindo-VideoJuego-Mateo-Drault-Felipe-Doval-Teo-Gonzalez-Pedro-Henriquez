@@ -124,6 +124,8 @@ namespace Nindo
             // las cuerdas se deshacen (y su zumbido se apaga): recién libre, el abuelo se da vuelta hacia su nieto
             if (fx != null && fx.Ropes != null && fx.Ropes.Bound) { fx.Ropes.Dissolve(1.6f); yield return Wait(1.5f); }
             grandpa.FaceTo(P.transform.position);
+            // se frota las muñecas, se endereza y le hace una reverencia a Kaito (termina en la pose de Idle)
+            grandpa.Play("Freed", 0.25f);
             Game.FX.Petals(mid + Vector3.up * 2f, 2f);
             yield return Wait(0.4f);
             yield return Say("ending");

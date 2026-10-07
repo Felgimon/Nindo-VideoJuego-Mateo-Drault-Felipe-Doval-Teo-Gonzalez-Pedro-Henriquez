@@ -1,0 +1,548 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "character": "ninja",
+ "model": "Models/Ninja/Ninja 1.fbx",
+ "units_per_meter": 1.69526,
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 61,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "guardia que respira; mismo pie adelante que los golpes",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Walk": {
+   "first": 71,
+   "last": 85,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "avance en guardia a 2 m/s (rodeo y acecho)",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.04,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   },
+   "root_velocity_mps": 2.0
+  },
+  "Run": {
+   "first": 95,
+   "last": 105,
+   "frames": 10,
+   "seconds": 0.3333,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "carrera a 5 m/s (runSpeed); con el Animator.speed de VariantMotion sigue clavada",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.1,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [
+      [
+       0,
+       3,
+       1.29,
+       1.29
+      ]
+     ],
+     "l": [
+      [
+       5,
+       8,
+       0.94,
+       0.94
+      ]
+     ]
+    }
+   },
+   "root_velocity_mps": 5.0
+  },
+  "Attack1": {
+   "first": 115,
+   "last": 139,
+   "frames": 24,
+   "seconds": 0.8,
+   "loop": false,
+   "timing": {
+    "kind": "light",
+    "apex": 12,
+    "contact": 14,
+    "active": [
+     14,
+     18
+    ],
+    "hold": [
+     8,
+     12
+    ],
+    "lunge": 0.8,
+    "windup": 0.67,
+    "state": "Attack1"
+   },
+   "normalized": {
+    "apex": 0.5,
+    "contact": 0.5833,
+    "hold": [
+     0.3333,
+     0.5
+    ],
+    "active": [
+     0.5833,
+     0.75
+    ]
+   },
+   "notes": "tajo horizontal; aviso: hoja atrás a la derecha",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.59,
+    "peak_frame": 14,
+    "game_T_s": 0.67,
+    "game_hold_s": 0.158,
+    "contact_tip_m": [
+     -0.08,
+     -1.78,
+     0.88
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Attack2": {
+   "first": 149,
+   "last": 171,
+   "frames": 22,
+   "seconds": 0.7333,
+   "loop": false,
+   "timing": {
+    "kind": "light",
+    "apex": 8,
+    "contact": 10,
+    "active": [
+     10,
+     14
+    ],
+    "hold": [
+     5,
+     8
+    ],
+    "lunge": 0.8,
+    "windup": 0.42,
+    "state": "Attack2"
+   },
+   "normalized": {
+    "apex": 0.3636,
+    "contact": 0.4545,
+    "hold": [
+     0.2273,
+     0.3636
+    ],
+    "active": [
+     0.4545,
+     0.6364
+    ]
+   },
+   "notes": "tajo diagonal subiendo; aviso: agachado, hoja baja atrás a la izquierda",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.65,
+    "peak_frame": 10,
+    "game_T_s": 0.42,
+    "game_hold_s": 0.065,
+    "contact_tip_m": [
+     -0.46,
+     -1.57,
+     1.39
+    ],
+    "floor_skate_cm": {
+     "r": [
+      [
+       12,
+       22,
+       1.6,
+       1.06
+      ]
+     ],
+     "l": []
+    }
+   }
+  },
+  "Attack3": {
+   "first": 181,
+   "last": 215,
+   "frames": 34,
+   "seconds": 1.1333,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 15,
+    "contact": 17,
+    "active": [
+     17,
+     21
+    ],
+    "hold": [
+     9,
+     15
+    ],
+    "lunge": 1.4,
+    "windup": 0.5,
+    "state": "Attack3"
+   },
+   "normalized": {
+    "apex": 0.4412,
+    "contact": 0.5,
+    "hold": [
+     0.2647,
+     0.4412
+    ],
+    "active": [
+     0.5,
+     0.6176
+    ]
+   },
+   "notes": "tajo de arriba con salto; aviso: agazapado, hoja atrás de la cabeza",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.12,
+    "peak_frame": 17,
+    "game_T_s": 0.63,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.06,
+     -2.11,
+     1.26
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Thrust": {
+   "first": 225,
+   "last": 265,
+   "frames": 40,
+   "seconds": 1.3333,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 19,
+    "contact": 21,
+    "active": [
+     21,
+     25
+    ],
+    "hold": [
+     10,
+     17
+    ],
+    "lunge": 3.2,
+    "windup": 0.7,
+    "state": "Thrust"
+   },
+   "normalized": {
+    "apex": 0.475,
+    "contact": 0.525,
+    "hold": [
+     0.25,
+     0.425
+    ],
+    "active": [
+     0.525,
+     0.625
+    ]
+   },
+   "notes": "estocada voladora; aviso: muy agachado, hoja en la cadera",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.9,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 0.7,
+    "peak_frame": 20,
+    "game_T_s": 0.787,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.08,
+     -3.95,
+     0.68
+    ],
+    "floor_skate_cm": {
+     "r": [
+      [
+       25,
+       32,
+       0.93,
+       0.65
+      ]
+     ],
+     "l": []
+    }
+   }
+  },
+  "Guard": {
+   "first": 275,
+   "last": 311,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "guardia cerrada: hoja horizontal delante de la cara",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Counter": {
+   "first": 321,
+   "last": 333,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "desvío con la hoja hacia afuera y un pisotón; termina en guardia",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [
+      [
+       0,
+       12,
+       1.42,
+       0.74
+      ]
+     ],
+     "l": []
+    }
+   }
+  },
+  "Hit": {
+   "first": 343,
+   "last": 352,
+   "frames": 9,
+   "seconds": 0.3,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "golpe recibido: cabeza y pecho atrás, un paso atrás con el retroceso",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Parried": {
+   "first": 362,
+   "last": 380,
+   "frames": 18,
+   "seconds": 0.6,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     5,
+     9,
+     12
+    ]
+   },
+   "normalized": {},
+   "notes": "parry recibido: brazo de la espada despedido arriba y afuera, dos pasos atrás",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.2,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 6.8,
+    "floor_skate_cm": {
+     "r": [
+      [
+       7,
+       18,
+       0.63,
+       0.44
+      ]
+     ],
+     "l": []
+    }
+   }
+  },
+  "Exhausted": {
+   "first": 390,
+   "last": 438,
+   "frames": 48,
+   "seconds": 1.6,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "postura quebrada: agachado, hoja en el piso, mareo",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "ExhaustedHit": {
+   "first": 448,
+   "last": 458,
+   "frames": 10,
+   "seconds": 0.3333,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "sacudón estando quebrado; vuelve a la pose de Exhausted",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.5,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Spotted": {
+   "first": 468,
+   "last": 486,
+   "frames": 18,
+   "seconds": 0.6,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "alerta: saltito y la hoja vertical delante de la cara",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 4.2,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Death": {
+   "first": 496,
+   "last": 529,
+   "frames": 33,
+   "seconds": 1.1,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     3,
+     8,
+     16,
+     22,
+     28
+    ],
+    "slide_ok": 4.0
+   },
+   "normalized": {},
+   "notes": "muerte: atrás, de rodillas, boca abajo",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 7.2,
+    "floor_skate_cm": {
+     "r": [
+      [
+       8,
+       10,
+       1.07,
+       0.8
+      ]
+     ],
+     "l": []
+    }
+   }
+  }
+ },
+ "locomotion": {
+  "states": [
+   "Idle",
+   "Walk",
+   "Run"
+  ],
+  "thresholds": [
+   0.0,
+   0.4,
+   1.0
+  ]
+ }
+}

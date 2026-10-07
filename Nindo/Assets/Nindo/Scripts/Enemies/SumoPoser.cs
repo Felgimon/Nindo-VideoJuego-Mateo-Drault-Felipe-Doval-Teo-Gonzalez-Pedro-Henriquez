@@ -346,6 +346,7 @@ namespace Nindo
                 // el pie del shiko se enciende para el pisotón (después el golpe es la onda, que viaja sola)
                 glowMove = m; danger = a.kind == AttackKind.Unblockable;
                 glowEta = a.special == "shiko" ? (clock < tl.T ? tl.T - clock : float.PositiveInfinity) : enemy.StrikeEta;
+                if (clipOwned.Contains(a.name)) return SumoPose.Lerp(output, default, 1f - Mathf.Exp(-dt / 0.09f));
                 return Evaluate(m, clock, tl.ReleaseTime, tl.T, tl.sustain, snapshot);
             }
             curAttack = null;
@@ -362,6 +363,13 @@ namespace Nindo
         }
 
         static readonly float[] noise = { 0.31f, -0.74f, 0.12f, 0.9f, -0.45f, 0.63f, -0.18f, -0.97f };
+
+        /// <summary>
+        /// Golpes del sumo común cuyo clip (TeamAnims/SumoAnims.fbx) ya trae la carga y el golpe atados al mismo reloj:
+        /// acá solo se enciende la mano o el pie que pega; la pose es la del clip. Los golpes con nombre propio (los del
+        /// Ōzeki y las variantes: Harite D, Shiko D, Tachiai, Morote, Finta...) siguen posados por este componente.
+        /// </summary>
+        static readonly HashSet<string> clipOwned = new HashSet<string> { "Attack1", "Attack2", "Attack3", "Special" };
 
         SumoPose Evaluate(Move m, float clock, float release, float T, float sustain, in SumoPose from)
         {

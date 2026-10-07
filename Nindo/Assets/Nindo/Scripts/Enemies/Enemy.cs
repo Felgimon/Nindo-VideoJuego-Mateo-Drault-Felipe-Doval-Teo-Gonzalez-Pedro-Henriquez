@@ -1075,7 +1075,8 @@ namespace Nindo
             if (State == EnemyState.Exhausted)
             {
                 if (exhaustedHits >= ExhaustedHitCap) EndExhaustion();
-                else anim.Play(config.animHit, 0.03f);
+                // el sacudón propio de la postura quebrada (si el controller lo tiene): Hit lo paraba en guardia
+                else anim.Play(anim.HasState("ExhaustedHit") ? "ExhaustedHit" : config.animHit, 0.03f);
             }
             else if (State == EnemyState.Attack && (config.hyperArmor && info.kind != AttackKind.Ability || armored && info.kind == AttackKind.Light && !info.riposte))
             {
@@ -1185,7 +1186,8 @@ namespace Nindo
             while (t < 1f)
             {
                 t += Time.deltaTime * 1.8f;
-                model.localRotation = Quaternion.Slerp(from, to, t * t);
+                // con clip de muerte que cae solo no se voltea el modelo como una tabla: solo se lo corre
+                if (!config.deathClipFalls) model.localRotation = Quaternion.Slerp(from, to, t * t);
                 transform.position = fromPos + dir.Flat().normalized * 0.8f * Mathf.Sin(t * Mathf.PI * 0.5f);
                 yield return null;
             }

@@ -1,0 +1,445 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "character": "sumo",
+ "model": "Characters/Sumo/luchadorsumo.fbx",
+ "units_per_meter": 1.94752,
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 91,
+   "frames": 90,
+   "seconds": 3.0,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "respira con la panza, el peso va y viene",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Walk": {
+   "first": 101,
+   "last": 123,
+   "frames": 22,
+   "seconds": 0.7333,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "caminata abierta a 1.6 m/s",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 2.1,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   },
+   "root_velocity_mps": 1.6
+  },
+  "Run": {
+   "first": 133,
+   "last": 147,
+   "frames": 14,
+   "seconds": 0.4667,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "trote pesado a 3.4 m/s",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   },
+   "root_velocity_mps": 3.4
+  },
+  "Attack1": {
+   "first": 157,
+   "last": 184,
+   "frames": 27,
+   "seconds": 0.9,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 15,
+    "contact": 18,
+    "active": [
+     18,
+     22
+    ],
+    "hold": [
+     8,
+     15
+    ],
+    "lunge": 0.6,
+    "windup": 0.65,
+    "state": "Attack1",
+    "striker": "r",
+    "reach": 2.2
+   },
+   "normalized": {
+    "apex": 0.5556,
+    "contact": 0.6667,
+    "hold": [
+     0.2963,
+     0.5556
+    ],
+    "active": [
+     0.6667,
+     0.8148
+    ]
+   },
+   "notes": "harite; aviso: la mano atrás a la altura del hombro",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.61,
+    "peak_frame": 16,
+    "game_T_s": 0.651,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.11,
+     -1.4,
+     1.76
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Attack2": {
+   "first": 194,
+   "last": 221,
+   "frames": 27,
+   "seconds": 0.9,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 13,
+    "contact": 16,
+    "active": [
+     16,
+     20
+    ],
+    "hold": [
+     6,
+     13
+    ],
+    "lunge": 0.6,
+    "windup": 0.5,
+    "state": "Attack2",
+    "striker": "l",
+    "reach": 2.2
+   },
+   "normalized": {
+    "apex": 0.4815,
+    "contact": 0.5926,
+    "hold": [
+     0.2222,
+     0.4815
+    ],
+    "active": [
+     0.5926,
+     0.7407
+    ]
+   },
+   "notes": "harite izquierdo; aviso: la mano izquierda atrás a la altura del hombro",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.55,
+    "peak_frame": 14,
+    "game_T_s": 0.572,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     0.11,
+     -1.39,
+     1.76
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Attack3": {
+   "first": 231,
+   "last": 273,
+   "frames": 42,
+   "seconds": 1.4,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 24,
+    "contact": 27,
+    "active": [
+     27,
+     31
+    ],
+    "hold": [
+     14,
+     24
+    ],
+    "lunge": 0.2,
+    "windup": 0.65,
+    "state": "Attack3",
+    "striker": "foot_r",
+    "reach": 1.2
+   },
+   "normalized": {
+    "apex": 0.5714,
+    "contact": 0.6429,
+    "hold": [
+     0.3333,
+     0.5714
+    ],
+    "active": [
+     0.6429,
+     0.7381
+    ]
+   },
+   "notes": "shiko; aviso: la pierna derecha arriba al costado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 3.4,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 0.22,
+    "peak_frame": 27,
+    "game_T_s": 1.004,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.56,
+     -0.18,
+     0.21
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Special": {
+   "first": 283,
+   "last": 343,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": false,
+   "timing": {
+    "kind": "unblockable",
+    "apex": 14,
+    "contact": 18,
+    "active": [
+     18,
+     42
+    ],
+    "hold": [
+     10,
+     14
+    ],
+    "lunge": 0.0,
+    "windup": 0.8,
+    "state": "Special",
+    "striker": "r",
+    "slide_ok": 80.0,
+    "reach": 1.0
+   },
+   "normalized": {
+    "apex": 0.2333,
+    "contact": 0.3,
+    "hold": [
+     0.1667,
+     0.2333
+    ],
+    "active": [
+     0.3,
+     0.7
+    ]
+   },
+   "notes": "tachiai: puños en el piso, sale disparado, corre y frena derrapando",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 1.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.71,
+    "peak_frame": 16,
+    "game_T_s": 0.8,
+    "game_hold_s": 0.168,
+    "contact_tip_m": [
+     -0.3,
+     -0.88,
+     1.27
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Hit": {
+   "first": 353,
+   "last": 365,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "golpe recibido: sacudón atrás y rebote",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Parried": {
+   "first": 375,
+   "last": 402,
+   "frames": 27,
+   "seconds": 0.9,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     3,
+     6,
+     12,
+     18
+    ]
+   },
+   "normalized": {},
+   "notes": "parry recibido: el brazo despedido arriba, dos pasos atrás",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 15.4,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Exhausted": {
+   "first": 412,
+   "last": 460,
+   "frames": 48,
+   "seconds": 1.6,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "agotado: manos en las rodillas, jadea",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.04,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Spotted": {
+   "first": 470,
+   "last": 494,
+   "frames": 24,
+   "seconds": 0.8,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "se palmea los muslos con un pisotón y abre las manos",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  },
+  "Death": {
+   "first": 504,
+   "last": 549,
+   "frames": 45,
+   "seconds": 1.5,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     3,
+     10,
+     20,
+     26,
+     36,
+     45
+    ],
+    "slide_ok": 6.0
+   },
+   "normalized": {},
+   "notes": "muerte: cae sentado y después de espaldas",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 5.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    }
+   }
+  }
+ },
+ "locomotion": {
+  "states": [
+   "Idle",
+   "Walk",
+   "Run"
+  ],
+  "thresholds": [
+   0.0,
+   0.4705882352941177,
+   1.0
+  ]
+ }
+}

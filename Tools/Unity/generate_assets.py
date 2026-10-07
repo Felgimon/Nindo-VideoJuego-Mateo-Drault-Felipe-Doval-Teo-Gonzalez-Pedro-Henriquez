@@ -617,30 +617,31 @@ def controllers():
         "Idle": clip(K + "Idle.anim"),
     }, (clip(K + "Idle.anim"), clip(K + "AuraRun.anim")))
     NB = "Characters/Ninja/body/"
-    c["ninja"] = controller(os.path.join(P_ANIM, "Ninja.controller"), "Ninja", {
+    c["ninja"] = controller(os.path.join(P_ANIM, "Ninja.controller"), "Ninja", *team_states("ninja", {
         "Attack1": clip(NB + "Attack 1.anim"), "Attack2": clip(NB + "animation/Attack 2.anim"), "Attack3": clip(NB + "animation/Attack 3.anim"),
         "Hit": clip(NB + "animation/Damaged.anim"), "Exhausted": clip(NB + "animation/Exausto.anim"), "Guard": clip(NB + "animation/Block.anim"),
         "Counter": clip(NB + "animation/ParryUltimate.anim"), "Spotted": clip(NB + "EnemySpotted.anim"), "Death": clip(NB + "animation/Stuned.anim"),
         "Idle": clip(NB + "animation/Idle.anim"),
-    }, (clip(NB + "animation/Idle.anim"), clip(NB + "animation/RUN.anim")))
+    }, (clip(NB + "animation/Idle.anim"), clip(NB + "animation/RUN.anim"))))
     S = "Characters/Sumo/"
-    c["sumo"] = controller(os.path.join(P_ANIM, "Sumo.controller"), "Sumo", {
+    c["sumo"] = controller(os.path.join(P_ANIM, "Sumo.controller"), "Sumo", *team_states("sumo", {
         "Attack1": clip(S + "Attack1.anim"), "Attack2": clip(S + "Attack2.anim"), "Attack3": clip(S + "Attack3.anim"),
         "Special": clip(S + "SpecialAttack.anim"), "Hit": clip(S + "Blocked.anim"), "Exhausted": clip(S + "Cansado.anim"),
         "Spotted": clip(S + "EnemySpotted.anim"), "Idle": clip(S + "Idle.anim"),
-    }, (clip(S + "Idle.anim"), clip(S + "Walk.anim")))
+    }, (clip(S + "Idle.anim"), clip(S + "Walk.anim"))))
     patch_minijefe_meta()
     mj = fbx_clip_lengths(A("Models/Minijefe.fbx"))
-    c["goro"] = controller(os.path.join(P_ANIM, "Goro.controller"), "Goro",
+    c["goro"] = controller(os.path.join(P_ANIM, "Goro.controller"), "Goro", *team_states("goro",
                            {n: (minijefe_clip(n), mj.get(n)) for n, *_ in MINIJEFE_CLIPS if n not in ("Run",)},
-                           (minijefe_clip("Idle"), minijefe_clip("Run")))
+                           (minijefe_clip("Idle"), minijefe_clip("Run"))))
     gp = os.path.join(P_CHARS, "Grandpa.fbx")
     if os.path.exists(gp):
         g = ensure_guid(gp)
         gl = fbx_clip_lengths(gp)
         idle = (ref(g, stable_id("grandpa", "Idle"), 3), gl.get("Idle"))
         kid = (ref(g, stable_id("grandpa", "Kidnap"), 3), gl.get("Kidnap"))
-        c["grandpa"] = controller(os.path.join(P_ANIM, "Grandpa.controller"), "Grandpa", {"Idle": idle, "Kidnap": kid}, (idle, idle))
+        c["grandpa"] = controller(os.path.join(P_ANIM, "Grandpa.controller"), "Grandpa",
+                                  *team_states("grandpa", {"Idle": idle, "Kidnap": kid}, (idle, idle)))
     mp, minfo = mizuchi_koi()
     if mp:
         # Gran Koi (jefe del lago): un estado por clip con el mismo nombre; Idle = Hover y la locomoción
@@ -767,6 +768,60 @@ def kokuyo_assets(mats):
     meta = model_meta(remap=remap, anim_type=2, import_anim=True, clips=clips, readable=False)
     write_meta(KOKUYO_FBX, meta.replace("animationCompression: 1", "animationCompression: 0"), force=True)
     write_meta(KOKUYO_FBX + ".json", TEXT_META)
+
+
+# ============================================================================ clips nuevos del equipo
+# Tools/Blender/anim/build_team_anims.py: un FBX de SOLO animación por personaje del equipo (la armadura del modelo
+# con los mismos nombres, padres y reposo), con los clips en una toma 'Scene' cortada por cuadros y un sidecar con
+# los tiempos. Los modelos no se tocan: los clips se ligan por ruta de transform a la misma jerarquía.
+P_TEAM_ANIMS = os.path.join(ART, "Characters", "TeamAnims")
+TEAM_MODELS = {"ninja": "Models/Ninja/Ninja 1.fbx", "sumo": "Characters/Sumo/luchadorsumo.fbx", "goro": "Models/Minijefe.fbx",
+               "grandpa": "Nindo/Art/Models/Characters/Grandpa.fbx"}
+
+
+def team_anims(cid):
+    """(ruta, sidecar) del FBX de animación de un personaje del equipo, o (None, None) si todavía no se exportó."""
+    p = os.path.join(P_TEAM_ANIMS, cid.capitalize() + "Anims.fbx")
+    if not (os.path.exists(p) and os.path.exists(p + ".json")):
+        return None, None
+    return p, json.load(open(p + ".json", encoding="utf-8"))
+
+
+def team_states(cid, states, loco, thresholds=None):
+    """(estados, locomoción, umbrales) del controller con los clips nuevos: cada clip reemplaza al estado del mismo
+    nombre y los que no tienen clip nuevo siguen con el del equipo. La locomoción sale del sidecar si la trae."""
+    p, info = team_anims(cid)
+    if not p:
+        return states, loco, thresholds
+    g = ensure_guid(p)
+    new = {n: (ref(g, stable_id("teamanim", cid, n), 3), r["seconds"]) for n, r in info["clips"].items()}
+    out = dict(states)
+    lo = info.get("locomotion")
+    if lo and all(n in new for n in lo["states"]):
+        loco, thresholds = [new[n] for n in lo["states"]], tuple(lo["thresholds"])
+        # caminar y correr solo viven en el blend tree; 'Idle' además es un estado (la guardia del sumo y de Gorō)
+        new = {n: v for n, v in new.items() if n not in lo["states"] or n == "Idle"}
+    out.update(new)
+    return out, loco, thresholds
+
+
+def team_anim_metas():
+    """Importador de cada FBX de animación: Generic, una definición de clip por clip del sidecar y la MISMA escala
+    global que el modelo (Gorō importa a x2: si no, las posiciones de los huesos caerían a la mitad). Sin
+    compresión: los golpes de 2 cuadros y los pies clavados no aguantan la reducción de claves."""
+    for cid, model in TEAM_MODELS.items():
+        p, info = team_anims(cid)
+        if not p:
+            continue
+        mm = open(A(model) + ".meta", encoding="utf-8").read()
+        sc = re.search(r"\n  meshes:\n    lODScreenPercentages: \[\]\n    globalScale: ([\d.]+)", mm)
+        clips = [dict(name=n, take=info["take"], id=stable_id("teamanim", cid, n), first=r["first"], last=r["last"], loop=r["loop"])
+                 for n, r in info["clips"].items()]
+        body = model_meta(anim_type=2, import_anim=True, clips=clips, readable=False, import_materials=False,
+                          global_scale=float(sc.group(1)) if sc else 1.0)
+        write_meta(p, body.replace("animationCompression: 1", "animationCompression: 0"), force=True)
+        write_meta(p + ".json", TEXT_META)
+    ensure_folder_metas(P_TEAM_ANIMS)
 
 
 # ============================================================================ props y mundo
@@ -1254,6 +1309,7 @@ def main():
     mats = materials(None)
     character_fbx_metas()
     kokuyo_assets(mats)
+    team_anim_metas()
     ctrls = controllers()
     props, zones = model_metas(mats)
     kit_metas(mats)
