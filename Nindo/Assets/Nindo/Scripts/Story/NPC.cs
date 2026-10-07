@@ -31,7 +31,23 @@ namespace Nindo
             return npc;
         }
 
-        public void Play(string state, float fade = 0.15f) => anim.Play(state, fade);
+        public void Play(string state, float fade = 0.15f) { anim.Play(state, fade); then = null; }
+
+        /// <summary>Un clip que no es loop y, cuando termina, 'next' (los controllers no tienen transiciones: sin esto el
+        /// abuelo quedaba congelado en el último cuadro de Freed como una estatua).</summary>
+        public void PlayThen(string state, string next, float fade = 0.15f) { anim.Play(state, fade); thenFrom = state; then = next; }
+        string then, thenFrom;
+
+        /// <summary>Se da vuelta hacia un punto en 'seconds' (FaceTo gira de golpe: en cámara se veía saltar 180°).</summary>
+        public void TurnTo(Vector3 p, float seconds)
+        {
+            Vector3 d = (p - transform.position).Flat();
+            if (d.sqrMagnitude < 0.01f) return;
+            turnFrom = transform.rotation; turnTo = Quaternion.LookRotation(d);
+            turnT = 0f; turnDur = Mathf.Max(0.01f, seconds);
+        }
+        Quaternion turnFrom, turnTo;
+        float turnT = 1f, turnDur = 1f;
 
         /// <summary>Salta al último frame del clip actual (p. ej. el ninja ya arrastrando al abuelo).</summary>
         public void SkipToEnd() { if (anim.Valid) anim.Play(anim.Current, 0f, 0.98f); }
@@ -44,6 +60,7 @@ namespace Nindo
         {
             Vector3 d = (p - transform.position).Flat();
             if (d.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(d);
+            turnT = 1f;   // manda sobre un TurnTo a medias
         }
 
         public void WalkTo(Vector3 target, float speed)
@@ -66,6 +83,16 @@ namespace Nindo
                     transform.position = p;
                     if (!sliding) transform.rotation = CombatMath.Damp(transform.rotation, Quaternion.LookRotation(d), 8f, dt);
                 }
+            }
+            if (turnT < 1f)
+            {
+                turnT = Mathf.Min(1f, turnT + dt / turnDur);
+                transform.rotation = Quaternion.Slerp(turnFrom, turnTo, Mathf.SmoothStep(0f, 1f, turnT));
+            }
+            if (then != null && anim.Current == thenFrom && anim.TryNormalizedTime(thenFrom, out float shown) && shown >= 0.98f)
+            {
+                anim.Play(then, 0.25f);
+                then = null;
             }
             if (!sliding) anim.SetLocomotion(walking ? 0.5f : 0f, dt);
             anim.Tick();

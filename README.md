@@ -227,6 +227,10 @@ python3 Tools/Unity/generate_assets.py
 python3 Tools/Fonts/add_macrons.py
 # tiempos de los golpes de Kokuyō (KokuyoTimings.cs) desde el .fbx.json de su build de Blender
 python3 Tools/Unity/kokuyo_timings.py
+# clips del ninja, el sumo, Gorō y el abuelo (Art/Characters/TeamAnims/<Personaje>Anims.fbx + .json): falla si un
+# pie patina, un loop salta o el contacto no coincide con EnemyArchetypes; después metas, controllers y NindoContent
+$B -b --factory-startup --python Tools/Blender/anim/build_team_anims.py -- ninja|sumo|goro|grandpa --export [--renders carpeta]
+python3 Tools/Blender/anim/apply_team_anims.py
 ```
 
 Convenciones de Blender en `Tools/Blender/STYLE.md`. Los GUIDs de Unity se generan de forma

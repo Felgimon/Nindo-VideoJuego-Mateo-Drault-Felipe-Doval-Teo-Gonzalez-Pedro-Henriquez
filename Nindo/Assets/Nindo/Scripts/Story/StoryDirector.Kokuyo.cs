@@ -123,7 +123,10 @@ namespace Nindo
             yield return Game.UI.Fade(0f, 0.8f);
             // las cuerdas se deshacen (y su zumbido se apaga): recién libre, el abuelo se da vuelta hacia su nieto
             if (fx != null && fx.Ropes != null && fx.Ropes.Bound) { fx.Ropes.Dissolve(1.6f); yield return Wait(1.5f); }
-            grandpa.FaceTo(P.transform.position);
+            // se da vuelta con pasitos (los primeros 0.45 s de Freed), se frota las muñecas, se endereza, le hace una
+            // reverencia a Kaito y vuelve a respirar en Idle
+            grandpa.TurnTo(P.transform.position, 0.45f);
+            grandpa.PlayThen("Freed", "Locomotion", 0.25f);
             Game.FX.Petals(mid + Vector3.up * 2f, 2f);
             yield return Wait(0.4f);
             yield return Say("ending");

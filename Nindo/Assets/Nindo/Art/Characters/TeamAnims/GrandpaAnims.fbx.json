@@ -1,0 +1,135 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "character": "grandpa",
+ "model": "Nindo/Art/Models/Characters/Grandpa.fbx",
+ "units_per_meter": 2.19149,
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 76,
+   "frames": 75,
+   "seconds": 2.5,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "encorvado, manos atrás, respira y mira alrededor",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
+   }
+  },
+  "Walk": {
+   "first": 86,
+   "last": 110,
+   "frames": 24,
+   "seconds": 0.8,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "pasitos cortos encorvado, 0.8 m/s",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.8,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
+   },
+   "root_velocity_mps": 0.8
+  },
+  "Bound": {
+   "first": 120,
+   "last": 210,
+   "frames": 90,
+   "seconds": 3.0,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "atado al poste: manos atrás, cabeza gacha, forcejea cada tanto",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
+   }
+  },
+  "Freed": {
+   "first": 220,
+   "last": 310,
+   "frames": 90,
+   "seconds": 3.0,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     0,
+     5,
+     12,
+     28,
+     40,
+     54,
+     66,
+     78,
+     90
+    ],
+    "chain": [
+     [
+      90,
+      "Idle",
+      0,
+      0.02
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "libre: pasitos mientras se da vuelta, se frota las muñecas y le hace una reverencia",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -1.4,
+    "lowest_weapon_cm": null
+   }
+  }
+ },
+ "locomotion": {
+  "states": [
+   "Idle",
+   "Walk"
+  ],
+  "thresholds": [
+   0.0,
+   0.5
+  ]
+ }
+}

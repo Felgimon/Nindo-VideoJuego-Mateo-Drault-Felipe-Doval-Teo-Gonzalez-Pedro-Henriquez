@@ -993,8 +993,14 @@ namespace Nindo
 
         void TickExhausted(float dt)
         {
+            // el sacudón termina en el primer cuadro del loop de agotado: sin transiciones en el controller, quedaba
+            // congelado en su último cuadro hasta el final de la ventana (se mira el clip, no el reloj: el hit-stop lo frena)
+            if (ExhaustedFeedback && anim.Current == ExhaustedHitState && anim.TryNormalizedTime(ExhaustedHitState, out float shown) && shown >= 0.97f)
+                anim.Play(config.animExhausted, 0.06f);
             if (stateTime >= stateDuration) EndExhaustion();
         }
+
+        const string ExhaustedHitState = "ExhaustedHit";
 
         /// <summary>Se recupera: la postura vuelve a cero y se cubre.</summary>
         void EndExhaustion()
@@ -1102,7 +1108,9 @@ namespace Nindo
             if (State == EnemyState.Exhausted)
             {
                 if (exhaustedHits >= ExhaustedHitCap) EndExhaustion();
-                else anim.Play(config.animHit, 0.03f);
+                // el sacudón propio de la postura quebrada (si el controller lo tiene): Hit lo paraba en guardia. Una pausa
+                // que no es postura quebrada (la sal del Ōzeki) no se agacha
+                else anim.Play(ExhaustedFeedback && anim.HasState(ExhaustedHitState) ? ExhaustedHitState : config.animHit, 0.03f);
             }
             else if (State == EnemyState.Attack && (config.hyperArmor && info.kind != AttackKind.Ability || armored && info.kind == AttackKind.Light && !info.riposte))
             {
@@ -1113,13 +1121,18 @@ namespace Nindo
                 ReleaseToken();
                 SetState(EnemyState.Stagger);
                 stateDuration = config.staggerTime * (info.kind == AttackKind.Heavy || info.kind == AttackKind.Ability ? 1.6f : 1f);
-                anim.Play(config.animHit, 0.03f);
+                // los golpes que empujan más de 1 m (corte final, habilidades; antes de la resistencia de cada uno) tienen
+                // su propio clip con los pasos de esa distancia: Hit está autorado para los cortes livianos y con 1.6 m patinaba
+                anim.Play(info.knockback > HeavyKnockback && anim.HasState(HitHeavyState) ? HitHeavyState : config.animHit, 0.03f);
             }
             OnDamaged(info);
             return HitResult.Hit;
         }
 
         protected virtual void OnDamaged(in DamageInfo info) { }
+
+        const float HeavyKnockback = 1f;
+        const string HitHeavyState = "HitHeavy", ParriedPerfectState = "ParriedPerfect";
 
         /// <summary>Golpe contra la guardia: el primero rebota (clang, suma postura, sin castigo); el segundo se contraataca.</summary>
         HitResult GuardHit()
@@ -1159,7 +1172,9 @@ namespace Nindo
             {
                 SetState(EnemyState.Recoil);
                 stateDuration = config.parriedRecoil * (perfect ? 1.5f : 1f);
-                anim.Play(config.animParried, 0.03f);
+                // el perfecto tiene su clip (más grande, 0.8 m y 0.48 s): cada uno está autorado con su distancia y termina
+                // en la guardia justo cuando el retroceso arranca el paso siguiente
+                anim.Play(perfect && anim.HasState(ParriedPerfectState) ? ParriedPerfectState : config.animParried, 0.03f);
                 knock += -transform.forward * (perfect ? 0.8f : 0.4f);
             }
             if (Imbalance >= config.maxImbalance - 0.01f) BreakPosture();
@@ -1213,11 +1228,14 @@ namespace Nindo
             while (t < 1f)
             {
                 t += Time.deltaTime * 1.8f;
-                model.localRotation = Quaternion.Slerp(from, to, t * t);
+                // con clip de muerte que cae solo no se voltea el modelo como una tabla: solo se lo corre
+                if (!config.deathClipFalls) model.localRotation = Quaternion.Slerp(from, to, t * t);
                 transform.position = fromPos + dir.Flat().normalized * 0.8f * Mathf.Sin(t * Mathf.PI * 0.5f);
                 yield return null;
             }
-            yield return new WaitForSeconds(0.9f);
+            // con un clip que cae solo, el humo espera a que termine de caer (+0.25 s en el piso): la muerte de Gorō
+            // (2 s) se desplomaba mientras se encogía
+            yield return new WaitForSeconds(config.deathClipFalls ? Mathf.Max(0.9f, anim.Length(config.animDeath, 1f) - 1f / 1.8f + 0.25f) : 0.9f);
             Game.FX?.SmokePuff(transform.position + Vector3.up * 0.4f, 1.2f * config.scale);
             float s = 1f;
             Vector3 baseScale = model.localScale;

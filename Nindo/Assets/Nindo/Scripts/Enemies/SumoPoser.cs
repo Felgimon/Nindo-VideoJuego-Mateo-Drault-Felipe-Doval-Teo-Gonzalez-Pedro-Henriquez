@@ -346,7 +346,13 @@ namespace Nindo
                 // el pie del shiko se enciende para el pisotón (después el golpe es la onda, que viaja sola)
                 glowMove = m; danger = a.kind == AttackKind.Unblockable;
                 glowEta = a.special == "shiko" ? (clock < tl.T ? tl.T - clock : float.PositiveInfinity) : enemy.StrikeEta;
-                return Evaluate(m, clock, tl.ReleaseTime, tl.T, tl.sustain, snapshot);
+                if (clipOwned.Contains(a.name)) return SumoPose.Lerp(output, default, 1f - Mathf.Exp(-dt / 0.09f));
+                var p = Evaluate(m, clock, tl.ReleaseTime, tl.T, tl.sustain, snapshot);
+                // sobre un estado con clip nuevo (los golpes con nombre propio reusan Attack1..Special) el cuerpo ya viene
+                // agachado, inclinado y girado: la cadera y el torso del poser son ADITIVOS y lo doblaban (el tachiai
+                // llegaba a ~76° de inclinación). Quedan solo las manos y pies (puntos absolutos) y la luz
+                if (clipOwned.Contains(a.state)) { p.drop = 0f; p.lean = 0f; p.twist = 0f; p.roll = 0f; }
+                return p;
             }
             curAttack = null;
             if (beat != null && enemy.IsAlive)
@@ -362,6 +368,14 @@ namespace Nindo
         }
 
         static readonly float[] noise = { 0.31f, -0.74f, 0.12f, 0.9f, -0.45f, 0.63f, -0.18f, -0.97f };
+
+        /// <summary>
+        /// Estados con clip propio (TeamAnims/SumoAnims.fbx) que ya trae la carga y el golpe atados al mismo reloj. Por
+        /// nombre de golpe (el sumo común): solo se enciende la mano o el pie que pega. Por estado (los golpes con nombre
+        /// propio del Ōzeki y las variantes que los reusan: Harite D, Shiko D, Tachiai, Agarre, Morote): el poser sigue
+        /// llevando manos y pies a su pose, pero no le suma cadera ni torso al clip.
+        /// </summary>
+        static readonly HashSet<string> clipOwned = new HashSet<string> { "Attack1", "Attack2", "Attack3", "Special" };
 
         SumoPose Evaluate(Move m, float clock, float release, float T, float sustain, in SumoPose from)
         {

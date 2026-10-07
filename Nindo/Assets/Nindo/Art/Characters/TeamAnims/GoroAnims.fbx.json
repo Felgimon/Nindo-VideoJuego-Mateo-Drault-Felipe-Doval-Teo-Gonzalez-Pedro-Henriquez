@@ -1,0 +1,630 @@
+{
+ "fps": 30,
+ "take": "Scene",
+ "character": "goro",
+ "model": "Models/Minijefe.fbx",
+ "units_per_meter": 0.94662,
+ "clips": {
+  "Idle": {
+   "first": 1,
+   "last": 81,
+   "frames": 80,
+   "seconds": 2.6667,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "respira; el martillo bajo adelante",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 12.9
+   }
+  },
+  "Walk": {
+   "first": 91,
+   "last": 115,
+   "frames": 24,
+   "seconds": 0.8,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "caminata pesada a 2 m/s",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 12.9
+   },
+   "root_velocity_mps": 2.0
+  },
+  "Run": {
+   "first": 125,
+   "last": 145,
+   "frames": 20,
+   "seconds": 0.6667,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "corre a 3.8 m/s con el martillo atrás",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.04,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 29.0
+   },
+   "root_velocity_mps": 3.8
+  },
+  "Combo1": {
+   "first": 155,
+   "last": 191,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 21,
+    "contact": 24,
+    "active": [
+     24,
+     28
+    ],
+    "hold": [
+     12,
+     21
+    ],
+    "lunge": 1.2,
+    "windup": 0.85,
+    "state": "Combo1",
+    "reach": 2.4
+   },
+   "normalized": {
+    "apex": 0.5833,
+    "contact": 0.6667,
+    "hold": [
+     0.3333,
+     0.5833
+    ],
+    "active": [
+     0.6667,
+     0.7778
+    ]
+   },
+   "notes": "martillazo en diagonal; aviso: martillo arriba a la derecha",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 2.3,
+    "hold_tip_mps": 1.28,
+    "peak_frame": 22,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 0.886,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.03,
+     -2.65,
+     0.93
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": -2.5
+   }
+  },
+  "Combo2": {
+   "first": 201,
+   "last": 237,
+   "frames": 36,
+   "seconds": 1.2,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 18,
+    "contact": 21,
+    "active": [
+     21,
+     24
+    ],
+    "hold": [
+     10,
+     18
+    ],
+    "lunge": 1.2,
+    "windup": 0.5,
+    "state": "Combo2",
+    "reach": 2.4
+   },
+   "normalized": {
+    "apex": 0.5,
+    "contact": 0.5833,
+    "hold": [
+     0.2778,
+     0.5
+    ],
+    "active": [
+     0.5833,
+     0.6667
+    ]
+   },
+   "notes": "revés horizontal; aviso: martillo atrás a la izquierda",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.6,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.76,
+    "peak_frame": 19,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 0.768,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.33,
+     -2.8,
+     1.49
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.4
+   }
+  },
+  "Combo3": {
+   "first": 247,
+   "last": 277,
+   "frames": 30,
+   "seconds": 1.0,
+   "loop": false,
+   "timing": {
+    "kind": "heavy",
+    "apex": 16,
+    "contact": 19,
+    "active": [
+     19,
+     22
+    ],
+    "hold": [
+     8,
+     16
+    ],
+    "lunge": 1.0,
+    "windup": 0.5,
+    "state": "Combo3",
+    "reach": 2.4
+   },
+   "normalized": {
+    "apex": 0.5333,
+    "contact": 0.6333,
+    "hold": [
+     0.2667,
+     0.5333
+    ],
+    "active": [
+     0.6333,
+     0.7333
+    ]
+   },
+   "notes": "martillazo de arriba; aviso: martillo atrás de la cabeza",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 1.84,
+    "peak_frame": 17,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 0.69,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.03,
+     -2.64,
+     0.88
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": -1.1
+   }
+  },
+  "Heavy": {
+   "first": 287,
+   "last": 347,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": false,
+   "timing": {
+    "kind": "unblockable",
+    "apex": 32,
+    "contact": 40,
+    "active": [
+     40,
+     42
+    ],
+    "hold": [
+     12,
+     22
+    ],
+    "lunge": 0.5,
+    "windup": 1.1,
+    "state": "Heavy",
+    "reach": 2.2
+   },
+   "normalized": {
+    "apex": 0.5333,
+    "contact": 0.6667,
+    "hold": [
+     0.2,
+     0.3667
+    ],
+    "active": [
+     0.6667,
+     0.7
+    ]
+   },
+   "notes": "golpe sísmico: salta y pega al aterrizar",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 20.8,
+    "hold_tip_mps": 1.63,
+    "peak_frame": 40,
+    "prerelease_glide_cm": 0.0,
+    "game_T_s": 1.422,
+    "game_hold_s": 0.0,
+    "contact_tip_m": [
+     -0.02,
+     -2.51,
+     0.97
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -2.1,
+    "lowest_weapon_cm": -3.0
+   }
+  },
+  "Spin": {
+   "first": 357,
+   "last": 423,
+   "frames": 66,
+   "seconds": 2.2,
+   "loop": false,
+   "timing": {
+    "kind": "unblockable",
+    "apex": 16,
+    "contact": 19,
+    "active": [
+     19,
+     56
+    ],
+    "hold": [
+     10,
+     16
+    ],
+    "lunge": 0.0,
+    "windup": 0.95,
+    "state": "Spin",
+    "slide_ok": 40.0,
+    "reach": 2.6
+   },
+   "normalized": {
+    "apex": 0.2424,
+    "contact": 0.2879,
+    "hold": [
+     0.1515,
+     0.2424
+    ],
+    "active": [
+     0.2879,
+     0.8485
+    ]
+   },
+   "notes": "torbellino: carga torcido, gira, sale mareado",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.6,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "hold_tip_mps": 0.86,
+    "peak_frame": 56,
+    "game_T_s": 0.95,
+    "game_hold_s": 0.26,
+    "contact_tip_m": [
+     -2.43,
+     -0.24,
+     1.78
+    ],
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 1.9
+   }
+  },
+  "StunSpin": {
+   "first": 433,
+   "last": 493,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": true,
+   "timing": {},
+   "normalized": {},
+   "notes": "mareado: el cuerpo en círculos",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "loop_seam_deg": 0.056,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 1.8
+   }
+  },
+  "ExhaustedHit": {
+   "first": 503,
+   "last": 515,
+   "frames": 12,
+   "seconds": 0.4,
+   "loop": false,
+   "timing": {
+    "chain": [
+     [
+      12,
+      "StunSpin",
+      0,
+      0.02
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "mareado: se tambalea con el golpe; vuelve al cuadro 0 de StunSpin",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -0.0,
+    "lowest_weapon_cm": 4.4
+   }
+  },
+  "Parried": {
+   "first": 525,
+   "last": 535,
+   "frames": 10,
+   "seconds": 0.3333,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     4,
+     6,
+     9
+    ],
+    "chain": [
+     [
+      9.6,
+      "Combo1",
+      0,
+      0.12
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry recibido: el martillo rebota arriba y cae adelante; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.9
+   }
+  },
+  "ParriedPerfect": {
+   "first": 545,
+   "last": 560,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     2,
+     6,
+     8,
+     14
+    ],
+    "chain": [
+     [
+      14.4,
+      "Combo1",
+      0,
+      0.12
+     ]
+    ]
+   },
+   "normalized": {},
+   "notes": "parry perfecto: el martillo se va atrás por encima de la cabeza, dos pasos atrás; en guardia al corte",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 5.1,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 15.9
+   }
+  },
+  "Hit": {
+   "first": 570,
+   "last": 585,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "sacudón; se acomoda los 4 cm del empujón",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 14.8
+   }
+  },
+  "HitHeavy": {
+   "first": 595,
+   "last": 610,
+   "frames": 15,
+   "seconds": 0.5,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "golpe pesado: sacudón y un paso atrás",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 13.9
+   }
+  },
+  "Spotted": {
+   "first": 620,
+   "last": 662,
+   "frames": 42,
+   "seconds": 1.4,
+   "loop": false,
+   "timing": {},
+   "normalized": {},
+   "notes": "rugido: pecho afuera, brazos abiertos",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 0.0,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": 0.0,
+    "lowest_weapon_cm": 6.3
+   }
+  },
+  "Death": {
+   "first": 672,
+   "last": 732,
+   "frames": 60,
+   "seconds": 2.0,
+   "loop": false,
+   "timing": {
+    "sheet": [
+     4,
+     12,
+     24,
+     32,
+     44,
+     54,
+     60
+    ],
+    "slide_ok": 6.0
+   },
+   "normalized": {},
+   "notes": "muerte: de rodillas sin soltar el martillo y se desploma",
+   "lint": {
+    "reach_miss_cm": {
+     "hands": 0.0,
+     "legs": 0.0
+    },
+    "hip_drop_cm": 4.1,
+    "floor_skate_cm": {
+     "r": [],
+     "l": []
+    },
+    "lowest_body_cm": -1.8,
+    "lowest_weapon_cm": 0.6
+   }
+  }
+ },
+ "locomotion": {
+  "states": [
+   "Idle",
+   "Walk",
+   "Run"
+  ],
+  "thresholds": [
+   0.0,
+   0.5263157894736842,
+   1.0
+  ]
+ }
+}

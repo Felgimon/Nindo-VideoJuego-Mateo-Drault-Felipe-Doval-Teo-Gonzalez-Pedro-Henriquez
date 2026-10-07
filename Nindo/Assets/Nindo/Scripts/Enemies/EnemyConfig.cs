@@ -79,6 +79,8 @@ namespace Nindo
         public string animSpotted = "Spotted";
         public string animDeath = "Death";
         public string animParried = "Hit";
+        [Tooltip("El clip de muerte cae al piso solo: DeathRoutine no voltea el modelo entero (solo lo corre y lo esfuma)")]
+        public bool deathClipFalls;
 
         [Header("Ataques")]
         public AttackPattern[] patterns;
