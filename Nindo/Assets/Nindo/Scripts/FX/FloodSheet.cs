@@ -57,6 +57,9 @@ namespace Nindo
             if (sh == null || !sh.isSupported) { enabled = false; return; }
             mat = new Material(sh) { name = "FloodSheet" };
             mat.SetFloat("_Mode", 1f);
+            // antes que los avisos (Nindo/Telegraph, Transparent-10): con 12 cm de agua encima, los anillos y las zonas de
+            // la fase 2 de Mizuchi quedaban debajo de la crecida, lavados al 42 %
+            mat.renderQueue = (int)RenderQueue.Transparent - 11;
             for (int i = 0; i < ripples.Length; i++) ripples[i] = new Vector4(0f, 0f, 0f, -99f);
             // un poco adentro de las barandas (postes al 98.5 % del radio)
             float rc = circumRadius - 0.3f;
@@ -187,6 +190,8 @@ namespace Nindo
                 {
                     stepTimer = Mathf.Lerp(0.42f, 0.24f, Mathf.InverseLerp(1f, 8f, speed));
                     Ripple(p.transform.position);
+                    // con la crecida (no la película mojada) cada paso chapotea encima del paso de madera
+                    if (IsFlooded) Game.Audio?.Play("step_water", p.transform.position, 0.45f, 0.12f);
                 }
             }
         }

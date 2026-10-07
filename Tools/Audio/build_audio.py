@@ -681,6 +681,172 @@ def _water_splash(i):
 PEAK.update({"falls_roar": -4, "falls_spray": -6, "falls_gust": -5, "water_splash": -2})
 
 
+# ============================================================================ MIZUCHI (el Gran Koi)
+# Sonidos del jefe del lago (Enemies/Bosses/MizuchiBoss.cs). Sus "silbidos" son agua, no acero, y llegan al pico donde
+# los esperan los avisos (TellStyle): 0.13 s la mordida y las aletas, 0.24 s el coletazo y el chorro (Enemy.TickTell los
+# lanza esa anticipación antes del golpe). Todo sintetizado, sin descargas.
+def _wet(dur, seed, lo=300, hi=3500):
+    """Chapoteo: agua de banda media que se apaga, más gotas."""
+    body = filt(noise(dur, seed), lo, hi) * env_exp(dur, dur * 0.3)
+    drops = bubbles(dur, seed + 1, 50, 1.0)[:, 0] * env_points(dur, [(0, 0), (0.05, 1), (dur, 0)])
+    return mix((body, 0, 1.0), (drops, 0.02, 0.5))
+
+
+@sfx("koi_snap", 2)
+def _koi_snap(i):
+    """Mordida: succión que sube y, a los 0.13 s, el chasquido de la boca y un trago."""
+    pre = whoosh(0.16, 300, 1400, 0.95, 1.2, seed=800 + i)
+    clack = band(noise(0.06, 802 + i), 900 + 120 * i, 3) * env_exp(0.06, 0.012)
+    knock = partials(260 + 30 * i, [1, 2.3, 3.7], [1, 0.5, 0.25], [0.08, 0.05, 0.03], 0.25, 804 + i)
+    gulp = osc(glide(180, 90, 0.18), 0.18) * env_exp(0.18, 0.06)
+    return reverb(mix((pre, 0, 0.6), (clack, 0.13, 1.0), (knock, 0.13, 0.8), (gulp, 0.15, 0.6), (_wet(0.4, 806 + i), 0.13, 0.5)), 0.2, 1.2, 0.35)
+
+
+@sfx("fin_whoosh", 2)
+def _fin_whoosh(i):
+    """Aletazo: abanico de papel plisado que corta el aire (pico en 0.13 s) y rocío que se desprende."""
+    d = 0.42
+    pleats = noise(d, 810 + i) * (1 + 0.35 * osc(55, d, "square"))     # los pliegues del abanico: aspereza a 55 Hz
+    fan = sweep(pleats, 500, 3200, q=1.3) * env_points(d, [(0, 0), (0.13, 1), (0.19, 0.3), (d, 0)]) ** 1.5
+    snap = band(noise(0.04, 812 + i), 2200, 2) * env_exp(0.04, 0.008)
+    spray = filt(noise(0.35, 814 + i), 1800, 9000) * env_points(0.35, [(0, 0), (0.05, 1), (0.35, 0)]) ** 2
+    return reverb(mix((fan, 0, 1.0), (snap, 0.125, 0.6), (spray, 0.15, 0.15)), 0.18, 1.0, 0.3)
+
+
+@sfx("tail_crack", 2)
+def _tail_crack(i):
+    """Coletazo: el abanico de la cola sube silbando y restalla a los 0.24 s, con un golpe de agua."""
+    pre = whoosh(0.3, 200, 2400, 0.8, 1.2, seed=820 + i)
+    crack = filt(noise(0.05, 822 + i), 1200, 9000) * env_exp(0.05, 0.007)
+    slap = thump(140, 60, 0.3, 0.07, seed=824 + i)
+    return reverb(mix((pre, 0, 0.7), (crack, 0.24, 1.0), (slap, 0.24, 0.9), (_wet(0.6, 826 + i, 400, 6000), 0.25, 0.6)), 0.22, 1.4, 0.4)
+
+
+@sfx("pearl_spit", 2)
+def _pearl_spit(i):
+    """Perla que sale de la boca: 'blup' con un zumbido cristalino que queda sonando."""
+    bloop = osc(glide(220 + 40 * i, 520, 0.12, 0.6), 0.12) * env_exp(0.12, 0.05)
+    pop = band(noise(0.03, 830 + i), 1500, 2) * env_exp(0.03, 0.006)
+    hum = osc(880 * (1 + 0.06 * i), 0.3) * env_points(0.3, [(0, 0), (0.04, 1), (0.3, 0)]) * 0.25
+    return reverb(mix((bloop, 0, 1.0), (pop, 0.01, 0.5), (hum, 0.02, 0.6)), 0.3, 1.2, 0.4)
+
+
+@sfx("pearl_ping", 2)
+def _pearl_ping(i):
+    """Perla devuelta (parry perfecto o revés del koi): 'ting' de vidrio y un soplido que se aleja."""
+    ting = partials(2637 * (1 + 0.06 * i), [1, 2.32, 4.25, 6.63], [1, 0.45, 0.25, 0.12], [0.5, 0.25, 0.12, 0.06], 0.9, 840 + i)
+    hit = band(noise(0.02, 844 + i), 4000, 2) * env_exp(0.02, 0.004)
+    away = whoosh(0.3, 2500, 700, 0.15, 1.4, seed=842 + i)
+    return reverb(mix((hit, 0, 0.6), (ting, 0, 1.0), (away, 0.02, 0.3)), 0.35, 1.6, 0.5)
+
+
+@sfx("pearl_pop", 2)
+def _pearl_pop(i):
+    """Perla que revienta (parry normal, contra Kaito o contra la baranda)."""
+    pop = osc(glide(900, 300, 0.06), 0.06) * env_exp(0.06, 0.02)
+    burst = filt(noise(0.2, 850 + i), 800, 7000) * env_exp(0.2, 0.04)
+    drops = bubbles(0.4, 852 + i, 60, 1.0)[:, 0] * env_points(0.4, [(0, 0), (0.05, 1), (0.4, 0)])
+    return reverb(mix((pop, 0, 0.8), (burst, 0, 0.7), (drops, 0.03, 0.5)), 0.25, 1.0, 0.3)
+
+
+@sfx("jet_charge")
+def _jet_charge(i):
+    """El koi toma agua para el chorro: presión que sube con gárgaras y un retumbo."""
+    d = 1.1
+    hiss = sweep(noise(d, 860), 400, 3000, q=1.2) * env_points(d, [(0, 0), (0.9, 1), (1.1, 0.2)])
+    rumble = filt(noise(d, 861), 40, 200) * env_points(d, [(0, 0), (1.0, 1), (1.1, 0)])
+    gurgle = bubbles(d, 862, 30, 1.0)[:, 0] * 0.5
+    return reverb(mix((hiss, 0, 0.6), (rumble, 0, 1.0), (gurgle, 0, 0.4)), 0.25, 1.4, 0.4)
+
+
+@sfx("jet_fire")
+def _jet_fire(i):
+    """Disparo del chorro: sube 0.24 s y revienta en un rugido de agua a presión."""
+    pre = whoosh(0.26, 300, 2500, 0.95, 1.0, seed=870)
+    blast = filt(noise(0.8, 871), 150, 6000) * env_points(0.8, [(0, 1), (0.45, 0.8), (0.8, 0)])
+    roar = filt(noise(0.8, 872), 40, 300) * env_points(0.8, [(0, 1), (0.5, 0.7), (0.8, 0)])
+    crack = thump(110, 50, 0.4, 0.1, seed=873)
+    return reverb(mix((pre, 0, 0.7), (blast, 0.24, 0.8), (roar, 0.24, 1.0), (crack, 0.24, 0.8)), 0.25, 1.5, 0.5)
+
+
+@sfx("pillar_fall")
+def _pillar_fall(i):
+    """Pilar de agua que cae del cielo: silbido que baja durante 1.1 s (el aviso) y el golpe al llegar."""
+    d = 1.15
+    whistle = sweep(noise(d, 880), 3000, 600, q=3.0) * env_points(d, [(0, 0), (1.05, 1), (1.1, 0.3), (d, 0)]) ** 1.5
+    rush = filt(noise(d, 881), 200, 2000) * env_points(d, [(0, 0), (1.1, 1), (d, 0)]) ** 2
+    hit = thump(90, 40, 0.5, 0.15, seed=882)
+    return reverb(mix((whistle, 0, 0.5), (rush, 0, 0.8), (hit, 1.1, 0.9)), 0.3, 1.8, 0.6)
+
+
+@sfx("koi_roar")
+def _koi_roar(i):
+    """Voz del koi (va encima del rugido genérico): un lamento grave de ballena, con burbujas."""
+    d = 2.2
+    f = glide(70, 52, d, 0.7) * (1 + 0.04 * osc(3.2, d))
+    src = osc(f, d, "saw") + 0.5 * osc(f * 1.5, d, "saw")
+    v = peak(peak(src, 380, 90, 8), 820, 140, 5)
+    moan = filt(v, 40, 2200) * env_points(d, [(0, 0), (0.35, 1), (1.5, 0.8), (d, 0)])
+    bub = bubbles(d, 891, 25, 1.0)[:, 0] * env_points(d, [(0, 0), (0.4, 1), (d, 0)])
+    return reverb(mix((distort(moan, 1.5), 0, 1.0), (bub, 0.1, 0.35)), 0.45, 2.8, 0.9)
+
+
+@sfx("seal_crack")
+def _seal_crack(i):
+    """La estaca del sello se parte: crujido de cerámica, esquirlas y un zumbido violeta que se apaga."""
+    crack = filt(noise(0.12, 900), 1500, 9000) * env_exp(0.12, 0.02)
+    shards = sum(partials(f, [1, 2.7, 5.2], [1, 0.5, 0.3], [0.15, 0.08, 0.05], 0.4, 901 + k) for k, f in enumerate([1900, 2600, 3300]))
+    zap = filt(osc(glide(1200, 180, 0.6, 0.5), 0.6, "saw") * env_exp(0.6, 0.18), 150, 4000)
+    sub = thump(80, 35, 0.8, 0.25, seed=905)
+    return reverb(mix((crack, 0, 1.0), (shards, 0.01, 0.25), (zap, 0.02, 0.4), (sub, 0, 0.9)), 0.35, 2.2, 0.7)
+
+
+@sfx("koi_freed")
+def _koi_freed(i):
+    """Liberado: campanitas de viento y un coro que crece mientras el dragón sube."""
+    d = 4.5
+    rr = rng(910)
+    notes = [1174.7, 1318.5, 1568.0, 1760.0, 2093.0]
+    chimes = [(partials(f, [1, 2.76, 5.4], [1, 0.35, 0.15], [1.4, 0.6, 0.3], 2.0, 911 + k), float(rr.uniform(0, 1.8)), float(rr.uniform(0.3, 0.6)))
+              for k, f in enumerate(notes * 2)]
+    choir = sum(osc(f * (1 + 0.003 * osc(5 + k, d)), d, "saw") for k, f in enumerate([220.0, 277.2, 329.6, 440.0]))
+    choir = filt(peak(choir, 700, 200, 4), 150, 2500) * env_points(d, [(0, 0), (1.2, 0.3), (3.0, 1), (d, 0)])
+    return reverb(mix(*chimes, (choir * 0.25, 0, 1.0)), 0.5, 3.5, 1.4)
+
+
+@sfx("thunder")
+def _thunder(i):
+    """Rayo del sello desde el labio de la cascada: chasquido y trueno que rueda."""
+    d = 3.0
+    crack = filt(noise(0.15, 920), 800, 8000) * env_exp(0.15, 0.03)
+    roll = filt(noise(d, 921), 30, 400) * env_points(d, [(0, 0), (0.1, 1), (0.6, 0.7), (d, 0)])
+    roll = roll * (0.6 + 0.4 * _norm01(filt(noise(d, 922), None, 5, 1)))
+    return reverb(mix((crack, 0, 1.0), (roll, 0.05, 1.3)), 0.4, 2.5, 0.9)
+
+
+@sfx("wave_rise")
+def _wave_rise(i):
+    """La ola de la cascada crece al norte: retumbo y lavado que suben y se quedan rodando."""
+    d = 2.2
+    rum = filt(noise(d, 930), 30, 180) * env_points(d, [(0, 0), (1.2, 1), (d, 0.3)])
+    wash = sweep(noise(d, 931), 300, 2500, q=0.9) * env_points(d, [(0, 0), (1.3, 1), (d, 0)])
+    hiss = filt(noise(d, 932), 3000, 9000) * env_points(d, [(0, 0), (1.4, 0.6), (d, 0)])
+    return reverb(mix((rum, 0, 1.0), (wash, 0, 0.6), (hiss, 0, 0.2)), 0.35, 2.0, 0.7)
+
+
+@sfx("step_water", 3)
+def _step_water(i):
+    """Paso en la plataforma inundada (fase 2): chapoteo corto."""
+    d = 0.3
+    slap = filt(noise(0.05, 940 + i), 500, 4000) * env_exp(0.05, 0.012)
+    swish = filt(noise(d, 943 + i), 700, 5000) * env_points(d, [(0, 0), (0.03, 1), (d, 0)]) ** 2
+    drops = bubbles(d, 946 + i, 40, 1.0)[:, 0]
+    return mix((slap, 0, 1.0), (swish, 0.01, 0.5), (drops, 0.02, 0.4))
+
+
+PEAK.update({"step_water": -6, "koi_roar": -2, "thunder": -2, "koi_freed": -3, "jet_charge": -4, "pillar_fall": -2})
+
+
 # ============================================================================ AMBIENTES
 AMB_LEN, AMB_X = 40.0, 3.0
 

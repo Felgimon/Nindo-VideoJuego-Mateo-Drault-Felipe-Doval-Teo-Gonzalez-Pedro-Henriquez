@@ -519,7 +519,7 @@ namespace Nindo
         }
 
         // ================================================================== presentación de la cascada
-        const string FallsSeenFlag = "falls_seen";
+        public const string FallsSeenFlag = "falls_seen";
 
         void OnZoneEntered(Zone z)
         {
@@ -575,6 +575,18 @@ namespace Nindo
             if (b is KokuyoBoss k) { yield return KokuyoIntro(k); yield break; }
             // reintento: la presentación entera (~6 s más el diálogo) solo la primera vez
             if (Game.Save.HasFlag(BossSeenFlag(b.bossId))) { yield return BossReintro(b); yield break; }
+            // Mizuchi tiene su propia presentación (sale del pozo de la cascada): la toma, el título y el diálogo son suyos
+            if (b is MizuchiBoss koi)
+            {
+                Game.Audio?.StopMusic(1.5f);
+                yield return koi.Presentation(P);
+                Game.Save.SetFlag(BossSeenFlag(b.bossId));
+                SaveSystem.Save();
+                yield return new WaitForSecondsRealtime(0.3f);
+                b.ExitScripted(false);
+                b.BeginFight();
+                yield break;
+            }
             Game.Audio?.StopMusic(1.5f);
             int shot = Game.Camera.PlayBossIntroShot(b.transform, b.config.height * b.config.scale, 4f);
             yield return new WaitForSecondsRealtime(0.8f);
@@ -622,7 +634,7 @@ namespace Nindo
         {
             foreach (var a in Game.World.Arenas) if (a.Boss == b) a.OnBossDefeated();
             if (b.bossId == "kage") StartCoroutine(Ending());
-            else Game.UI?.ShowToast($"{b.title} derrotado", UIFactory.Gold, 2.5f);
+            else if (b.bossId != "mizuchi") Game.UI?.ShowToast($"{b.title} derrotado", UIFactory.Gold, 2.5f);   // Mizuchi: "liberado", en su final
             UpdateObjective();
         }
 

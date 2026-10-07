@@ -175,7 +175,7 @@ Nindo/Assets/Nindo/
     Player/       PlayerController (+ .Combat), PlayerConfig
     Enemies/      Enemy, Boss, arquetipos (ninja, sumo, goro, mizuchi, ozeki, kage…), variantes de zona,
                   poses del sumo (SumoPoser)
-      Bosses/     jefes con pelea propia: OzekiBoss (yokozuna), KokuyoBoss (jefe final: actos, sombra adelantada, Kage, eclipse)
+      Bosses/     jefes con pelea propia: MizuchiBoss (el Gran Koi: KoiBody, perlas, saltos, ola, pilares), OzekiBoss (yokozuna), KokuyoBoss (jefe final: actos, sombra adelantada, Kage, eclipse)
     Camera/       CameraDirector (tomas mezclables, fijado, perfiles de jefe, golpe de FOV, oído sobre
                   Kaito), CameraOcclusion (disolución de lo que tapa, shader Nindo/Occluder Fade)
     FX/           partículas, hit-stop, post-proceso en runtime (URP Volume)

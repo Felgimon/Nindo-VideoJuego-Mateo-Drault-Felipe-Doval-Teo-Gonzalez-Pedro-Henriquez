@@ -323,6 +323,7 @@ namespace Nindo
                 case "sumo": case "sumo_mountain": case "ozeki": return "sumo";
                 case "goro": return "goro";
                 case "kage": return "kokuyo";
+                case "mizuchi": return "mizuchi_koi";
                 default: return "ninja";
             }
         }
@@ -358,6 +359,8 @@ namespace Nindo
                 {
                     "ozeki" => root.AddComponent<OzekiBoss>(),
                     "kage" => root.AddComponent<KokuyoBoss>(),
+                    // Mizuchi es un koi de 7.5 m: su propia IA de jefe (zambullidas, perlas, cascada)
+                    "mizuchi" => root.AddComponent<MizuchiBoss>(),
                     _ => root.AddComponent<Boss>(),
                 };
                 ConfigureBoss(b, archetype);
@@ -378,9 +381,10 @@ namespace Nindo
                     b.introAnim = "Intro"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.5f };
                     break;
                 case "mizuchi":
-                    b.bossId = "mizuchi"; b.title = "Mizuchi"; b.subtitle = "La Marea del Lago Kohan";
-                    b.introAnim = "Spotted"; b.phaseAnim = "Spotted"; b.musicKey = "boss"; b.phaseThresholds = new[] { 0.55f };
-                    b.minionArchetype = "ninja";
+                    b.bossId = "mizuchi"; b.title = "Mizuchi"; b.subtitle = "El Gran Koi del Lago Kohan";
+                    // "Roar" también en el reintento corto; la presentación entera (sale del pozo) es de MizuchiBoss
+                    b.introAnim = "Roar"; b.phaseAnim = "Roar"; b.musicKey = "boss_lake"; b.phaseThresholds = new[] { 0.55f, 0.25f };
+                    b.phaseSpeedBonus = 0.08f;
                     break;
                 case "ozeki":
                     b.bossId = "ozeki"; b.title = "Ōzeki"; b.subtitle = "El Gran Campeón del Bambú";
