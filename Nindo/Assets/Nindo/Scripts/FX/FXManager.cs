@@ -194,7 +194,7 @@ namespace Nindo
             {
                 foreach (var smr in smrs)
                 {
-                    if (smr == null || !smr.enabled) continue;
+                    if (smr == null || !smr.enabled || smr.name.EndsWith("_XRay")) continue;
                     var a = NextAfterImage();
                     a.Bake(smr, c, 0.3f);
                 }

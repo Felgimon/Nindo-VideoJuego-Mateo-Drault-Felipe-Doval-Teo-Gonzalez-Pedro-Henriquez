@@ -654,7 +654,7 @@ namespace Nindo
             {
                 look = Vector3.Lerp(look, transform.position + Vector3.up * 2.2f, 1f - Mathf.Exp(-4f * Time.unscaledDeltaTime));
                 return new Pose(camPos, Quaternion.LookRotation(look - camPos));
-            }, () => 40f, 1.0f, 5.4f, 1.0f) : -1;
+            }, () => 40f, 1.0f, 0f, 1.0f) : -1;      // sin fin: dura hasta después del diálogo
             // el pozo hierve
             for (float t = 0f; t < 0.9f; t += 0.12f)
             {
@@ -701,8 +701,10 @@ namespace Nindo
             body?.FlareSeal(2.5f, 1.2f);
             Game.UI?.ShowAreaTitle(title, subtitle);
             yield return new WaitForSeconds((90f - 76f) / 30f + 0.9f);
-            if (shot >= 0) Game.Camera.CancelShot(shot);
+            // la toma sigue en el koi durante el título y el diálogo: cortada antes, el título y la charla salían con la
+            // cámara de juego y el koi afuera del cuadro, arriba
             yield return Game.UI.Dialogue(StoryText.Dialogue("mizuchi_intro"));
+            if (shot >= 0) Game.Camera.CancelShot(shot);
             inCinematic = false;
         }
 

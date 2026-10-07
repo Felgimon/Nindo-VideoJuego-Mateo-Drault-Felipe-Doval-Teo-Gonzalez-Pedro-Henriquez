@@ -309,6 +309,8 @@ namespace Nindo
             ml.type = LightType.Point; ml.range = 9f; ml.intensity = 1.1f; ml.color = new Color(0.72f, 0.82f, 1f);
             ml.shadows = LightShadows.None; ml.renderMode = LightRenderMode.ForcePixel;
             moon.AddComponent<MoonLantern>();
+            // al final: los que guardan la lista de sus mallas (destello de golpe, bandana) no tienen que ver las copias
+            if (anim != null) XRaySilhouette.Attach(anim.transform);
             return pc;
         }
     }

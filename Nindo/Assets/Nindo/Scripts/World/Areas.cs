@@ -236,7 +236,11 @@ namespace Nindo
             var root = new GameObject(name);
             root.transform.position = center;
             int n = Mathf.Clamp(Mathf.RoundToInt(radius * 2f * Mathf.PI / 3f), 10, 48);
-            var mat = FXMaterials.MakeUnlitTransparent("BarrierGlow", new Color(1f, 0.75f, 0.35f, 0.35f), true);
+            // resplandor que nace del piso y se apaga hacia arriba: la pared pareja de 2.2 m, aditiva, se leía como una
+            // franja naranja que cruzaba toda la pantalla (sobre todo en las tomas bajas de las presentaciones)
+            var mat = FXMaterials.MakeUnlitTransparent("BarrierGlow", BarrierFade.GlowColor, true);
+            mat.SetTexture("_BaseMap", BarrierFade.Gradient);
+            mat.SetTexture("_MainTex", BarrierFade.Gradient);
             for (int i = 0; i < n; i++)
             {
                 float a0 = i / (float)n * Mathf.PI * 2f, a1 = (i + 1) / (float)n * Mathf.PI * 2f;
@@ -253,12 +257,13 @@ namespace Nindo
                 Object.Destroy(q.GetComponent<Collider>());
                 q.transform.SetParent(seg.transform, false);
                 q.transform.localRotation = Quaternion.Euler(0, 90, 0);
-                q.transform.localScale = new Vector3((p1 - p0).magnitude, 2.2f, 1f);
-                q.transform.localPosition = new Vector3(0, -0.4f, 0);
+                q.transform.localScale = new Vector3((p1 - p0).magnitude, 1.8f, 1f);
+                q.transform.localPosition = new Vector3(0, -0.6f, 0);
                 var r = q.GetComponent<MeshRenderer>();
                 r.sharedMaterial = mat;
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
+            root.AddComponent<BarrierFade>().Init(mat);
             Game.FX?.Shockwave(center, radius, new Color(1f, 0.8f, 0.4f));
             Game.Audio?.Play("barrier", center, 0.8f);
             return root;
@@ -270,6 +275,57 @@ namespace Nindo
             Game.FX?.Shockwave(barrier.transform.position, 6f, new Color(1f, 0.9f, 0.6f));
             Object.Destroy(barrier);
         }
+    }
+
+    /// <summary>
+    /// La luz de la barrera se apaga mientras hay un plano cinemático (presentación del jefe, cambio de fase, muerte):
+    /// vista desde abajo y de cerca tapaba al jefe. El colisionador sigue: solo se esconde el brillo.
+    /// </summary>
+    public class BarrierFade : MonoBehaviour
+    {
+        public static readonly Color GlowColor = new Color(1f, 0.75f, 0.35f, 0.3f);
+        static Texture2D gradient;
+        Material mat;
+        float k = 1f;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => gradient = null;
+
+        /// <summary>Alfa de 1 abajo a 0 arriba (cuadrático): la cortina arranca en el piso y se disuelve.</summary>
+        public static Texture2D Gradient
+        {
+            get
+            {
+                if (gradient != null) return gradient;
+                const int H = 32;
+                gradient = new Texture2D(2, H, TextureFormat.RGBA32, false) { name = "Nindo_BarrierGradient", wrapMode = TextureWrapMode.Clamp };
+                var px = new Color32[2 * H];
+                for (int y = 0; y < H; y++)
+                {
+                    float a = 1f - y / (H - 1f);
+                    var c = new Color32(255, 255, 255, (byte)(a * a * 255));
+                    px[y * 2] = c; px[y * 2 + 1] = c;
+                }
+                gradient.SetPixels32(px);
+                gradient.Apply(false, true);
+                return gradient;
+            }
+        }
+
+        public void Init(Material m) => mat = m;
+
+        void Update()
+        {
+            if (mat == null) return;
+            bool hide = Game.InCutscene || (Game.Camera != null && Game.Camera.InShot);
+            float to = hide ? 0f : 1f;
+            if (Mathf.Approximately(k, to)) return;
+            k = Mathf.MoveTowards(k, to, Time.unscaledDeltaTime * 3f);
+            var c = GlowColor; c.a *= k;
+            FXMaterials.SetColor(mat, c);
+        }
+
+        void OnDestroy() { if (mat != null) Destroy(mat); }
     }
 
     /// <summary>
